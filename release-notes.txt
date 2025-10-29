@@ -1,0 +1,3 @@
+v0.1.1 (2024.5.27)
+  - rewrite maneuver.cpp to amend `info` command bug;
+  - add cmake support (build / testing libcube library);

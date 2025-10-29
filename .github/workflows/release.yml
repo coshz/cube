@@ -1,0 +1,27 @@
+name: Make Release
+on: 
+  push: 
+    tags: 
+      - '*'
+jobs: 
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    - name: Create source archives
+      run: | 
+        mkdir -p dist 
+        git archive --format=zip --output=dist/source-code.zip HEAD 
+        git archive --format=tar.gz --output=dist/source-code.tar.gz HEAD
+
+    # - name: Publish Github Release 
+    #   uses: softprops/action-gh-release@v2
+    #   with: 
+    #     name: Release ${{ github.ref_name }}
+    #     tag_name: ${{ github.ref_name }}
+    #     files: |
+    #       dist/source-code.zip
+    #       dist/source-code.tar.gz
+    #   env: 
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
