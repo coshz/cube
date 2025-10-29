@@ -1,17 +1,24 @@
 #include "table.hh"
 #include "coord.hh"
+#include "utils.hpp"
+#include <filesystem>
+#include <cstdlib>
 
 namespace fs = std::filesystem;
 
-#ifndef TABLE_DIR
-#define TABLE_DIR "tables/"
+static fs::path table_dir_fallback(std::string dir) 
+{
+    if(dir != "") return fs::path(dir);
+    try {
+        return get_cache_dir() / "cube" / "tables";
+    } catch (...) {
+#ifdef INSTALL_PREFIX
+    return fs::path(INSTALL_PREFIX) / "cube" / "tables";
+#else 
+    return fs::current_path() / "tables";
 #endif
-
-#ifdef VERBOSE
-#define VPRINT(...) printf(__VA_ARGS__)
-#else
-#define VPRINT(...)
-#endif
+    }
+}
 
 template <typename Table>
 void save_to(const Table &table, std::string path)
@@ -33,12 +40,6 @@ void load_from(Table &table, std::string path)
     VPRINT("done.\n");
 }
 
-// void doCleanupTables()
-// {
-//     SingletonTM<>::cleanup();
-//     SingletonTP<>::cleanup();
-// }
-
 template<typename T>
 template<typename Table, typename F1, typename F2>
 std::enable_if_t<Table::shape[0] == N_MOVE>
@@ -55,7 +56,7 @@ TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string f
 
 template<typename T>
 TableMove<T>::TableMove(std::string dir)
-:tdir(dir == "" ? TABLE_DIR : dir)
+:tdir(table_dir_fallback(dir))
 {
     VPRINT("INIT MOVE TABLES -- \n");
     pTMTwist     = new NArray<T,N_MOVE,N_TWIST>;
@@ -66,7 +67,7 @@ TableMove<T>::TableMove(std::string dir)
     pTMEdge8     = new NArray<T,N_MOVE,N_EDGE8>;
 
     if(!fs::exists(tdir/"tm_twist.dat")) {
-        if(!exists(tdir)) fs::create_directories(tdir);
+        if(!fs::exists(tdir)) fs::create_directories(tdir);
         buildMoveTable(*pTMTwist, Coord::co2twist, Coord::twist2co, "tm_twist.dat");
         buildMoveTable(*pTMFlip, Coord::eo2flip, Coord::flip2eo, "tm_flip.dat");
         buildMoveTable(*pTMSlice, Coord::ep2slice, Coord::slice2ep, "tm_slice.dat");
@@ -128,7 +129,7 @@ TablePrunning<T>::buildPrunningTable(
 
 template<typename T>
 TablePrunning<T>::TablePrunning(std::string dir)
-:tdir(dir == "" ? TABLE_DIR : dir)
+:tdir(table_dir_fallback(dir))
 {
     VPRINT("INIT PRUNNING TABLES -- \n");
     pTPSliceFlip     = new NArray<T,N_SLICE,N_FLIP>;
@@ -137,7 +138,7 @@ TablePrunning<T>::TablePrunning(std::string dir)
     pTPEdge4Corner   = new NArray<T,N_EDGE4,N_CORNER>;
 
     if(!fs::exists(tdir/"tp_slicetwist.dat")) {
-        TableMove<> &TM = SingletonTM<>::getInstance().getTable();
+        const auto &TM = SingletonTM<>::instance();
         buildPrunningTable(*pTPSliceTwist, *TM.pTMSlice, *TM.pTMTwist, "tp_slicetwist.dat");
         buildPrunningTable(*pTPSliceFlip, *TM.pTMSlice, *TM.pTMFlip, "tp_sliceflip.dat");
         buildPrunningTable(*pTPEdge4Corner, *TM.pTMEdge4, *TM.pTMCorner, "tp_edge4corner.dat");
@@ -160,7 +161,5 @@ TablePrunning<T>::~TablePrunning()
     delete pTPEdge4Corner;
 }
 
-template struct TableMove<int>;
-template struct TablePrunning<int>;
-template class SingletonTM<int>;
-template class SingletonTP<int>;
+template struct TableMove<>;
+template struct TablePrunning<>;

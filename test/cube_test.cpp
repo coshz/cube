@@ -1,38 +1,35 @@
-#include <gtest/gtest.h>
-#include "libcube.h"
 #include "cube.hh"
+#include "utils.hpp"
+#include <gtest/gtest.h>
 
-#define BS  100
-#define cid "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
-    
-bool check_solution(const char *cube, const char *solution)
+TEST(CubeTest_0, BasicAssertions)
 {
-    std::string s;
-    char buffer[BS];
-    auto inv = [](int i) -> int {
-        switch(i % 3) {
-            case 0: return i + 2;
-            case 1: return i;
-            case 2: return  i - 2;
-            default: return -1; // reassure stupid compiler
-        }
-    };
-    int n = strlen(solution);
-    for(int j = n-1; j >= 0; j--) {
-        s += Move2Str[inv(solution[j]-1)];
-    }
-    facecube(s.c_str(), buffer);
-    return strcmp(cube, buffer) == 0;
+    auto fR = std::array<int8_t,54>{U1,U2,F3,U4,U5,F6,U7,U8,F9,R7,R4,R1,R8,R5,R2,R9,R6,R3,F1,F2,D3,F4,F5,D6,F7,F8,D9,D1,D2,B7,D4,D5,B4,D7,D8,B1,L1,L2,L3,L4,L5,L6,L7,L8,L9,U9,B2,B3,U6,B5,B6,U3,B8,B9};
+    auto cR = std::string("UUFUUFUUFRRRRRRRRRFFDFFDFFDDDBDDBDDBLLLLLLLLLUBBUBBUBB");
+
+    auto cc = CubieCube::id * std::vector<TurnAxis>{R};
+    EXPECT_EQ(cc,mR);
+
+    auto fc1 = FaceCube(cc);
+    EXPECT_EQ(fc1.f.X,fR);
+
+    auto color = fc1.color();
+    EXPECT_EQ(color, cR);
+    
+    auto fc2 = FaceCube::fromString(color);
+    EXPECT_EQ(fc1,fc2);
+    EXPECT_EQ(cc,CubieCube(fc1));
 }
 
-TEST(LibCubeTest, BasicAssertions)
+TEST(CubeTest, BasicAssertions) 
 {
-    char cube[60], buffer[100];
-    // const char *m = "(U2FDL'RU){5} D'LDR";
-    const char *m = "URF";
-    facecube(m, cube);
-    EXPECT_STREQ(cube, "UURUUFLLFURBURBFRBFFRFFRDDDRRRDDBDDLFFDLLDLLBULLUBBUBB");
-    int rc = solve(cube, NULL, buffer, 30);
-    EXPECT_EQ(rc,0);
-    EXPECT_TRUE(check_solution(cube, buffer));
+    std::vector<TurnAxis> ts = {U,R,D,B,L,F,D,R};
+    
+    auto cc = CubieCube::id * ts;
+    auto fc = FaceCube(cc);
+    auto color = fc.color();
+
+    EXPECT_EQ(cc,CubieCube(fc));
+    EXPECT_EQ(fc,FaceCube(cc));
+    EXPECT_EQ(fc,FaceCube::fromString(color));
 }

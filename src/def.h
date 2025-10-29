@@ -1,5 +1,17 @@
 #pragma once
+/*
+         U1 U2 U3 
+         U4 U5 U6
+         U7 U8 U9 
+L1 L2 L3 F1 F2 F3 R1 R2 R3 B1 B2 B3
+L4 L5 L6 F4 F5 F6 R4 R5 R6 B4 B5 B6
+L7 L8 L9 F7 F8 F9 R7 R8 R9 B7 B8 B9
+         D1 D2 D3
+         D4 D5 D6
+         D7 D8 D9
+ */
 
+#include <iostream>
 enum Face       { U1,U2,U3,U4,U5,U6,U7,U8,U9,R1,R2,R3,R4,R5,R6,R7,R8,R9,F1,F2,F3,F4,F5,F6,F7,F8,F9,D1,D2,D3,D4,D5,D6,D7,D8,D9,L1,L2,L3,L4,L5,L6,L7,L8,L9,B1,B2,B3,B4,B5,B6,B7,B8,B9 };
 enum TurnAxis   { U,R,F,D,L,B };
 enum TurnMove   { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
@@ -30,11 +42,23 @@ const CornerFacelet     CF  = {{U9,R1,F3},{U7,F1,L3},{U1,L1,B3},{U3,B1,R3},{D3,F
 const EdgeFacelet       EF  = {{U6,R2},{U8,F2},{U4,L2},{U2,B2},{D6,R8},{D2,F8}, {D4,L8},{D8,B8},{F6,R4},{F4,L6},{B6,L4},{B4,R6}};
 const EdgeNeighbour     EN  = {{URF,UBR},{UFL,URF},{ULB,UFL},{UBR,ULB},{DRB,DFR},{DFR,DLF}, {DLF,DBL},{DBL,DRB},{URF,DFR},{DLF,UFL},{DBL,ULB},{UBR,DRB}};
 
-///
-/// The schema of permutation P = (x_1,...,x_n) is called:
-///   - "replaced by", if: P(i) = x_i;
-///   - "carry to",    if  P(x_i) = i;
-///
+/*!
+ * The schema of permutation p = (p[0],...,p[n-1]) (in P) 
+ *  i.e., a bijection on {0,...,n-1}, is called:
+ *  (1) "replaced by", if: p[i] = p(i)
+ *  (2) "carry to",    if: p[i] = p'(i) (p' is the inverse of p)
+ * Interpretation:
+ *  We expect P acts on X freely, considering the operation of p on x:
+ *  (1) replace by: 
+ *      (X * p)[i] = X[p[i]]
+ *      (p <*> q)[i] = p[q[i]]  -- (right action)
+ *  (2) carry to: 
+ *      (p . X)[p[i]] = X[i]
+ *      (q <.> p)[i] = q[p[i]]  -- (left action)  
+ * Symobols: 
+ * From above, p <*> q = p <.> q denoting p * q, right acting denoting x * p and 
+ * left acting denoting p * x.
+ */
 
 /* Facelet Move: using notation schema of "carry-to" */
 const Facelet FaceletMove[6] = { 
@@ -53,7 +77,13 @@ const Facelet FaceletSym[4] = {
     {U3,U2,U1,U6,U5,U4,U9,U8,U7,L3,L2,L1,L6,L5,L4,L9,L8,L7,F3,F2,F1,F6,F5,F4,F9,F8,F7,D3,D2,D1,D6,D5,D4,D9,D8,D7,R3,R2,R1,R6,R5,R4,R9,R8,R7,B3,B2,B1,B6,B5,B4,B9,B8,B7} 
 };
 
-/* CornerCubie Move: using notation schema of "replaced-by" */
+/*! 
+ * @brief CornerCubie Move: using notation schema of "replace-by" 
+ * @remark CornerCubieMove[m][i] = {c_i,o_i} means the `i`-th corner of identity 
+ * cube is replaced by corner `c_i` with orientation `o_i`. 
+ * An orientation value `o_i` indicates the corner is rotated `o_i` times 
+ * clockwise from its standard orientation.
+ */
 const CornerCubie CornerCubieMove[6] = {
     {{UBR,0},{URF,0},{UFL,0},{ULB,0},{DFR,0},{DLF,0},{DBL,0},{DRB,0}},   
     {{DFR,2},{UFL,0},{ULB,0},{URF,1},{DRB,1},{DLF,0},{DBL,0},{UBR,2}},   
@@ -63,6 +93,13 @@ const CornerCubie CornerCubieMove[6] = {
     {{URF,0},{UFL,0},{UBR,1},{DRB,2},{DFR,0},{DLF,0},{ULB,2},{DBL,1}}
 };
 
+/*! 
+ * @brief EdgeCubieMove: using notation schema of "replace-by" 
+ * @remark EdgeCubieMove[m][i] = {e_i,o_i} means the `i`-th edge of identity 
+ * cube is replaced by edge `c_i` with orientation `o_i`. 
+ * An orientation value `o_i` indicates the edge is rotated clockwise (or 
+ * flipped) `o_i` times  from its standard orientation. 
+ */
 const EdgeCubie EdgeCubieMove[6] = { 
     {{UB,0},{UR,0},{UF,0},{UL,0},{DR,0},{DF,0},{DL,0},{DB,0},{FR,0},{FL,0},{BL,0},{BR,0}}, 
     {{FR,0},{UF,0},{UL,0},{UB,0},{BR,0},{DF,0},{DL,0},{DB,0},{DR,0},{FL,0},{BL,0},{UR,0}}, 

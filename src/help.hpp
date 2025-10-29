@@ -1,24 +1,20 @@
 #pragma once
 #include <vector>
 #include <array>
-#include <string>
-#include <sstream>
 #include <set>
-#include <cassert>
 #include <algorithm>
-
+#include <utility>
+#include <numeric>
+#include <stdexcept>
 ///
 ///////////////////////////////  Declarations  ///////////////////////////////
 ///
 
-/* convert sequence to string */
+/* the cycle decompositon of permutation 
+ Return: first -- fixed points; second -- cycles
+ */
 template<typename VectorLike> 
-std::string seq2str(const VectorLike &xs,
-    std::string pre="", std::string suf="", std::string sep="");
-
-/* the cycle decompositon of permutation */
-template<typename VectorLike> 
-auto decomposite(const VectorLike &xs) -> std::vector<std::vector<typename VectorLike::value_type>>;
+auto decomposite(const VectorLike &xs) -> std::pair<std::vector<typename VectorLike::value_type>,std::vector<std::vector<typename VectorLike::value_type>>>;
 
 /* the order (period) of permutation */
 template<typename T, size_t N> 
@@ -26,15 +22,15 @@ size_t orderOf(const std::array<T,N> &xs);
 
 /* the rank of permutation */
 template<typename T, size_t N>
-size_t rankOf(const std::array<T,N> &xs);
+constexpr size_t rankOf(const std::array<T,N> &xs);
 
 /* create a permutation from rank */
 template<typename T, size_t N>
-std::array<T,N> fromRank(size_t i);
+constexpr std::array<T,N> fromRank(size_t r);
 
 /* creat a list by applying f for N times */
 template<typename F, typename T, size_t N>
-std::array<T,N+1> nestList(F &&f, T &&x);
+constexpr std::array<T,N+1> nestList(F &&f, T &&x);
 
 /* take subarray of index range [Begin,End] */
 template<size_t Begin, size_t End, typename T, size_t N>
@@ -57,7 +53,10 @@ constexpr auto lexicalOrderFromIndices(const std::array<size_t,M> &X) -> int;
 template<size_t N, size_t M>
 constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>;
 
-/* the (passive) permutation on Sn */
+/*!
+ * \brief the permutation on Sn.
+ * The array form P[-] denotes the underlying map \i -> P[i]
+ */
 template<size_t N,typename T=int>
 struct Perm
 {
@@ -94,7 +93,7 @@ struct CArray
     inline constexpr const T& operator[](size_t idx) const;
 
     /* the sum of sequences */
-    int sum() const;
+    T sum() const;
     
     static constexpr size_t size() { return L; }
 
@@ -131,15 +130,15 @@ inline bool operator==(const Perm<N,T> &lhs, const Perm<N,T> &rhs);
 template<size_t N, size_t L, typename T>
 inline bool operator==(const CArray<N,L,T>&lhs, const CArray<N,L,T>&rhs);
 
-/* the multiplication of permutations */
+/* the multiplication (reverse compostion) on Perm */
 template<size_t N, typename T>
 constexpr Perm<N,T> operator*(const Perm<N,T>&X, const Perm<N,T> &Y);
 
-/* the inverse of multiplication  */
+/* the inverse of multiplication on Perm */
 template<size_t N, typename T>
 constexpr Perm<N,T> operator~(const Perm<N,T>&X);
 
-/* the perm (right action) on CArray */
+/* the right group action of Perm on CArray */
 template<size_t N, size_t L, typename T>
 constexpr CArray<N,L,T> operator*(const CArray<N,L,T>&xs, const Perm<L,T>&X);
 
@@ -152,104 +151,83 @@ template<size_t N, size_t L, typename T>
 constexpr CArray<N,L,T> operator-(const CArray<N,L,T>&xs);
 
 ///
-/////////////////////////////// Implimentations ///////////////////////////////
+/////////////////////////////// Implementations ///////////////////////////////
 ///
 
-template<typename VectorLike> 
-std::string seq2str(const VectorLike &xs, 
-    std::string pre, std::string suf, std::string sep)
-{
-    if(xs.size() == 0) return std::string("");
-    std::stringstream ss;
-    ss << pre << xs[0];
-    for(size_t i = 1; i < xs.size(); i++) ss << sep << xs[i];
-    ss << suf;
-    return ss.str();
-}
-
 template<typename VectorLike>
-auto decomposite(const VectorLike &xs) -> std::vector<std::vector<typename VectorLike::value_type>>
+auto decomposite(const VectorLike &xs) -> std::pair<std::vector<typename VectorLike::value_type>,std::vector<std::vector<typename VectorLike::value_type>>>
 {
     using T = typename VectorLike::value_type;
-    if(xs.size() == 0) return std::vector<std::vector<T>>(0);
-    
-    std::vector<size_t> fs(xs.size(),0);
-    size_t i, j, f = 0;
-    for(i = 0; i < xs.size(); i++)
-    {
-        if(fs[i] != 0 || i == (size_t) xs[i]) continue;
-        fs[i] = ++f;
-        for(j=xs[i]; j!=i; j=xs[j]) fs[j] = f;
+    std::vector<T> fixed;
+    std::vector<std::vector<T>> cycles;
+    std::vector<bool> visited(xs.size(),false);
+    for(int i = 0; i < xs.size(); ++i) {
+        if(visited[i]) continue;
+        std::vector<T> cycle;
+        for(int j = xs[i]; j != i; j = xs[j]) {
+            visited[j] = true;
+            cycle.push_back(static_cast<T>(j));
+        }
+        visited[i] = true;
+        cycle.push_back(static_cast<T>(i));
+        if(cycle.size() > 1) cycles.push_back(cycle);
+        else fixed.push_back(cycle[0]);
     }
-
-    std::vector<std::vector<T>> cycles(f+1);
-
-    for(size_t k=0; k<xs.size(); k++)
-    {
-        cycles[fs[k]].push_back((T)k);
-    }
-    // keep fixed-points at positon 0
-    std::sort(cycles.begin() + 1, cycles.end(), [](auto &v1, auto &v2){
+    std::sort(cycles.begin(), cycles.end(), [](auto &v1, auto &v2){
         return v1.size() > v2.size();
     });
-    return cycles;
+    return std::make_pair(fixed,cycles);
 }
 
 template<typename T, size_t N>
 size_t orderOf(const std::array<T,N> &xs)
 {
-    if(xs.size() == 0) return 1;
-    
-    auto lcm = [](size_t x, size_t y){
-        if(x < y) { x^=y, y^=x, x ^= y; }
-        size_t p = x, q = y, r;
-        do {
-            r = p % q;
-            p = q, q = r;
-        }
-        while(q != 0);
-        return x / p * y;
-    };
-
     size_t m = 1;
     auto cs = decomposite(xs);
-    for(size_t i = 1; i < cs.size(); i++) { m = lcm(m, cs[i].size()); }
-    
+    for(size_t i = 1; i < cs.size(); i++) { m = std::lcm(m, cs[i].size()); }
     return m;
 }
 
 template<typename T, size_t N>
-size_t rankOf(const std::array<T,N> &xs)
+constexpr size_t rankOf(const std::array<T,N> &xs)
 {
     size_t r = 0;
-    std::set<T> s(xs.begin(),xs.end());
-    for(size_t k = 0; k < N; k++) {
-        auto it = s.find(xs[k]);
-        assert(it != s.end());
-        r += std::distance(s.begin(), it) * factorial(N - k - 1);
-        s.erase(it);
+    std::array<bool,N> used {false};
+    for(size_t i = 0; i < N; i++) 
+    {
+        int cnt = 0;
+        for(int j=0; j < xs[i]; j++) if(!used[j]) cnt++;
+        r += cnt * factorial(N - i - 1);
+        used[xs[i]] = true;
     }
     return r;
 }
 
 template<typename T, size_t N>
-std::array<T,N> fromRank(size_t i)
+constexpr std::array<T,N> fromRank(size_t r)
 {
-    std::array<T,N> p;
-    std::set<T> s;
-    for(size_t k = 0; k < N; k++) s.insert((T)k);
-    for(size_t k = 0; k < N; k++) {
-        auto f = factorial(N-k-1);
-        auto it = std::next(s.begin(), i/f);
-        p[k] = *it;
-        i = i % f;
-        s.erase(it);
+    std::array<T,N> A{};
+    std::array<bool,N> used {false};
+    for(size_t i = 0; i < N; i++)
+    {
+        size_t f = factorial(N - i - 1);
+        size_t cnt = r / f;
+        r %= f;
+        for(size_t j = 0; j < N; j++) 
+        {
+            if(used[j]) continue;
+            if(cnt-- == 0) {
+                A[i] = j;
+                used[j] = true;
+                break;
+            }
+        }
     }
-    return p;
+    return A;
 }
 
 template<typename F, typename T, size_t N>
-std::array<T,N+1> nestList(F &&f, T &&x)
+constexpr std::array<T,N+1> nestList(F &&f, T &&x)
 {
     std::array<T,N+1> r;
     r[0] = x;
@@ -308,6 +286,7 @@ constexpr size_t binomial(size_t n, size_t k)
 
 constexpr size_t factorial(size_t n)
 {
+    if(n>=21) throw std::invalid_argument("factorial(n) overflows for n >= 21");
     return n == 0 ? 1 : n * factorial(n-1);
 }
 
@@ -338,9 +317,10 @@ constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>
 template<size_t N,typename T>
 bool Perm<N,T>::parity() const
 {
-    auto cs = decomposite(this->X);
-    /* sgn = (N - k) % 2 */
-    return (cs.size() + cs[0].size() - N) % 2;
+    const auto [fixed, cs] = decomposite(this->X);
+    int s = 1;
+    for(auto &c:cs) s *= (c.size() % 2 == 0) ? -1 : 1;
+    return s == 1;
 }
 
 template<size_t N,typename T>
@@ -384,9 +364,9 @@ constexpr const T& CArray<N,L,T>::operator[](size_t idx) const
 }
 
 template<size_t N, size_t L, typename T>
-int CArray<N,L,T>::sum() const
+T CArray<N,L,T>::sum() const
 {
-    int s = 0;
+    T s = 0;
     for(size_t i = 0; i < L; i++) s += xs[i];
     return s % N;
 }
@@ -403,11 +383,6 @@ bool operator==(const CArray<N,L,T>&lhs, const CArray<N,L,T>&rhs)
     return lhs.xs == rhs.xs;
 }
 
-/*!
- * @note we define permutation multiplication of P and Q as P * Q := P \comp Q;
- * it'll make pi: X * S_n -> X, (p, Q) -> p \otime Q := P * Q be a right action,
- * where P is such permutation othat P(id_X) = p. 
- */
 template<size_t N, typename T>
 constexpr Perm<N,T> operator*(const Perm<N,T> &X, const Perm<N,T> &Y)
 {
@@ -437,15 +412,15 @@ constexpr CArray<N,L,T> operator*(const CArray<N,L,T> &xs, const Perm<L,T> &X)
 template<size_t N, size_t L, typename T>
 constexpr CArray<N,L,T> operator+(const CArray<N,L,T> &xs, const CArray<N,L,T> &ys)
 {
-    CArray<N,L,T> prod{};
-    for(size_t i = 0; i < L; i++) prod[i] = (xs[i] + ys[i]) % N;
-    return prod;
+    CArray<N,L,T> sum{};
+    for(size_t i = 0; i < L; i++) sum[i] = (xs[i] + ys[i]) % N;
+    return sum;
 }
 
 template<size_t N, size_t L, typename T>
 constexpr CArray<N,L,T> operator-(const CArray<N,L,T> &xs)
 {
     CArray<N,L,T> inv{};
-    for(size_t i = 0; i < L; i++) inv[i] = N - xs[i];
+    for(size_t i = 0; i < L; i++) inv[i] = (N - xs[i]) % N;
     return inv;
 }

@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=@CMAKE_INSTALL_LIBDIR@
+includedir=@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: Cube
+Description: A library for Rubik's cube solution
+Version: 
+Libs: -L${libdir} -llibcube 
+Cflags: -I${includedir}

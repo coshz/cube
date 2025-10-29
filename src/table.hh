@@ -1,53 +1,46 @@
 #pragma once
-#include <fstream>
-#include <filesystem>
 #include "def.h"
 #include "help.hpp"
 #include "coord.hh"
 
+#include <fstream>
+#include <filesystem>
+#include <type_traits>
+#include <limits>
+
+typedef uint16_t    default_mt_value_t;
+typedef uint8_t     default_pt_value_t;
+
 template<typename T> struct TableMove;
 template<typename T> struct TablePrunning;
-template<typename T> class SingletonTM;
-template<typename T> class SingletonTP;
 
 /* dump / load Tables */
 template <typename Table> void save_to(const Table &table, std::string path);
 template <typename Table> void load_from(Table &table, std::string path);
 
-// /* cleanup Tables */
-// void doCleanupTables();
-
-template<typename T=int>
-class SingletonTM
+template<class T>
+class Singleton
 {
 public:
-    static SingletonTM& getInstance() {
-        static SingletonTM instance;
-        return instance;
+    Singleton(const Singleton&) = delete;
+    Singleton(Singleton&&) = delete;
+    Singleton& operator=(const Singleton&) = delete;
+    Singleton& operator=(Singleton&&) = delete;
+    
+    static T& instance() {
+        static T obj {};
+        return obj;
     }
-    TableMove<T> & getTable() { return TM; }
-    // static void cleanup() { getInstance().getTable().~TableMove(); }
 protected:
-    SingletonTM():TM() {}
-private:
-    TableMove<T> TM;
+    Singleton() = default;
+    ~Singleton() = default;
 };
 
-template<typename T=int>
-class SingletonTP
-{
-public:
-    static SingletonTP& getInstance() {
-        static SingletonTP instance;
-        return instance;
-    }
-    // static void cleanup() { getInstance().getTable().~TablePrunning(); }
-    TablePrunning<T> & getTable() { return TP; }
-protected:
-    SingletonTP():TP() {}
-private:
-    TablePrunning<T> TP;
-};
+template<typename T=default_mt_value_t>
+using SingletonTM = Singleton<TableMove<T>>;
+
+template<typename T=default_pt_value_t>
+using SingletonTP = Singleton<TablePrunning<T>>;
 
 /*!
  * @brief The table to cache move transforms on Coord
@@ -59,9 +52,12 @@ private:
  * table items.  
  * @note edge4/edge8 move tables work in phase 2 only. 
  */
-template<typename T=int>
+template<typename T=default_mt_value_t>
 struct TableMove
 {
+    static_assert(std::is_integral<T>::value);
+    static_assert(std::numeric_limits<T>::digits >= 16);
+
     using value_t = T;
     TableMove(std::string dir="");
     TableMove(const TableMove &) = delete;
@@ -100,7 +96,7 @@ struct TableMove
  *  1. dist(c) >= coord_i(c);
  *  2. pt_i(c*m) - pt_i(c) is in {-1,0,1};
  */
-template<typename T=int>
+template<typename T=default_pt_value_t>
 struct TablePrunning
 {
     using value_type = T;
