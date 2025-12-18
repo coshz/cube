@@ -1,8 +1,7 @@
-.vscode/
 .DS_Store
+.vscode/
 __pycache__/
-build/
-doc/
-dist/
 tmp/
-ui/
+build/
+dist/
+doc/

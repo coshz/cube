@@ -43,9 +43,10 @@ EMSCRIPTEN_BINDINGS(cube_module) {
         .value("Not_found", CODE_NOT_FOUND)
         .value("Bad_src", CODE_INVALID_SRC)
         .value("Bad_tgt", CODE_INVALID_TGT)
+		.value("Unknown_err",CODE_UNKNOWN_ERROR)
     ;
-    value_object<std::pair<status_code, std::string>>("solution_result__")
-        .field("status_code", &std::pair<status_code, std::string>::first)
-        .field("solution", &std::pair<status_code, std::string>::second)
+    value_array<std::pair<status_code,std::string>>("solve_result_t")
+        .element(&std::pair<status_code, std::string>::first)
+        .element(&std::pair<status_code, std::string>::second)
     ;
 }

@@ -1,18 +1,19 @@
-import createCubeModule  from './jscube/jscube.mjs';
+<!DOCTYPE html>
+<html>
+    <script type="module">
+import createModule  from '../dist/internal/jscube.web.mjs';
 
 const cid = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
-
-createCubeModule().then((cube) => {
+createModule().then((cube) => {
 
     const ms = "U F U' L2 R L' D2 B";
-
     var fc = cube.js_facecube(ms,cid);
     console.log(fc);
     var sol = cube.js_solve(fc,true);
 
-    switch(sol.status_code) {
+    switch(sol[0]){
         case cube.status_code.Ok: 
-            console.log("Solution: " + sol.solution); 
+            console.log("Solution: " + sol[1]); 
             break;
         case cube.status_code.Unsolvable:
             console.warn("Unsolvable");
@@ -29,5 +30,6 @@ createCubeModule().then((cube) => {
         default:
             console.error("Unknown error");
     }
-})
-
+});
+    </script>
+</html>

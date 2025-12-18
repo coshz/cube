@@ -1,0 +1,28 @@
+{
+    "name": "jscube",
+    "type": "module",
+    "version": "0.1.1",
+    "description": "A wasm-based Rubik's Cube solving library",
+    "imports": {
+        "#internal/*": "./dist/internal/*"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "types": "./dist/index.d.mts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build:make": "make all -C emscripten",
+        "build:copy": "cp -R emscripten/dist dist/internal",
+        "build": "npm run clean && npm run build:make && tsc && npm run build:copy",
+        "clean": "make clean -C emscripten && rm -rf dist"
+    },
+    "devDependencies": {
+        "@types/node": "^25.0.3",
+        "typescript": "^5.9.3"
+    }
+}

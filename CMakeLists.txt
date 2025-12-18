@@ -50,19 +50,3 @@ install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/cube.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
-
-# python: just copy
-install(
-    DIRECTORY python
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}
-)
-
-# wasm: just copy
-install(
-    DIRECTORY wasm
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}
-)
-
-install(TARGETS cube
-    LIBRARY DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/python/cube_ctypes
-)

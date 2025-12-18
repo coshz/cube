@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e 
 
-BUILD_DIR="build"
-INSTALL_PREFIX="$(pwd)/dist" # the destination
+ROOT_DIR="$(cd $(dirname $(dirname $0)) && pwd)"
+BUILD_DIR="$ROOT_DIR/build"
+INSTALL_PREFIX="${INSTALL_PREFIX:-$ROOT_DIR/dist}"
 
 # Re-build and Install project
 build_and_install() {
@@ -16,8 +17,8 @@ build_and_install() {
     echo "Configuring CMake build into $BUILD_DIR..."
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
-        -S . -B "$BUILD_DIR"
+        -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
+        -S $ROOT_DIR -B $BUILD_DIR
     
     # Check if cmake succeeded
     if [ ! -d "$BUILD_DIR" ]; then

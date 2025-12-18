@@ -1,0 +1,12 @@
+import { createCubeApi } from "../dist/index.mjs";
+
+const api = await createCubeApi();
+const ms = "U F U' L2 R L' D2 B";
+var fc = api.get_facecube(ms);
+console.log(fc);
+try {
+    var sol = api.try_solve(fc);
+    console.log(sol);
+} catch (e) {
+    console.error(e);
+}
