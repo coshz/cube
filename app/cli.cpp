@@ -44,14 +44,14 @@ std::string REPL::help()
 {
     return 
     "[Help]\n"
-    "    solve <src> [tgt=cid] [best=1] [N=30]  -- find [best] solution form <src> to [tgt] within [N] steps\n"
-    "    color <maneuver> [cube=cid]            -- color by applying maneuver to cube\n"
-    "    perm  <maneuver>                       -- decompose maneuver to cubies permutation\n"
+    "   solve <src> [tgt=cid] [best=1] [N=30]   -- find [best] solution form <src> to [tgt] within [N] steps\n"
+    "   color <maneuver> [cube=cid]             -- color by applying maneuver to cube\n"
+    "   perm  <maneuver>                        -- decompose maneuver to cubies permutation\n"
     "\nwhere:\n"
-    "   <...>           -- required argument\n"
-    "   [...]           -- optional argument\n"
-    "   src,tgt,cube    :: the color configuration; eg: `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`\n"
-    "   maneuver        :: the move sequence;       eg: `FRL'B2D`, `(DR'F2L){7} BD2`\n"
+    "   <...>               -- required argument\n"
+    "   [...]               -- optional argument\n"
+    "   src,tgt,cube        :: the color configuration; eg: `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`\n"
+    "   maneuver            :: the move sequence;       eg: `FRL'B2D`, `(DR'F2L){7} BD2`\n"
     ;
 }
 
@@ -66,6 +66,7 @@ void REPL::run()
 
     while(true)
     {
+        no++;
         std::string in;
         std::cout << "\nIn [" << no << "] := ";
         std::getline(std::cin, in);
@@ -84,24 +85,24 @@ void REPL::run()
             rc = solve_ultimate(s.arg1.c_str(), s.arg2.c_str(), result, s.arg3, s.arg4, 1);
             switch(rc) 
             {
-                case CODE_INVALID_SRC:  std::cout << "!!! the source cube is invalid\n"; break;
-                case CODE_INVALID_TGT:  std::cout << "!!! the target cube is invalid\n"; break;
-                case CODE_UNSOLVABLE:   std::cout << "!!! unsolvable\n"; break;
-                case CODE_NOT_FOUND:    std::cout << "!!! solution not found since N is too small\n"; break;
-                default:;// CODE_OK
+                case CODE_INVALID_SRC:  std::cout << "!!! invalid src cube" << std::endl; continue;
+                case CODE_INVALID_TGT:  std::cout << "!!! invalid tgt cube" << std::endl;; continue;
+                case CODE_UNSOLVABLE:   std::cout << "!!! unsolvable" << std::endl; continue;
+                case CODE_NOT_FOUND:    std::cout << "!!! solution not found" << std::endl; continue;
+                default:; // CODE_OK
             }
         } else if(s.cmd == "color") {
             facecube(s.arg2.c_str(), s.arg1.c_str(), result);
         } else if(s.cmd == "perm") {
             permutation(s.arg1.c_str(), result);  
         }else {
-            std::cout << "!!! unsupported command `" << s.cmd << "`\n";
+            std::cout << "!!! unsupported command `" << s.cmd << "`" << std::endl;
             continue;
         }
-        std::cout << result << '\n';
-        no++;
+        std::cout << result << std::endl;
     }
-    std::cout << "\nGoodbye!\n";
+    std::cout << "\nGoodbye!" << std::endl;
+    std::cout << std::endl; // [bug: terminal reflow makes output disappear] 
 }
 
 /*!

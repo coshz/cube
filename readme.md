@@ -1,44 +1,46 @@
-## Introduction
+## 0 - Introduction
 
 This project is a Rubik's Cube solver built around a C++ re-implementation 
 of Kociemba's twophase algorithm, inspired by the original mathematica code from [1].
 
 It inclues:
-  - libcube: the core C++ library with a C-style interface
-  - Python binding via [ctypes](https://docs.python.org/3/library/ctypes.html)
-  - JavaScript binding via [emscripten](https://emscripten.org/)
-  - Command-line interface (icube) for interactive solving
+  - libcube: the core C++ library with C-style interface exported;
+  - pycube: the Python binding package via [ctypes](https://docs.python.org/3/library/ctypes.html);
+  - jscube: the JavaScript binding package via [emscripten](https://emscripten.org/);
+  - icube: the command-line executable.
 
-CLI Usage (icube)
+## 1 - Build 
 
-```txt
-$ ./icube
-Welcome! This is a Rubik's cube solver.
-(*`:h` for help, `:q` for quit *)
+Prerequisites:
+  - Cmake: to build libcube;
+  - Emscripten & npm: to build jscube;
+  - Python: to build pycube.
 
-In [0] := :h
-[Help]
-    solve <src> [tgt=cid] [best=1] [N=30]  -- find [best] solution form <src> to [tgt] within [N] steps
-    color <maneuver> [cube=cid]            -- color by applying maneuver to cube
-    perm  <maneuver>                       -- decompose maneuver to cubies permutation
+Build & package
+1. sdk: run `scripts/build_libcube.sh`;
+2. jscube: run `scripts/pack_jscube.sh`;
+3. pycube: run `scripts/pack_pycube.sh`;
 
-where:
-   <...>           -- required argument
-   [...]           -- optional argument
-   src,tgt,cube    :: the color configuration; eg: `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`
-   maneuver        :: the move sequence;       eg: `FRL'B2D`, `(DR'F2L){7} BD2`
+(An example to package sdk, jscube and pycube): 
 
-In [0] := color "U F U' L2 R L' D2 B"
-
-Out[0] => FFLBURBURUUFRRRDDBUFBUFDFBRUDFBDFLLRDLLULLBRRULLFBBDDD
-
-In [1] := solve "FFLBURBURUUFRRRDDBUFBUFDFBRUDFBDFLLRDLLULLBRRULLFBBDDD"
-
-Out[1] => B' D2 R' L' U F' U'
+```Bash
+#!/usr/bin/env bash
+export BUILD_SDIST=true             # false: whl only; true: whl + sdist
+rm -rf dist/                        # clean old files
+sh scripts/build_libcube.sh package # subcommand: package
+sh scripts/pack_pycube.sh
+sh scripts/pack_jscube.sh
 ```
+
+### 2 - Usage
+
+1. icube
+![icube-demo](asset/icube-demo.png)
+
+2. pycube: see [test](python/test/test_cube.py).
+
+3. jscube: see [node-test](wasm/test/test_jscube-node.1.mjs), [web-test](wasm/test/test_jscube-web.2.html).
 
 ## References
 
 1. [http://kociemba.org/cube.htm](http://kociemba.org/cube.htm)
-
-

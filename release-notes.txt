@@ -1,3 +1,7 @@
+v0.2.2-202601
+  - packaging: jscube, pycube
+  - some fix
+
 v0.2.1
   - wasm: add support for node environment
   - other minor modification

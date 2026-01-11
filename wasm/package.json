@@ -17,8 +17,8 @@
     ],
     "scripts": {
         "build:make": "make all -C emscripten",
-        "build:copy": "cp -R emscripten/dist dist/internal",
-        "build": "npm run clean && npm run build:make && tsc && npm run build:copy",
+        "build:move": "mv emscripten/dist dist/internal",
+        "build": "npm run clean && npm run build:make && tsc && npm run build:move",
         "clean": "make clean -C emscripten && rm -rf dist"
     },
     "devDependencies": {

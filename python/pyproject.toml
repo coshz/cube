@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pycube"
+version = "0.1.0"
+description = "Python bindings for libcube (via ctypes)"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "coshz", email = "fsinhx@gmail.com" }]
+dependencies = []
+
+[tool.setuptools.package-data]
+pycube = ["*.dylib","*.so","*.dll"]
+
+[tool.setuptools]
+packages = ["pycube"]

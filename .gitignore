@@ -1,6 +1,5 @@
 .DS_Store
 .vscode/
-__pycache__/
 tmp/
 build/
 dist/
