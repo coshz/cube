@@ -21,7 +21,7 @@ static fs::path table_dir_fallback(std::string dir)
 }
 
 template <typename Table>
-void save_to(const Table &table, std::string path)
+void save_to(const Table &table, fs::path path)
 {
     std::ofstream f(path, std::ios::binary);
     if(f.is_open()) {
@@ -31,7 +31,7 @@ void save_to(const Table &table, std::string path)
 }
 
 template <typename Table>
-void load_from(Table &table, std::string path)
+void load_from(Table &table, fs::path path)
 {
     VPRINT("loading table from %s...", path.c_str());
     std::ifstream f(path,std::ios::binary);

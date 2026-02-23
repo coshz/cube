@@ -19,7 +19,7 @@ build_all() {
         -S $ROOT_DIR -B $BUILD_DIR
 
     echo "Starting build..."
-    cmake --build $BUILD_DIR --parallel 4
+    cmake --build $BUILD_DIR --config Release --parallel
 }
 
 install() {
