@@ -105,14 +105,14 @@ inline constexpr const CubieCube mB = {{0,1,3,7,4,5,2,6},{0,0,1,2,0,0,2,1},{0,1,
 inline constexpr const std::array<CubieCube,18> 
     ElementaryMove = { mU,mU*mU,mU*mU*mU,mR,mR*mR,mR*mR*mR,mF,mF*mF,mF*mF*mF,mD,mD*mD,mD*mD*mD,mL,mL*mL,mL*mL*mL,mB,mB*mB,mB*mB*mB };
 
-inline constexpr CubieCube operator*(const CubieCube &c, const std::vector<TurnMove> &ms) 
+inline CubieCube operator*(const CubieCube &c, const std::vector<TurnMove> &ms) 
 {
     CubieCube cc = c;
     for (auto m : ms) cc = cc * ElementaryMove[m];
     return cc;
 }
 
-inline constexpr CubieCube operator*(const CubieCube &c, const std::vector<TurnAxis> &ts) 
+inline CubieCube operator*(const CubieCube &c, const std::vector<TurnAxis> &ts) 
 {
     CubieCube cc = c;
     for (auto t: ts) cc = cc * ElementaryMove[t*3];

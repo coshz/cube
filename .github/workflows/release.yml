@@ -22,6 +22,9 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
+        
+    - name: Install Python build tools
+      run: pip install build
 
     - name: Set up Emscripten
       if: matrix.os == 'ubuntu-latest'
@@ -29,16 +32,20 @@ jobs:
       with:
         version: 'latest'
 
+    - name: Set macOS deployment target 
+      run: echo "MACOSX_DEPLOYMENT_TARGET=10.15" >> $GITHUB_ENV
+
     - name: Run Build Script
       shell: bash # Use bash even on Windows for script consistency
       env:
         # only linux runner creates the universal tgz
         BUILD_SDIST: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+        MATRIX_OS: ${{ matrix.os }}
       run: |
         chmod +x scripts/*.sh
         ./scripts/build_libcube.sh package
         ./scripts/pack_pycube.sh
-        if [[ "$matrix.os" == "ubuntu-latest" ]]; then
+        if [[ "$MATRIX_OS" == "ubuntu-latest" ]]; then
           ./scripts/pack_jscube.sh
         fi
 

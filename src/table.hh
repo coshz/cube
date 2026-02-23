@@ -15,8 +15,8 @@ template<typename T> struct TableMove;
 template<typename T> struct TablePrunning;
 
 /* dump / load Tables */
-template <typename Table> void save_to(const Table &table, std::string path);
-template <typename Table> void load_from(Table &table, std::string path);
+template <typename Table> void save_to(const Table &table, std::filesystem::path path);
+template <typename Table> void load_from(Table &table, std::filesystem::path path);
 
 template<class T>
 class Singleton

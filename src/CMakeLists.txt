@@ -9,6 +9,13 @@ target_include_directories(cube PUBLIC
 )
 target_compile_definitions(cube PRIVATE VERBOSE=0)
 
+if(WIN32)
+    # MSVC does not export symbols by default
+    set_target_properties(cube PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
+    )
+endif()
+
 install(TARGETS cube
     EXPORT cube_targets 
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
