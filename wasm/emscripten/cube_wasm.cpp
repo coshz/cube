@@ -1,4 +1,4 @@
-#include "cube/libcube.h"
+#include "cube/cube.h"
 
 #include <emscripten/bind.h>
 #include <string>

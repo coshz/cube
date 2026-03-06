@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -e 
 
+PLATFORM_TAG="${PLATFORM_TAG:-$(uname -s | tr '[:upper:]' '[:lower:]')}"
 ROOT_DIR=$(cd "$(dirname "$0")/../" && pwd)
 BUILD_DIR="$ROOT_DIR/build"
 DIST_DIR="$ROOT_DIR/dist"
 VERSION="$(cat $ROOT_DIR/VERSION)"
-ARCHIVE="cube.sdk-$VERSION"
+ARCHIVE="cube.sdk.${PLATFORM_TAG}-$VERSION"
 LIB_COLLECTION="$DIST_DIR/_LIB"
 INSTALL_PREFIX="${INSTALL_PREFIX:-$DIST_DIR}"
 

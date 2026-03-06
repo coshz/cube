@@ -1,11 +1,11 @@
-#include "cube/libcube.h"
+#include "cube/cube.h"
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <unordered_set>
 
-#define _VERSION_   "0.2.0"
+#define _VERSION_   "0.2.2"
 #define _AUTHOR_    "Coshz"
 
 struct REPL

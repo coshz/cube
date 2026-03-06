@@ -1,5 +1,21 @@
 #pragma once
 
+#if __has_include("cube_export.h")
+    #define CUBE_INSIDE_GUARD 
+    #include "cube_export.h" 
+    #undef CUBE_INSIDE_GUARD 
+#else 
+    #define CUBE_API
+#endif 
+
+#if __has_include("version.h")
+    #define CUBE_INSIDE_GUARD 
+    #include "version.h" 
+    #undef CUBE_INSIDE_GUARD 
+#else 
+    #define CUBE_VERSION
+#endif 
+
 ////! The buffer parameter of function are presumed to be large enough; ////
 ////! buffer size is at least `CUBE_BS`.                                ////
 
@@ -52,19 +68,19 @@ extern "C" {
  *                  0 => raw moves (sequennce of char = 1..18 representing move U..B')
  * @return status_code: see enum `status_code`.        
  */
-int solve_ultimate(const char *src, const char* tgt, char* solution_buffer, int step, int best, int formated);
+CUBE_API int solve_ultimate(const char *src, const char* tgt, char* solution_buffer, int step, int best, int formated);
 
 // solve_ultimate(src,NULL,buf,30,best,1)
-int solve(const char *src, char* solution_buffer, int best);
+CUBE_API int solve(const char *src, char* solution_buffer, int best);
 
 /* check the solvability of color configuration ( 0 - unsolvable; 1 - solvable ) */
-int solvable(const char* color_cube);
+CUBE_API int solvable(const char* color_cube);
 
 /* transform cube's color configuration by the maneuver */
-void facecube(const char *cube, const char* maneuver, char* cube_buffer);
+CUBE_API void facecube(const char *cube, const char* maneuver, char* cube_buffer);
 
 /* set the (decomposited) permutation of cubies by the maneuver */
-void permutation(const char* maneuver, char* perm_buffer);
+CUBE_API void permutation(const char* maneuver, char* perm_buffer);
 
 #ifdef __cplusplus
 } // extern "C"

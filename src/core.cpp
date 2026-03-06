@@ -1,4 +1,4 @@
-#include "cube/libcube.h"
+#include "cube/cube.h"
 #include "help.hpp"
 #include "utils.hpp"
 #include "twophase.hh"

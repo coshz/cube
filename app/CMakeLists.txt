@@ -2,7 +2,7 @@ set(cli_sources
     cli.cpp
 )
 add_executable (icube ${cli_sources})
-target_link_libraries(icube cube)
+target_link_libraries(icube PRIVATE cube)
 
 if(VERBOSE)
     target_compile_definitions(cube PRIVATE VERBOSE=1)

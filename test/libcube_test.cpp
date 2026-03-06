@@ -1,4 +1,4 @@
-#include "cube/libcube.h"
+#include "cube/cube.h"
 #include "utils.hpp"
 #include <gtest/gtest.h>
 #include <string>

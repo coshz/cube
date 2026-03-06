@@ -1,0 +1,11 @@
+#pragma once 
+
+#ifndef CUBE_INSIDE_GUARD 
+  #warning "Do not include this file directly!"
+#endif 
+
+#define CUBE_VERSION_FULL "@CUBE_VERSION_FULL@"
+#define CUBE_VERSION_MAJOR @CUBE_VERSION_MAJOR@
+#define CUBE_VERSION_MINOR @CUBE_VERSION_MINOR@
+#define CUBE_VERSION_PATCH @CUBE_VERSION_PATCH@
+#define CUBE_VERSION_BUILD @CUBE_VERSION_BUILD@
