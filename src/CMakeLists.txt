@@ -7,6 +7,8 @@ configure_file(
     ${CUBE_GENERATED_HEADERS_DIR}/cube_export.h
 )
 
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
 add_library(cube SHARED core.cpp ${cube_sources})
 
 set_target_properties(cube PROPERTIES
