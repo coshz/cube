@@ -6,11 +6,10 @@ const moduleLoader = async ():Promise<any> => {
         typeof process === "object" && 
         typeof process.versions === "object" && 
         typeof process.versions.node === "string";
-
-    const loader = isNode
-        ? import('#internal/jscube.node.mjs')
-        : import('#internal/jscube.web.mjs');;
-    return loader;
+    const path = isNode 
+        ? './internal/jscube.node.mjs'
+        : './internal/jscube.web.mjs';
+    return import(path);
 };
 
 const createCubeApi = async () => {

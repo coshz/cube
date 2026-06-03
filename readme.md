@@ -3,7 +3,7 @@
 This project is a Rubik's Cube solver built around a C++ re-implementation 
 of Kociemba's twophase algorithm, inspired by the original mathematica code from [1].
 
-It inclues:
+It includes:
   - libcube: the core C++ library with C-style interface exported;
   - pycube: the Python binding package via [ctypes](https://docs.python.org/3/library/ctypes.html);
   - jscube: the JavaScript binding package via [emscripten](https://emscripten.org/);

@@ -5,8 +5,8 @@
 #include <iomanip>
 #include <unordered_set>
 
-#define _VERSION_   "0.2.2"
-#define _AUTHOR_    "Coshz"
+#define STRINGIFY(x) #x
+#define STR(x) STRINGIFY(x)
 
 struct REPL
 {
@@ -61,8 +61,11 @@ void REPL::run()
     char result[CUBE_BS];
     int rc;
 
-    std::cout << "Welcome! This is a Rubik's cube solver.\n"
-                 "(*`:h` for help, `:q` for quit *)\n";
+    std::cout << 
+        "Welcome to icube " STR(CUBE_VERSION_FULL) "!"
+        "\nThis is a Rubik's cube solver."
+        "\n(*`:h` for help, `:q` for quit *)\n"
+    ;
 
     while(true)
     {
