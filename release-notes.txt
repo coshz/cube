@@ -1,3 +1,6 @@
+v0.2.2-202606
+  - some refinement
+
 v0.2.2-202601
   - packaging: jscube, pycube
   - some fix
