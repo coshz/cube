@@ -2,6 +2,14 @@ set(cube_sources
     twophase.cpp table.cpp coord.cpp cube.cpp
 )
 
+option(BUILD_SHARED_LIBS "Build shared library" ON)
+
+if(BUILD_SHARED_LIBS)
+    set(CUBE_STATIC_DEFINE 0)
+else()
+    set(CUBE_STATIC_DEFINE 1)
+endif()
+
 configure_file(
     ${PROJECT_SOURCE_DIR}/cmake/cube_export.h.in
     ${CUBE_GENERATED_HEADERS_DIR}/cube_export.h

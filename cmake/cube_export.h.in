@@ -4,10 +4,11 @@
   #warning "Do not include this file directly!"
 #endif 
 
-#cmakedefine01 CUBE_STATIC_DEFINE // 0: shared lib, 1: static lib
+/* 0: shared lib, 1: static lib */
+#cmakedefine01 CUBE_STATIC_DEFINE
 
 #if defined(_WIN32) || defined(__CYGWIN__)
-  #if defined(CUBE_STATIC_DEFINE)
+  #if CUBE_STATIC_DEFINE
     #define CUBE_API
   #elif defined(CUBE_BUILD)
     #define CUBE_API __declspec(dllexport)
