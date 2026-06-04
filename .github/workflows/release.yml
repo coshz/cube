@@ -2,6 +2,9 @@ name: Release Pipeline
 
 on:
   push:
+    branches:
+      - 'master'
+      - 'fix/**'
     tags:
       - '*'
 
@@ -23,6 +26,21 @@ jobs:
         run: | 
           chmod +x scripts/*.sh
           ./scripts/build_libcube.sh package
+
+      - name: Inspect build outputs
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "===== DLL ====="
+          Get-ChildItem -Recurse build -Filter *.dll | Select-Object FullName
+
+          Write-Host ""
+          Write-Host "===== LIB ====="
+          Get-ChildItem -Recurse build -Filter *.lib | Select-Object FullName
+
+          Write-Host ""
+          Write-Host "===== EXP ====="
+          Get-ChildItem -Recurse build -Filter *.exp | Select-Object FullName
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
