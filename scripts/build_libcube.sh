@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e 
+set -e
 
 PLATFORM_TAG="${PLATFORM_TAG:-$(uname -s | tr '[:upper:]' '[:lower:]')}"
 ROOT_DIR=$(cd "$(dirname "$0")/../" && pwd)
@@ -7,7 +7,7 @@ BUILD_DIR="$ROOT_DIR/build"
 DIST_DIR="$ROOT_DIR/dist"
 VERSION="$(cat $ROOT_DIR/VERSION)"
 ARCHIVE="cube.sdk.${PLATFORM_TAG}-$VERSION"
-LIB_COLLECTION="$DIST_DIR/_LIB"
+LIB_COLLECTION="$DIST_DIR/_LIB" # for pycube
 INSTALL_PREFIX="${INSTALL_PREFIX:-$DIST_DIR}"
 
 build_all() {
@@ -45,20 +45,23 @@ package() {
 
     cmake --install $BUILD_DIR --prefix "$STAGING"
 
-    # pycube needs library files (only one is non-empty)
-    shopt -s nullglob # Prevents literal "*" if no files found
-    LIB_TO_COPY=(
-        "$STAGING/lib"/*.so
-        "$STAGING/lib"/*.dylib
-        "$STAGING/bin"/*.dll
+    CANDIDATES=(
+        "$STAGING/lib"/libcube.so
+        "$STAGING/lib"/libcube.dylib
+        "$STAGING/bin"/cube.dll
     )
+    LIB_TO_COPY=()
+    for file in "${CANDIDATES[@]}"; do
+        if [ -f "$file" ]; then
+            LIB_TO_COPY+=("$file")
+        fi
+    done 
     if [ ${#LIB_TO_COPY[@]} -eq 0 ]; then
         echo "ERROR: no libraries found in staging!"
         exit 1
     fi
-    echo "Collecting libraries into $LIB_COLLECTION..."
-    cp ${LIB_TO_COPY[@]} "$LIB_COLLECTION/"
-    shopt -u nullglob # Turn off nullglob
+    echo "Collecting libraries ${LIB_TO_COPY[*]} into $LIB_COLLECTION..."
+    cp -L ${LIB_TO_COPY[@]} "$LIB_COLLECTION/"
 
     echo "Packaging SDK into $PACK_DIR/${ARCHIVE}.tgz ..." 
     tar -czf "$PACK_DIR/${ARCHIVE}.tgz" -C "$STAGING" .
@@ -77,10 +80,9 @@ main() {
         install)    install "$2" ;;
         package)    package "$2" ;;
         clean)      clean ;;
-        *)
+        *) 
             echo "Usage: $0 [install|package|clean] [prefix]"
-            exit 1
-            ;;
+            exit 1 ;;
     esac
 }
 

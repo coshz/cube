@@ -4,15 +4,16 @@ on:
   push:
     branches:
       - 'master'
-      - 'fix/**'
+      - 'fix/ci-debug'
     tags:
       - '*'
 
 jobs:
-  build-core:
-    name: Build core on ${{ matrix.os }}
+  build-and-package:
+    name: Build & Pack on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false  
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
@@ -21,88 +22,60 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build libcube
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Setup Emscripten (linux only)
+        if: matrix.os == 'ubuntu-latest'
+        uses: mymindstorm/setup-emsdk@v14
+        with: 
+          version: 'latest' 
+
+      - name: Build libcube 
         shell: bash 
         run: | 
           chmod +x scripts/*.sh
           ./scripts/build_libcube.sh package
-
-      - name: Inspect build outputs
-        if: always()
-        shell: pwsh
+      
+      - name: Pack pycube
+        shell: bash
+        env:
+          BUILD_SDIST: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
+          PYCUBE_LIB_DIR: ${{ github.workspace }}/dist/_LIB
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
         run: |
-          Write-Host "===== DLL ====="
-          Get-ChildItem -Recurse build -Filter *.dll | Select-Object FullName
-
-          Write-Host ""
-          Write-Host "===== LIB ====="
-          Get-ChildItem -Recurse build -Filter *.lib | Select-Object FullName
-
-          Write-Host ""
-          Write-Host "===== EXP ====="
-          Get-ChildItem -Recurse build -Filter *.exp | Select-Object FullName
-
+          pip install build
+          ./scripts/pack_pycube.sh
+      
+      - name: Pack jscube (linux only)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          ./scripts/pack_jscube.sh
+      
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
-          path: dist/*
-  
-  package-pycube:
-    name: Build Python package
-    runs-on: ubuntu-latest
-    needs: build-core 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install Python build tools
-        run: pip install build
-
-      - name: Build pycube
-        run: | 
-          chmod +x scripts/*.sh
-          ./scripts/pack_pycube.sh
-      
-      - uses: actions/upload-artifact@v4
-        with:
-          name: pycube
-          path: dist/*
-
-  package-jscube: 
-    name: Build JavaScript package
-    runs-on: ubuntu-latest
-    needs: build-core
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set up Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: 'latest'
-
-      - name: Build jscube
-        run: |
-          chmod +x scripts/*.sh
-          ./scripts/pack_jscube.sh
-      
-      - uses: actions/upload-artifact@v4
-        with:
-          name: jscube
-          path: dist/*
+          path: |
+            dist/*
+            !dist/_LIB
+            !dist/_LIB/**
+          if-no-files-found: ignore
 
   publish-release:
     name: Create GitHub Release
-    needs: [build-core, package-pycube, package-jscube]
+    needs: [build-and-package]
+    if: |
+      startsWith(github.ref, 'refs/tags/') && (
+        github.event.base_ref == 'refs/heads/main' || 
+        github.event.base_ref == 'refs/heads/master'
+      ) &&
+      !contains(github.event.base_ref,'fix/')
+    
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -115,7 +88,7 @@ jobs:
           merge-multiple: true
 
       - name: Create Release and Upload
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: all_dist/*
         env:
