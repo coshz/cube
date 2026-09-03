@@ -2,5 +2,6 @@
 .vscode/
 tmp/
 build/
+build*
 dist/
 doc/

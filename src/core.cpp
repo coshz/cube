@@ -17,36 +17,36 @@ TwoPhaseSolver TPS;
 std::string moves_to_string(const std::vector<TurnMove> &ms, std::string sep = " ") 
 {
     std::string r;
-    int N = ms.size();
+    auto N = ms.size();
     if(N > 0) r = r + Move2Str[ms[0]];
     for(int i = 1; i < N; i++) r += sep + Move2Str[ms[i]];
     return r;
 }
 
-int solve_ultimate(const char *src, const char* tgt, char* solution_buffer, int step, int best, int formated)
+SolveResult solve_ultimate(const char *src, const char* tgt, char* solution_buffer, int step, bool best, int formated)
 {
     auto s_src = src == NULL ? cid : std::string(src);
     auto s_tgt = tgt == NULL ? cid : std::string(tgt);
 
     // invalid cube
-    if(s_src != cid && !is_valid_config(s_src)) return CODE_INVALID_SRC;
-    if(s_tgt != cid && !is_valid_config(s_tgt)) return CODE_INVALID_TGT;
+    if(s_src != cid && !is_valid_config(s_src)) return SolveResultInvalidSrc;
+    if(s_tgt != cid && !is_valid_config(s_tgt)) return SolveResultInvalidTgt;
 
     auto cc_src = (s_src == cid) ? CubieCube::id : CubieCube::fromString(s_src);
     auto cc_tgt = (s_tgt == cid) ? CubieCube::id : CubieCube::fromString(s_tgt);
     
     // trivial cube
-    if(cc_src == cc_tgt) { solution_buffer[0] = '\0'; return CODE_OK; }
+    if(cc_src == cc_tgt) { solution_buffer[0] = '\0'; return SolveResultSuccess; }
 
     CubieCube cc = ~cc_tgt*cc_src;
 
     // unsolvable
-    if(!cc.isSolvable()) return CODE_UNSOLVABLE;
+    if(!cc.isSolvable()) return SolveResultUnsolvable;
     
     const auto & [found, s1, s2] = TPS.solve(Coord::CubieCube2Coord(cc), step, best);
 
     // solution is not found since the search depth is too small
-    if(!found) return CODE_NOT_FOUND;
+    if(!found) return SolveResultNotFound;
     
     std::vector<TurnMove> sol = [](const auto &s1, const auto &s2) {
         std::vector<TurnMove> solution; 
@@ -74,17 +74,17 @@ int solve_ultimate(const char *src, const char* tgt, char* solution_buffer, int 
         std::copy(s.cbegin(), s.cend(), solution_buffer);
         solution_buffer[s.length()] = '\0';
     }
-    return CODE_OK;
+    return SolveResultSuccess;
 }
 
-int solve(const char *src, char* sol_buffer, int best)
+SolveResult solve(const char *src, char* sol_buffer, bool best)
 {
     return solve_ultimate(src,NULL,sol_buffer,30,best,1);
 }
 
-int solvable(const char* cube)
+bool solvable(const char* cube)
 {
-    return CubieCube::fromString(std::string(cube)).isSolvable() ? 1 : 0;
+    return CubieCube::fromString(std::string(cube)).isSolvable();
 }
 
 void facecube(const char *cube, const char *maneuver, char* cube_buffer) 

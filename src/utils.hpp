@@ -12,7 +12,7 @@
 #include <utility>
 #include <type_traits>
 
-#if VERBOSE
+#if defined(VERBOSE) && VERBOSE
     #define VPRINT(...) printf(__VA_ARGS__)
 #else
     #define VPRINT(...)
@@ -78,7 +78,7 @@ inline auto time_execution(F&& f, Args&&... args)
 
 /*!
  * @brief check the validity of color configuration of cube
- * @def A configuration is valid ::= it's legal (solvable) modulo edge flips orcorner twists
+ * @def A configuration is valid ::= it's legal (solvable) modulo edge flips or corner twists
  */
 template<typename VectorLike>
 bool is_valid_config(const VectorLike &cfg)

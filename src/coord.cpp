@@ -45,23 +45,23 @@ int Coord::ep2slice(const EdgePerm &ep)
     // map: (x1,x2,x3,x4) -> C(N-1-x1,4)+C(N-1-x2,3)+C(N-1-x3,2)+C(N-1-x4,1)
     // where slice-edges indices: 0 <= x1 < x2 < x3 < x4 <= N-1;
 
-    size_t x[4],slice=0,N=12;
-    for(size_t i = 0, j = 0; i < N; i++) {
+    int x[4],slice=0,N=12;
+    for(int i = 0, j = 0; i < N; i++) {
         if(isSliceEdge(ep[i])) x[j++] = i;
     }
 
-    for(size_t i = 0; i < 4; i++) slice += binomial(N-1-x[i],4-i);
+    for(int i = 0; i < 4; i++) slice += binomial(N-1-x[i],4-i);
     return slice;
 }
 
 int Coord::ep2edge4(const EdgePerm &ep)
 {
     Perm<4,EdgePerm::value_type> edge4_perm;
-    for(size_t i = 0, j = 0; i < 4; i++, j++) {
+    for(int i = 0, j = 0; i < 4; i++, j++) {
         while(!isSliceEdge(ep[j])) j++;
         edge4_perm[i] = ep[j] - 8;
     }
-    return edge4_perm.rank();
+    return static_cast<int>(edge4_perm.rank());
 }
 
 int Coord::ep2edge8(const EdgePerm &ep)
@@ -71,12 +71,12 @@ int Coord::ep2edge8(const EdgePerm &ep)
         while(isSliceEdge(ep[j]) || ep[j] == (EdgePerm::value_type) ~0UL) j++;
         edge8_perm[i] = ep[j] - 0;
     }
-    return edge8_perm.rank();
+    return static_cast<int>(edge8_perm.rank());
 }
 
 int Coord::cp2corner(const CornerPerm &cp)
 {
-    return cp.rank();
+    return static_cast<int>(cp.rank());
 }
 
 CornerPerm Coord::corner2cp(int i)

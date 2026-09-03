@@ -59,7 +59,6 @@ void REPL::run()
 {
     size_t no=0;
     char result[CUBE_BS];
-    int rc;
 
     std::cout << 
         "Welcome to icube " STR(CUBE_VERSION_FULL) "!"
@@ -85,14 +84,10 @@ void REPL::run()
     
         if(s.cmd == "solve") {
             if(s.arg3<0 || s.arg4 <0) { std::cout << "!!! solve: invalid arguments\n"; continue; }
-            rc = solve_ultimate(s.arg1.c_str(), s.arg2.c_str(), result, s.arg3, s.arg4, 1);
-            switch(rc) 
-            {
-                case CODE_INVALID_SRC:  std::cout << "!!! invalid src cube" << std::endl; continue;
-                case CODE_INVALID_TGT:  std::cout << "!!! invalid tgt cube" << std::endl;; continue;
-                case CODE_UNSOLVABLE:   std::cout << "!!! unsolvable" << std::endl; continue;
-                case CODE_NOT_FOUND:    std::cout << "!!! solution not found" << std::endl; continue;
-                default:; // CODE_OK
+            SolveResult sr = solve_ultimate(s.arg1.c_str(), s.arg2.c_str(), result, s.arg3, s.arg4, 1);
+            if(sr != SolveResultSuccess) {
+                std::cout << "!!! " << solve_result_to_string(sr) << std::endl;
+                continue;
             }
         } else if(s.cmd == "color") {
             facecube(s.arg2.c_str(), s.arg1.c_str(), result);

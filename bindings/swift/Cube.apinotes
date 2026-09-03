@@ -1,0 +1,24 @@
+Name: Cube
+
+# Globals:
+#   - Name: CUBE_ID 
+#     SwiftName: cubeIdentity
+#   - Name: CUBE_BS 
+#     SwiftName: cubeBufferSize
+Tags:
+  - Name: SolveResult
+    EnumKind: CFEnum
+
+Functions:
+  - Name: solve_ultimate
+    SwiftName: "c_solve_ultimate(_:_:_:_:_:_:)"
+  - Name: solve
+    SwiftName: "c_solve(_:_:_:)"
+  - Name: solvable
+    SwiftName: "c_solvable(_:)"
+  - Name: facecube
+    SwiftName: "c_facecube(_:_:_:)"
+  - Name: permutation
+    SwiftName: "c_permutation(_:_:)"
+  - Name: solve_result_to_string
+    SwiftName: "c_solve_result_to_string(_:)"

@@ -1,21 +1,9 @@
 set(cli_sources 
     cli.cpp
 )
-add_executable (icube ${cli_sources})
-target_link_libraries(icube PRIVATE cube)
 
-if(VERBOSE)
-    target_compile_definitions(cube PRIVATE VERBOSE=1)
-endif()
+add_executable(icube ${cli_sources})
 
-if(APPLE)
-    set_target_properties(icube PROPERTIES
-        INSTALL_RPATH "@loader_path/../lib"
-    )
-elseif(UNIX)
-    set_target_properties(icube PROPERTIES
-        INSTALL_RPATH "$ORIGIN/../lib"
-    )
-endif()
+target_link_libraries(icube PRIVATE ${PROJECT_NAME}::static)
 
-install(TARGETS icube DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS icube)

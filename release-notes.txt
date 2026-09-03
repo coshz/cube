@@ -1,4 +1,10 @@
-v0.2.2-202606
+v0.3.0-202609
+  - **Swift Integration**: Build `Cube.framework` for Swift projects
+  - **CMake Improvements**: Embed custom build task directly into CMake
+  - **Version Synchronization**: Align versions across `libcube`, `jscube` and `pycube`
+  - **Quality & Polish**: Refactor API binding code and apply minor fixes
+
+v0.2.3-202606
   - some refinement
 
 v0.2.2-202601

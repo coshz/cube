@@ -66,13 +66,12 @@ bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
 Coord TwoPhaseSolver::ph2_origin_(Coord c) const
 {
     // CubieCube transform: Coord::CubieCube2Coord(Coord::Coord2CubieCube(c) * ms);
-    // Table transform optimization is working for corner only 
+    // （ Table transform optimization is working for corner only ）
     int corner = c.corner, edge4, edge8;
     // auto cp = Coord::corner2cp(c.corner);
     auto ep = Coord::see2ep(c.slice,c.edge4,c.edge8);
-    for(int i = rsolution_[Ph1].first-1; i>=0; --i) 
+    for(auto &m : get_ph_solution_<Ph1>()) 
     { 
-        auto m = static_cast<TurnMove>(rsolution_[Ph1].second[i]);
         corner = (*TM.pTMCorner)[m][corner];
         ep = ep * ElementaryMove[m].ep; 
     }
@@ -84,9 +83,9 @@ Coord TwoPhaseSolver::ph2_origin_(Coord c) const
 auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
     -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
 {
-    const int maxL = std::min(std::max(0,step),DS);     // largest length allowed
-    int solL = maxL + 1;                                // smallest length found 
-    std::array<std::vector<TurnMove>,2> solution;       // solution
+    const size_t maxL = std::clamp(step,0,DS);      // largest length allowed
+    size_t solL = maxL + 1;                         // smallest length found
+    std::array<std::vector<TurnMove>,2> solution;   // solution
 
     // reset sofar buffer: 
     // only once is enough since `set_ph_rsolution(d)` knows exact solution length d
@@ -96,7 +95,7 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
     ///
     /// iterative deepening search 
 
-    for(int d1 = distance<Ph1>(c); d1 <= maxL; d1++) 
+    for(auto d1 = distance<Ph1>(c); d1 <= maxL; d1++)
     {
         // start Ph1 search
         bool ret1 = search_phase<Ph1>(c,d1);
@@ -107,8 +106,8 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
 
         // start Ph2 search
         auto c2 = ph2_origin_(c);
-        int togo = solL - 1 - rsolution_[Ph1].first;
-        for(int d2 = distance<Ph2>(c2); d2 <= togo; d2++)
+        size_t togo = (solL > rsolution_[Ph1].first) ? solL - rsolution_[Ph1].first : 0;
+        for(auto d2 = distance<Ph2>(c2); d2 < togo; d2++)
         {
             bool ret2 = search_phase<Ph2>(c2,d2);
             if(!ret2) continue;
@@ -124,11 +123,12 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
             if(!best) goto found; 
             if(d2==0) goto found; else break;
 
-            /* When a solution is found, logically we should continue from next layer-peer
-               of Ph2 root, instead of the first node of layer under Ph1 root.
-               That's why the solution is not optimal.
-               We do not implement this since we tink it'll make the code 
-               complicated and may involve ineffective searches. 
+            /* 
+            [Note] To find the twophase-optimal, instead of early exit when a 
+            solution is found, logically we should continue from the next sibling
+            of Ph2 root, instead of the first node of layer under Ph1 root.
+            However, we do not implement like this since it makes the search 
+            algorithm complicated and inefficient.
             */
         }
     }

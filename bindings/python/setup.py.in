@@ -1,0 +1,19 @@
+from setuptools import setup, Distribution
+
+
+class BinaryDistribution(Distribution):
+    def has_ext_modules(self):
+        return True
+
+
+setup(
+    name="pycube",
+    version="@PROJECT_VERSION@",
+    description="Pythong binding for Cube C++ library",
+    packages=["pycube"],
+    package_data={
+        "pycube": ["*.so", "*.dylib", "*.dll"]
+    },
+    distclass=BinaryDistribution,
+    zip_safe=False
+)

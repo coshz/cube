@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+    <script type="module">
+import createModule  from '../dist/internal/jscube.web.mjs';
+
+var cid = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
+createModule().then((cube) => {
+    const ms = "U F U' L2 R L' D2 B";
+    var fc = cube.facecube(ms,cid);
+    console.log(fc);
+    var sol = cube.solveUltimate(fc,cid,30,true);
+    console.log(sol);
+});
+    </script>
+</html>

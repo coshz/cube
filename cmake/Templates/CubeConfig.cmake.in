@@ -1,0 +1,20 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/CubeTargets.cmake")
+include(CMakeFindDependencyMacro)
+
+if(TARGET Cube:cube_shared)
+    add_library(Cube::core INTERFACE IMPORTED)
+    set_target_properties(Cube::core PROPERTIES
+        INTERFACE_LINK_LIBRARIES "Cube::cube_core"
+    )
+endif()
+
+if(TARGET Cube::cube_static)
+    add_library(Cube::static INTERFACE IMPORTED)
+    set_target_properties(Cube::static PROPERTIES
+        INTERFACE_LINK_LIBRARIES "Cube::cube_static"
+    )
+endif()
+
+check_required_components(cube)

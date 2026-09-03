@@ -10,12 +10,27 @@ on:
 
 jobs:
   build-and-package:
-    name: Build & Pack on ${{ matrix.os }}
+    name: Build & Pack on ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false  
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            cmake_flags: "-DBUILD_PYTHON_BINDING=on -DBUILD_WASM_BINDING=on"
+          - os: macos-latest
+            arch: x86_64
+            cmake_flags: "-DBUILD_PYTHON_BINDING=on -DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=x86_64"
+            generator: "-G Ninja"
+          - os: macos-latest
+            arch: arm64
+            cmake_flags: "-DBUILD_PYTHON_BINDING=on -DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=arm64"
+            generator: "-G Ninja"
+          - os: windows-latest
+            arch: x64
+            cmake_flags: "-DBUILD_PYTHON_BINDING=on"
+            generator: "-G Ninja"
 
     steps:
       - uses: actions/checkout@v4
@@ -26,45 +41,49 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip'
+      
+      - name: Install Python Build Dependencies 
+        shell: bash 
+        run: pip install build
 
-      - name: Setup Emscripten (linux only)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Setup Ninja (macOS)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install ninja
+
+      - name: Setup MSVC (Windows)
+        if: startsWith(matrix.os, 'windows')
+        uses: ilammy/msvc-dev-cmd@v1
+        
+      - name: Setup Emscripten (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
         uses: mymindstorm/setup-emsdk@v14
         with: 
           version: 'latest' 
 
-      - name: Build libcube 
-        shell: bash 
+      - name: Configure CMake 
+        shell: bash
         run: | 
-          chmod +x scripts/*.sh
-          ./scripts/build_libcube.sh package
-      
-      - name: Pack pycube
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            ${{ matrix.generator }} \
+            ${{ matrix.cmake_flags }}
+
+      - name: Build
         shell: bash
-        env:
-          BUILD_SDIST: ${{ matrix.os == 'ubuntu-latest' && 'true' || 'false' }}
-          PYCUBE_LIB_DIR: ${{ github.workspace }}/dist/_LIB
-          MACOSX_DEPLOYMENT_TARGET: "10.15"
-        run: |
-          pip install build
-          ./scripts/pack_pycube.sh
-      
-      - name: Pack jscube (linux only)
-        if: matrix.os == 'ubuntu-latest'
+        run: cmake --build build --config Release
+          
+      - name: Package 
         shell: bash
-        run: |
-          ./scripts/pack_jscube.sh
-      
+        run: cmake --build build --target pack --config Release
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
-        with:
-          name: dist-${{ matrix.os }}
-          path: |
-            dist/*
-            !dist/_LIB
-            !dist/_LIB/**
-          if-no-files-found: ignore
+        with: 
+          name: dist-${{ matrix.os }}-${{ matrix.arch }}
+          path: | 
+            build/dist/*
+            !build/dist/_CPack_Packages
+          if-no-files-found: error
 
   publish-release:
     name: Create GitHub Release
@@ -78,12 +97,16 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: all_dist
+          path: dists
           merge-multiple: true
+      
+      - name: Display downloaded files
+        run: |
+          ls -R dists
 
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
         with:
-          files: all_dist/*
+          files: dists/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

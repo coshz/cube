@@ -1,0 +1,26 @@
+{
+    "name": "jscube",
+    "type": "module",
+    "version": "@PROJECT_VERSION@",
+    "description": "A wasm-based Rubik's Cube library",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "types": "./dist/index.d.mts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build:ts": "tsc --build",
+        "build": "npm run build:ts",
+        "watch": "tsc --watch",
+        "prepack": "npm run build",
+        "pack": "npm pack"
+    },
+    "devDependencies": {
+        "@types/node": "^25.0.3",
+        "typescript": "^5.9.3"
+    }
+}
