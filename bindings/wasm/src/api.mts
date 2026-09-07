@@ -6,15 +6,15 @@ interface SolveOptions {
 
 type SolveResult =
     | { ok: true; solution: string }
-    | { ok: false; error: string };
-
+    | { ok: false; error: string }
+;
 
 interface CubeAPI {
     solvable: (src: string) => boolean;
     facecube: (maneuver: string, cube?: string) => string;
     permutation: (maneuver: string) => string;
-    trySolve: (src: string, options: SolveOptions) => SolveResult; // no exception
-    solve: (src: string, options: SolveOptions) => string; // with exception
+    trySolve: (src: string, options?: SolveOptions) => SolveResult; // no exception
+    solve: (src: string, options?: SolveOptions) => string; // with exception
 }
 
 const CubeID = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
@@ -36,12 +36,12 @@ async function createAPI(
         return module_.permutation(maneuver);
     }
 
-    function trySolve(src:string = CubeID, options: SolveOptions = {}): SolveResult {
-        const { target = CubeID, maxSteps = 30, best = true } = options;
+    function trySolve(src:string = CubeID, options?: SolveOptions): SolveResult {
+        const { target = CubeID, maxSteps = 30, best = true } = options ? options : {};
         return module_.solveUltimate(src, target, maxSteps, best);
     }
 
-    function solve(src:string = CubeID, options: SolveOptions = {}): string {
+    function solve(src:string = CubeID, options?: SolveOptions): string {
         const result = trySolve(src, options);
         if (result.ok) {
             return result.solution;
