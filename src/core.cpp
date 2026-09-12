@@ -84,7 +84,7 @@ SolveResult solve(const char *src, char* sol_buffer, bool best)
 
 bool solvable(const char* cube)
 {
-    return is_valid_config(cube) && CubieCube::fromString(std::string(cube)).isSolvable();
+    return is_valid_config(std::string(cube)) && CubieCube::fromString(std::string(cube)).isSolvable();
 }
 
 void facecube(const char *cube, const char *maneuver, char* cube_buffer) 

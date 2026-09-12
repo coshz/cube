@@ -104,7 +104,7 @@ CUBE_EXPORT SolveResult solve(
     const char *src, char* solution_buffer, bool best
 );
 
-/* check the solvability of color configuration ( 0 - unsolvable; 1 - solvable ) */
+/* check the solvability of color configuration */
 CUBE_EXPORT bool solvable(const char* color_cube);
 
 /* transform cube's color configuration by the maneuver */
