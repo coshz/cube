@@ -1,0 +1,39 @@
+[package]
+name = "cube-rust"
+version = "0.3.1"
+edition = "2021"
+rust-version = "1.70"
+authors = ["coshz <fsinhx@gmail.com>"]
+description = "A efficient Rubik's Cube solver library"
+documentation = "https://docs.rs/cube-rust"
+homepage = "https://github.com/coshz/cube"
+repository = "https://github.com/coshz/cube"
+readme = "README.md"
+license = "MIT"
+
+keywords = ["rubiks-cube", "cube", "solver", "algorithm"]
+
+categories = ["algorithms", "games", "external-ffi-bindings"]
+
+links = "cube_cpp"
+
+include = [
+    "src/**/*",
+    "cpp/cube_amalg.min.cpp",
+    "tests/**/*",
+    "build.rs",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE"
+]
+
+[dependencies]
+
+[build-dependencies]
+cc = "1.0"
+
+[profile.release]
+opt-level = 3        
+lto = true           
+codegen-units = 1    
+panic = "abort"
