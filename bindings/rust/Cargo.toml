@@ -1,6 +1,6 @@
 [package]
 name = "cube-rust"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.70"
 authors = ["coshz <fsinhx@gmail.com>"]
@@ -11,15 +11,15 @@ repository = "https://github.com/coshz/cube"
 readme = "README.md"
 license = "MIT"
 
-keywords = ["rubiks-cube", "cube", "solver", "algorithm"]
+keywords = ["rubiks-cube", "solver", "algorithm"]
 
 categories = ["algorithms", "games", "external-ffi-bindings"]
 
-links = "cube_cpp"
+links = "cube-cxx"
 
 include = [
     "src/**/*",
-    "cpp/cube_amalg.min.cpp",
+    "cxx/cube_amalg.min.cpp",
     "tests/**/*",
     "build.rs",
     "Cargo.toml",

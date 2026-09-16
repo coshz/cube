@@ -7,13 +7,13 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-include_directories(../src)
+include_directories(../include ../src)
 
-add_executable(cube_test cube_test.cpp ../src/cube.cpp)
+add_executable(cube_test cube_test.cpp ../src/rubik.cpp)
 target_link_libraries(cube_test GTest::gtest_main)
 
 add_executable(libcube_test libcube_test.cpp)
-target_link_libraries(libcube_test cube GTest::gtest_main)
+target_link_libraries(libcube_test ${PROJECT_NAME}::shared GTest::gtest_main)
 
 include(GoogleTest)
 

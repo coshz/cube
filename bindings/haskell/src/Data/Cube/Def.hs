@@ -3,10 +3,13 @@
 
 module Data.Cube.Def where 
 
+import Data.Cube.Raw (rawBase6)
+
 import Data.Vector.Sized (Vector)
 import qualified Data.Vector.Sized as V
+import Data.Array (Array, listArray, (!))
 import Data.Maybe (fromMaybe)
-
+import Data.List (sort)
 
 data Color = U | R | F | D | L | B
     deriving (Eq, Show, Enum, Bounded)
@@ -64,3 +67,32 @@ instance Show Cube where
 
 instance Show Move where
     show (Move v) = "Move " ++ show (map (toEnum :: Int -> Face) (V.toList v))
+
+instance ActsOn Cube Turn where
+    c &> t = c &> toMove t
+
+instance Actionable Turn where 
+    toMove t = moveTable_ ! fromEnum t
+
+moveTable_ :: Array Int Move
+moveTable_ = listArray(0,17) (concatMap powers base6) where
+    powers v = [v, v <> v, v <> v <> v] 
+    base6    = map unsafeMoveFromRaw rawBase6
+
+moveFaces :: Move -> [Face]
+moveFaces (Move v) = map toEnum (V.toList v)
+
+showAction :: Actionable a => a -> String
+showAction a = "Action " ++ show (moveFaces (toMove a))
+
+moveFromRaw :: [Int] -> Maybe Move
+moveFromRaw xs 
+    | isValidPerm xs = Move <$> V.fromList (map toEnum xs)
+    | otherwise = Nothing
+    where 
+        isValidPerm ys = sort ys == [0..53]
+
+unsafeMoveFromRaw :: [Int] -> Move
+unsafeMoveFromRaw xs = case moveFromRaw xs of 
+    Just m -> m
+    Nothing -> error "unsafeMoveFromRaw: input is not a valid 0..53 permutation"

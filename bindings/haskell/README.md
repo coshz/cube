@@ -2,6 +2,7 @@
 
 [![Hackage](https://img.shields.io/hackage/v/cube-hs.svg)](https://hackage.haskell.org/package/cube-hs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/master/bindings/haskell)
 
 A performant and type-safe Rubik's Cube manipulation and permutation library for Haskell.
 

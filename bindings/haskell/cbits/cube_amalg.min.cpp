@@ -1,0 +1,1 @@
+../../../amalg/cube_amalg.min.cpp

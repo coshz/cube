@@ -1,29 +1,31 @@
 #include "twophase.hh"
 
-const auto  &TM = SingletonTM<>::instance();
-const auto  &TP = SingletonTP<>::instance();
+#define TM get_TM()
+#define TP get_TP()
+
+namespace cube::solver {
 
 /* for optimization
  * the continuation of TurnMoves A,B,C are dull (could be reduced) in cases like:
  *  - A=Ux1,B=Ux2,C     (A and its prev B are "homogeneous")
  *  - A=Ux1,B=Dx1,C=Ux1 (A and B are "disjoint" && A and C are "homogeneous")
  */
-inline bool is_dull_triple(const TurnMove A, const int B, const int C) 
+inline bool is_dull_triple(const TurnMove A, const int B, const int C)
 {
     return ( B>=Ux1 && B<=Bx3 ) &&
-           ( (A/3==B/3) || ((C>=Ux1&&C<=Bx3) && A/3==C/3 && (3+A/3-B/3)%3==0) ) 
+           ( (A/3==B/3) || ((C>=Ux1&&C<=Bx3) && A/3==C/3 && (3+A/3-B/3)%3==0) )
     ;
-} 
+}
 
-template<TwoPhaseSolver::enum_phase I> 
+template<TwoPhaseSolver::enum_phase I>
 Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
 {
     if constexpr (I == Ph1)
     return Coord {
         (*TM.pTMTwist)[m][c.twist], (*TM.pTMFlip)[m][c.flip], (*TM.pTMSlice)[m][c.slice],
         -1,-1,-1 /* -1: not used */
-    };  
-    else 
+    }; 
+    else
     return Coord {
         0,0,0,
         (*TM.pTMCorner)[m][c.corner], (*TM.pTMEdge4)[m][c.edge4], (*TM.pTMEdge8)[m][c.edge8]
@@ -34,19 +36,19 @@ template<TwoPhaseSolver::enum_phase I>
 size_t TwoPhaseSolver::distance(const Coord &c)
 {
     if constexpr (I == Ph1)
-    return std::max((*TP.pTPSliceTwist)[c.slice][c.twist], 
+    return std::max((*TP.pTPSliceTwist)[c.slice][c.twist],
                     (*TP.pTPSliceFlip)[c.slice][c.flip]);
-    else 
-    return std::max((*TP.pTPEdge4Corner)[c.edge4][c.corner], 
+    else
+    return std::max((*TP.pTPEdge4Corner)[c.edge4][c.corner],
                     (*TP.pTPEdge4Edge8)[c.edge4][c.edge8]);
 }
 
-template<TwoPhaseSolver::enum_phase PhX> 
+template<TwoPhaseSolver::enum_phase PhX>
 bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
 {
     if(togo == 0) return distance<PhX>(c) == 0;
     if(togo < distance<PhX>(c)) return false;
-    
+   
     for(auto m: EM<PhX>)
     {
         // assert(togo+1 < D);
@@ -56,7 +58,7 @@ bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
         bool ret = search_phase<PhX>(transform<PhX>(c,m), togo-1);
 
         // ret=true means we find a PhX solution within `togo` steps;
-        // early exit is fine since there won't be a shorter PhX solution  
+        // early exit is fine since there won't be a shorter PhX solution 
         // in iterative deepening search
         if(ret) return true;
     }
@@ -70,13 +72,13 @@ Coord TwoPhaseSolver::ph2_origin_(Coord c) const
     int corner = c.corner, edge4, edge8;
     // auto cp = Coord::corner2cp(c.corner);
     auto ep = Coord::see2ep(c.slice,c.edge4,c.edge8);
-    for(auto &m : get_ph_solution_<Ph1>()) 
-    { 
+    for(auto &m : get_ph_solution_<Ph1>())
+    {
         corner = (*TM.pTMCorner)[m][corner];
-        ep = ep * ElementaryMove[m].ep; 
+        ep = ep * ElementaryMove[m].ep;
     }
     edge4 = Coord::ep2edge4(ep);
-    edge8 = Coord::ep2edge8(ep);    
+    edge8 = Coord::ep2edge8(ep);   
     return Coord { 0,0,0,corner,edge4,edge8 };
 }
 
@@ -87,13 +89,13 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
     size_t solL = maxL + 1;                         // smallest length found
     std::array<std::vector<TurnMove>,2> solution;   // solution
 
-    // reset sofar buffer: 
+    // reset sofar buffer:
     // only once is enough since `set_ph_rsolution(d)` knows exact solution length d
-    reset_ph_sofar_<Ph1>(); 
+    reset_ph_sofar_<Ph1>();
     reset_ph_sofar_<Ph2>();
 
     ///
-    /// iterative deepening search 
+    /// iterative deepening search
 
     for(auto d1 = distance<Ph1>(c); d1 <= maxL; d1++)
     {
@@ -119,24 +121,26 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
             solution[Ph1] = get_ph_solution_<Ph1>();
             solution[Ph2] = get_ph_solution_<Ph2>();
             solL = solution[1].size() + solution[0].size();
-            
-            if(!best) goto found; 
+           
+            if(!best) goto found;
             if(d2==0) goto found; else break;
 
-            /* 
-            [Note] To find the twophase-optimal, instead of early exit when a 
+            /*
+            [Note] To find the twophase-optimal, instead of early exit when a
             solution is found, logically we should continue from the next sibling
             of Ph2 root, instead of the first node of layer under Ph1 root.
-            However, we do not implement like this since it makes the search 
+            However, we do not implement like this since it makes the search
             algorithm complicated and inefficient.
             */
         }
     }
 
-    if(solL > maxL) 
-        return std::make_tuple(false, std::vector<TurnMove>{}, std::vector<TurnMove>{});
+    if(solL > maxL)
+        return {false, {}, {}};
 
-    // solution found 
-    found: 
+    // solution found
+    found:
     return std::make_tuple(true, solution[0], solution[1]);
 }
+
+} // namespace cube::solver

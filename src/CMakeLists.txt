@@ -1,9 +1,10 @@
-set(CPP_SOURCES 
-    core.cpp 
-    twophase.cpp 
-    table.cpp 
-    coord.cpp 
+set(CPP_SOURCES
     cube.cpp
+    rubik.cpp
+    twophase.cpp
+    table.cpp
+    coord.cpp
+    internal.cpp
 )
 
 list(TRANSFORM CPP_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
@@ -29,8 +30,8 @@ target_include_directories(cube_objs PUBLIC
 
 # ------------------------------------------------------------------------------
 # [Windows / MSVC Workaround]
-# OBJECT libraries do not automatically inherit DEFINE_SYMBOL from downstream 
-# SHARED targets. 
+# OBJECT libraries do not automatically inherit DEFINE_SYMBOL from downstream
+# SHARED targets.
 #
 # Explicitly define the export macro so cube_export.h expands CUBE_EXPORT
 # to __declspec(dllexport) instead of __declspec(dllimport) when compiling .cpp files.
@@ -72,10 +73,10 @@ generate_export_header(cube_shared
 
 target_sources(cube_shared
 PUBLIC
-    FILE_SET HEADERS 
-    BASE_DIRS 
+    FILE_SET HEADERS
+    BASE_DIRS
         ${CUBE_BUILD_INCLUDE_DIR}
-    FILES 
+    FILES
         "${CUBE_BUILD_INCLUDE_DIR}/cube/cube.h"
         "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
         "${CUBE_BUILD_INCLUDE_DIR}/cube/version.h"
@@ -91,7 +92,7 @@ if(BUILD_STATIC_LIBS)
     target_include_directories(cube_static PUBLIC
         $<BUILD_INTERFACE:${CUBE_BUILD_INCLUDE_DIR}>
     )
-    
+   
     if(WIN32)
         set_target_properties(cube_static PROPERTIES
             OUTPUT_NAME "cube_static"
@@ -101,13 +102,13 @@ if(BUILD_STATIC_LIBS)
             OUTPUT_NAME "cube"
         )
     endif()
-    
+   
     target_compile_definitions(cube_static PUBLIC CUBE_STATIC_DEFINE)
     target_sources(cube_static PUBLIC
-        FILE_SET HEADERS 
-        BASE_DIRS 
+        FILE_SET HEADERS
+        BASE_DIRS
             ${CUBE_BUILD_INCLUDE_DIR}
-        FILES 
+        FILES
             "${CUBE_BUILD_INCLUDE_DIR}/cube/cube.h"
             "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
             "${CUBE_BUILD_INCLUDE_DIR}/cube/version.h"
@@ -120,7 +121,7 @@ endif()
 # ------------------------------------------------------------------------------
 
 install(
-    TARGETS ${cube_libs} 
+    TARGETS ${cube_libs}
     EXPORT "${PROJECT_NAME}Targets"
     FILE_SET HEADERS
 )

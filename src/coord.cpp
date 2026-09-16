@@ -1,11 +1,16 @@
 #include <cmath>
 #include <numeric>
 #include "coord.hh"
-#include "cube.hh"
+#include "rubik.hh"
 #include "help.hpp"
 
-inline bool isSliceEdge(size_t idx) 
-{ 
+namespace cube::pdb {
+
+using namespace cube::math;
+using namespace cube::data;
+
+inline bool isSliceEdge(size_t idx)
+{
     // slice edges: FR,FL,BL,BR
     return FR <= idx && idx <= BR;
 }
@@ -19,7 +24,7 @@ CornerOri Coord::twist2co(int i)
 {
     CornerOri co;
     // only 7 components of co are independent
-    auto sub1to7 = CArray<3,7,CornerOri::valut_type>{toDigits<3,7,CornerOri::valut_type>(i)};
+    auto sub1to7 = CArray<3,7,CornerOri::value_type>{toDigits<3,7,CornerOri::value_type>(i)};
     std::copy(sub1to7.xs.begin(),sub1to7.xs.end(),co.xs.begin()+1);
     co[0] = (3 - sub1to7.sum()) % 3;
     return co;
@@ -34,7 +39,7 @@ EdgeOri Coord::flip2eo(int i)
 {
     EdgeOri eo;
     // only 11 components of eo are independent
-    auto sub1to11 = CArray<2,11,CornerOri::valut_type>{toDigits<2,11,CornerOri::valut_type>(i)};
+    auto sub1to11 = CArray<2,11,CornerOri::value_type>{toDigits<2,11,CornerOri::value_type>(i)};
     std::copy(sub1to11.xs.begin(),sub1to11.xs.end(),eo.xs.begin()+1);
     eo[0] = (2 - sub1to11.sum()) % 2;
     return eo;
@@ -131,16 +136,24 @@ EdgePerm Coord::see2ep(int slice, int edge4, int edge8)
 
 Coord Coord::CubieCube2Coord(const CubieCube &cc)
 {
-    return Coord{
-        Coord::co2twist(cc.co), Coord::eo2flip(cc.eo), Coord::ep2slice(cc.ep),
-        Coord::cp2corner(cc.cp), Coord::ep2edge4(cc.ep), Coord::ep2edge8(cc.ep)
+    return {
+        Coord::co2twist(cc.co),
+        Coord::eo2flip(cc.eo),
+        Coord::ep2slice(cc.ep),
+        Coord::cp2corner(cc.cp),
+        Coord::ep2edge4(cc.ep),
+        Coord::ep2edge8(cc.ep)
     };
 }
 
 CubieCube Coord::Coord2CubieCube(const Coord &c)
 {
-    return CubieCube(
-        Coord::corner2cp(c.corner), Coord::twist2co(c.twist),
-        Coord::see2ep(c.slice,c.edge4,c.edge8), Coord::flip2eo(c.flip)
-    );
+    return {
+        Coord::corner2cp(c.corner),
+        Coord::twist2co(c.twist),
+        Coord::see2ep(c.slice,c.edge4,c.edge8),
+        Coord::flip2eo(c.flip)
+    };
 }
+
+} // namespace cube::pdb

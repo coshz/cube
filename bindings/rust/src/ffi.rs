@@ -21,25 +21,32 @@ pub enum SolveResult {
 }
 
 extern "C" {
-    /// Converts a result code into a human-readable C-string description from C++.
+    /// Converts a result code into a human-readable C-string description
     pub fn solve_result_to_string(sr: SolveResult) -> *const c_char;
 
-    /// Core solve function accepting source state, target state, buffer, step limit, and search options.
-    pub fn solve_ultimate(
+    /// Core solve function
+    pub fn solve(
+        buf: *mut c_char,
         src: *const c_char,
         tgt: *const c_char,
-        solution_buffer: *mut c_char,
         step: c_int,
         best: bool,
-        formated: c_int,
     ) -> SolveResult;
 
-    /// Checks if a given facelet configuration string represents a valid, solvable cube.
+    /// Checks if a given color cube represents a valid, solvable cube
     pub fn solvable(color_cube: *const c_char) -> bool;
 
-    /// Applies a maneuver sequence to a facelet configuration and writes the resulting state to the buffer.
-    pub fn facecube(cube: *const c_char, maneuver: *const c_char, cube_buffer: *mut c_char);
+    /// Applies a maneuver string to a color cube and writes the resulting state to the buffer
+    pub fn facecube(
+        buf: *mut c_char, 
+        maneuver: *const c_char,
+        cube: *const c_char
+    ) -> bool;
 
-    /// Converts a maneuver sequence into its structural permutation string representation.
-    pub fn permutation(maneuver: *const c_char, perm_buffer: *mut c_char);
+    /// Converts a color cube OR a maneuver string into its string representation
+    pub fn permutation(
+        buf: *mut c_char, 
+        ms_or_cube: *const c_char, 
+        format: c_int
+    ) -> bool;
 }

@@ -1,35 +1,30 @@
-#include "cube.hh"
+#include "rubik.hh"
+#include "show.hpp"
 #include "utils.hpp"
+
 #include <gtest/gtest.h>
+
+using namespace cube;
 
 TEST(CubeTest_0, BasicAssertions)
 {
     auto fR = std::array<int8_t,54>{U1,U2,F3,U4,U5,F6,U7,U8,F9,R7,R4,R1,R8,R5,R2,R9,R6,R3,F1,F2,D3,F4,F5,D6,F7,F8,D9,D1,D2,B7,D4,D5,B4,D7,D8,B1,L1,L2,L3,L4,L5,L6,L7,L8,L9,U9,B2,B3,U6,B5,B6,U3,B8,B9};
     auto cR = std::string("UUFUUFUUFRRRRRRRRRFFDFFDFFDDDBDDBDDBLLLLLLLLLUBBUBBUBB");
 
-    auto cc = CubieCube::id * std::vector<TurnAxis>{R};
+    auto cc = CubieCube::id * std::vector<TurnMove>{Rx1};
     EXPECT_EQ(cc,mR);
 
-    auto fc1 = FaceCube(cc);
+    auto fc1 = cc.toFaceCube();
     EXPECT_EQ(fc1.f.X,fR);
-
-    auto color = fc1.color();
-    EXPECT_EQ(color, cR);
-    
-    auto fc2 = FaceCube::fromString(color);
-    EXPECT_EQ(fc1,fc2);
-    EXPECT_EQ(cc,CubieCube(fc1));
+    EXPECT_EQ(fc1.toCubieCube(),cc);
+    EXPECT_EQ(cR,show::to_string(ColorState::fromString(cR)));
 }
 
 TEST(CubeTest, BasicAssertions) 
 {
-    std::vector<TurnAxis> ts = {U,R,D,B,L,F,D,R};
-    
+    std::vector<TurnMove> ts = {Ux1,Rx1,Dx2,Bx3,Lx2,Fx1,Dx3,Rx2};
+    auto fc = FaceCube::id * ts;
     auto cc = CubieCube::id * ts;
-    auto fc = FaceCube(cc);
-    auto color = fc.color();
-
-    EXPECT_EQ(cc,CubieCube(fc));
-    EXPECT_EQ(fc,FaceCube(cc));
-    EXPECT_EQ(fc,FaceCube::fromString(color));
+    EXPECT_EQ(cc, fc.toCubieCube());
+    EXPECT_EQ(fc, cc.toFaceCube());
 }

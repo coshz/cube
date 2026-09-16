@@ -1,90 +1,131 @@
+#include "cube/cube.h"
+#include "help.hpp"
+#include "show.hpp"
+#include "twophase.hh"
 #include "utils.hpp"
-#include "cube.hh"
-#include <cassert>
 
-constexpr CornerPerm    eCP = {0,1,2,3,4,5,6,7};
-constexpr EdgePerm      eEP = {0,1,2,3,4,5,6,7,8,9,10,11};
-constexpr CornerOri     eCO = {0,0,0,0,0,0,0,0};
-constexpr EdgeOri       eEO = {0,0,0,0,0,0,0,0,0,0,0,0};
-constexpr FacePerm      eFP = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53};
+using namespace cube;
 
-const FaceCube FaceCube::id = FaceCube(eFP);
-const CubieCube CubieCube::id = CubieCube(eCP,eCO,eEP,eEO);
+const std::string_view cid = CUBE_ID;
 
-FaceCube FaceCube::fromString(const std::string &s)
+cube::solver::TwoPhaseSolver TPS;
+
+std::string apply_moves(std::string_view s, const std::vector<TurnMove> &ms)
 {
-    if(!is_valid_config(s)) throw std::invalid_argument("Invaid cube string");
+    assert(s.size() == 54 && "invalid cube length");
 
-    FacePerm fp;
-    for(int i = 0; i < 6; ++i) {
-        fp[CC[i]] = CC[i];
+    char buf[2][54];
+    std::memcpy(buf[0], s.data(), 54);
+    size_t curr = 0;
+    for(const auto &m : ms)
+    {
+        const auto& p   = ElementaryPerm[m].f;
+        const char* src = buf[curr];
+        char*       dst = buf[1-curr];
+
+        for(int i = 0; i < 54; ++i) dst[i] = src[p[i]];
+        curr = 1-curr;
     }
-    for(int i = 0; i < 8; i++) {
-        for(int x = 0; x < 24; x++) {
-            if(s[CC[CCI[i][0]]] == s[CF[x/3][x%3]]
-            && s[CC[CCI[i][1]]] == s[CF[x/3][(x+1)%3]]
-            && s[CC[CCI[i][2]]] == s[CF[x/3][(x+2)%3]]) 
-            {
-                fp[CF[x/3][x%3]]      = CF[i][0]; 
-                fp[CF[x/3][(x+1)%3]]  = CF[i][1];
-                fp[CF[x/3][(x+2)%3]]  = CF[i][2];
-                break;
-            }
-        }
-    }
-    for(int i = 0; i < 12; i++) {
-        for(int y = 0; y < 24; y++) {
-            if(s[CC[ECI[i][0]]] == s[EF[y/2][y%2]]
-            && s[CC[ECI[i][1]]] == s[EF[y/2][(y+1)%2]])
-            {
-                fp[EF[y/2][y%2]]      = EF[i][0];
-                fp[EF[y/2][(y+1)%2]]  = EF[i][1];
-                break;
-            }
-        }
-    }
-    return FaceCube(fp);
+    return std::string(buf[curr],54);
 }
 
-std::string FaceCube::color(std::string cset) const
+SolveResult solve(
+    char* buf, const char *src, const char* tgt, int step, bool best)
 {
-    assert(cset.size() >= 6);
-    std::string cs(54,' ');
-    for(int i = 0; i < 54; i++) { 
-        cs[i] = cset[f[i]/9]; 
-    }
-    return cs;
+    auto s_src = src == NULL ? cid : std::string_view(src);
+    auto s_tgt = tgt == NULL ? cid : std::string_view(tgt);
+
+    // invalid cube
+    if(s_src != cid && !cube::utils::is_valid_config(s_src)) return SolveResultInvalidSrc;
+    if(s_tgt != cid && !cube::utils::is_valid_config(s_tgt)) return SolveResultInvalidTgt;
+
+    // trivial cube
+    if(s_src == s_tgt) { buf[0] = '\0'; return SolveResultSuccess; }
+
+    auto cc_src = ColorState::fromString(s_src).toCubieCube();
+    auto cc_tgt = ColorState::fromString(s_tgt).toCubieCube();
+    CubieCube cc = ~cc_tgt*cc_src;
+
+    // unsolvable cube
+    if(!cc.isSolvable()) return SolveResultUnsolvable;
+   
+    const auto & [found, s1, s2] = TPS.solve(cube::pdb::Coord::CubieCube2Coord(cc), step, best);
+
+    // solution is not found since the search depth is too small
+    if(!found) return SolveResultNotFound;
+   
+    std::vector<TurnMove> sol = [](const auto &s1, const auto &s2) {
+        std::vector<TurnMove> solution;
+        size_t n1 = s1.size(), n2 = s2.size();
+        // if the transition moves of ph1-ph2 are homogeneous, combine them
+        if(!s1.empty() && !s2.empty() && s1[n1-1]/3 == s2[0]/3) {
+            std::copy(s1.begin(), s1.end()-1, std::back_inserter(solution));
+            int m = (s1[n1-1] + s2[0]- s2[0]/3 *6 +2) %4;
+            if(m!=0) solution.push_back(static_cast<TurnMove>(s2[0]/3*3+m-1));
+            std::copy(s2.begin()+1, s2.end(), std::back_inserter(solution));
+        } else {
+            std::copy(s1.begin(), s1.end(), std::back_inserter(solution));
+            std::copy(s2.begin(), s2.end(), std::back_inserter(solution));
+        }
+        return solution;
+    }(s1,s2);
+
+    auto s = show::to_string(sol);
+    std::copy(s.cbegin(), s.cend(), buf);
+    buf[s.length()] = '\0';
+    return SolveResultSuccess;
 }
 
-FaceCube::FaceCube(const CubieCube &cc)
+bool solvable(const char* cube)
 {
-    for(int i = 0; i < 6; i++) { 
-        f[CC[i]] = CC[i];
-    }
-    for(int i = 0; i < 8; i++) for(int j = 0; j < 3; j++) {
-        f[CF[i][j]] = CF[cc.cp[i]][(j-cc.co[i]+3)%3];
-    }
-    for(int i = 0; i < 12; i++) for(int j = 0; j < 2; j++) {
-        f[EF[i][j]] = EF[cc.ep[i]][(j-cc.eo[i]+2)%2];
-    }
+    return cube::utils::is_valid_config<std::string_view>(cube)
+           && ColorState::fromString(cube).toCubieCube().isSolvable();
 }
 
-CubieCube::CubieCube(const FaceCube &fc)
+bool facecube(char* buf, const char *maneuver, const char *cube)
 {
-    for(int i = 0; i < 8; i++) {
-        for(int x = 0; x < 24; x++) {
-            if(fc.f[CF[i][0]] == CF[x/3][x%3]) {
-                cp[i] = x/3, co[i] = (3-x%3)%3;
-                break;
-            }
-        }
+    if(!buf) return false;
+
+    std::string cube_str = cube ? std::string(cube) : std::string(CUBE_ID);
+    std::string maneuver_str = maneuver ? std::string(maneuver) : std::string("");
+
+    if(cube_str.size()!= 54 || !cube::utils::is_valid_maneuver(maneuver_str)) {
+        buf[0] = '\0';
+        return false;
     }
-    for(int i = 0; i < 12; i++){
-        for(int y = 0; y < 24; y++){
-            if(fc.f[EF[i][0]] == EF[y/2][y%2]) {
-                ep[i] = y/2, eo[i] = (2-y%2)%2;
-                break;
-            }
+
+    const auto ms = cube::utils::parse_manuever(maneuver_str);
+    const auto color = apply_moves(cube_str, ms);
+
+    std::copy(color.cbegin(), color.cend(), buf);
+    buf[color.length()] = '\0';
+    return true;
+}
+
+bool permutation(char* buf, const char* ms_or_cube, int format)
+{
+    if(!buf) return false;
+
+    std::string cube_str{};
+    if(ms_or_cube) {
+        if(cube::utils::is_valid_config<std::string_view>(ms_or_cube)) {
+            cube_str = std::string(ms_or_cube);
+        } else if(cube::utils::is_valid_maneuver(ms_or_cube)) {
+            auto ms = cube::utils::parse_manuever(ms_or_cube);
+            cube_str = apply_moves(cid,ms);
+        } else {
+            buf[0] = '\0';
+            return false;
         }
+    } else {
+        cube_str = cid;
     }
+
+    std::string perm_str{};
+    auto cc = ColorState::fromString(cube_str).toCubieCube();
+    perm_str = show::to_string(cc, show::CubeFormat(format));
+
+    std::copy(perm_str.cbegin(), perm_str.cend(), buf);
+    buf[perm_str.length()] = '\0';
+    return true;
 }

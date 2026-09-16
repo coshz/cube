@@ -3,6 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/cube-rust.svg)](https://crates.io/crates/cube-rust)
 [![Documentation](https://docs.rs/cube-rust/badge.svg)](https://docs.rs/cube-rust)
 [![License](https://img.shields.io/crates/l/cube-rust.svg)](https://github.com/coshz/cube/tree/master/bindings/rust#license)
+[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/master/bindings/rust)
 
 A high-performance, memory-safe Rust FFI wrapper for a C++ Rubik's Cube solver engine (Two-Phase Algorithm).
 
@@ -34,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cube = Cube::default();
 
     // 2. Apply moves 
-    cube.apply_maneuver_mut("R U F' D2");
+    cube.apply_maneuver_mut("R U F' D2").unwrap();
 
     // 3. Check if the scrambled state is solvable
     assert!(cube.is_solvable());

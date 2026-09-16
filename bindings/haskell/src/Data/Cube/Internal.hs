@@ -1,58 +1,132 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GADTs #-}
 
 module Data.Cube.Internal 
 (
   Color(..)
 , Face(..)
+, Turn(..)
 , Move(..)
+, Cube
 , ActsOn(..)
 , Actionable(..)
 , moveFaces
 , moveFromRaw
 , unsafeMoveFromRaw
 , showAction
+, cubeId
+, isLegalCubeString
+, showCube
+, parseCube
+, applyTurns
+, showTurns
+, parseTurns
+, solve
+, unsafeSolve
+, solveFrom
+, unsafeSolveFrom
 )
 where 
 
 import Data.Cube.Def
+import Data.Cube.FFI
 
 import qualified Data.Vector.Sized as V
-import Data.Array (Array, listArray, (!))
-import Data.List (sort)
+import Data.Maybe (fromMaybe)
+import System.IO.Unsafe (unsafePerformIO)
+import Foreign (allocaBytes)
+import Foreign.C (peekCString)
+import Foreign.C.String (withCString)
+import Foreign.C.Types (CBool(..))
 
 
-instance ActsOn Cube Turn where
-    c &> t = c &> toMove t
+cubeId :: Cube
+cubeId = Cube (fromMaybe (error "cId") (V.fromList (concatMap (replicate 9) [U .. B])))
 
-instance Actionable Turn where 
-    toMove t = moveTable_ ! fromEnum t
+showCube :: Cube -> String
+showCube (Cube v) = concatMap show (V.toList v)
 
-moveFaces :: Move -> [Face]
-moveFaces (Move v) = map toEnum (V.toList v)
-
-showAction :: Actionable a => a -> String
-showAction a = "Action " ++ show (moveFaces (toMove a))
-
-moveFromRaw :: [Int] -> Maybe Move
-moveFromRaw xs 
-    | isValidPerm xs = Move <$> V.fromList (map toEnum xs)
+parseCube :: String -> Maybe Cube
+parseCube cubeStr
+    | isLegalCubeString cubeStr = do
+        colors <- mapM charToColor cubeStr
+        Cube <$> V.fromList colors
     | otherwise = Nothing
-    where 
-        isValidPerm ys = sort ys == [0..53]
+    where
+        charToColor :: Char -> Maybe Color
+        charToColor c = case c of
+            'U' -> Just U
+            'R' -> Just R
+            'F' -> Just F
+            'D' -> Just D
+            'L' -> Just L
+            'B' -> Just B
+            _ -> Nothing
 
-unsafeMoveFromRaw :: [Int] -> Move
-unsafeMoveFromRaw xs = case moveFromRaw xs of 
-    Just m -> m
-    Nothing -> error "unsafeMoveFromRaw: input is not a valid 0..53 permutation"
+isLegalCubeString :: String -> Bool
+isLegalCubeString str = 
+    length str == 54 &&
+    unsafePerformIO (withCString str $ \c_str -> do
+        CBool res <- c_solvable c_str
+        return (res /= 0))
 
-moveTable_ :: Array Int Move
-moveTable_ = listArray(0,17) (concatMap powers base6) where
-    powers v = [v, v <> v, v <> v <> v] 
-    base6    = map unsafeMoveFromRaw [mU,mR,mF,mD,mL,mB]
+applyTurns :: Cube -> [Turn] -> Cube
+applyTurns = foldl (&>)
+
+parseTurns :: String -> Maybe [Turn]
+parseTurns str = mapM stringToTurn (words str) where 
+    stringToTurn :: String -> Maybe Turn 
+    stringToTurn s = case s of 
+        "U" -> Just Ux1; "U2" -> Just Ux2; "U'" -> Just Ux3
+        "R" -> Just Rx1; "R2" -> Just Rx2; "R'" -> Just Rx3
+        "F" -> Just Fx1; "F2" -> Just Fx2; "F'" -> Just Fx3
+        "D" -> Just Dx1; "D2" -> Just Dx2; "D'" -> Just Dx3
+        "L" -> Just Lx1; "L2" -> Just Lx2; "L'" -> Just Lx3
+        "B" -> Just Bx1; "B2" -> Just Bx2; "B'" -> Just Bx3
+        _ -> Nothing
+
+showTurns :: [Turn] -> String 
+showTurns ts = unwords (map turnToString ts) where 
+    turnToString :: Turn -> String 
+    turnToString t = case t of 
+        Ux1 -> "U"; Ux2 -> "U2"; Ux3 -> "U'"
+        Rx1 -> "R"; Rx2 -> "R2"; Rx3 -> "R'"
+        Fx1 -> "F"; Fx2 -> "F2"; Fx3 -> "F'"
+        Dx1 -> "D"; Dx2 -> "D2"; Dx3 -> "D'"
+        Lx1 -> "L"; Lx2 -> "L2"; Lx3 -> "L'"
+        Bx1 -> "B"; Bx2 -> "B2"; Bx3 -> "B'"
+
+solve :: Cube -> Cube -> Either String [Turn]
+solve src tgt = unsafePerformIO $
+    withCString (showCube src) $ \c_src ->
+    withCString (showCube tgt) $ \c_tgt ->
+    allocaBytes 128 $ \c_buf -> do
+        resCode <- c_solve c_buf c_src c_tgt 30 (CBool 1)
+        if resCode == 0
+            then parseCSolution c_buf
+            else handleErr resCode  
+    where
+        parseCSolution buf = do 
+            str <- peekCString buf
+            return $ case parseTurns str of
+                Just turns  -> Right turns
+                Nothing     -> Left $ "failed to parse solver string: " ++ show str
     
-    mU = [6,3,0,7,4,1,8,5,2,45,46,47,12,13,14,15,16,17,9,10,11,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,18,19,20,39,40,41,42,43,44,36,37,38,48,49,50,51,52,53]
-    mR = [0,1,20,3,4,23,6,7,26,15,12,9,16,13,10,17,14,11,18,19,29,21,22,32,24,25,35,27,28,51,30,31,48,33,34,45,36,37,38,39,40,41,42,43,44,8,46,47,5,49,50,2,52,53]
-    mF = [0,1,2,3,4,5,44,41,38,6,10,11,7,13,14,8,16,17,24,21,18,25,22,19,26,23,20,15,12,9,30,31,32,33,34,35,36,37,27,39,40,28,42,43,29,45,46,47,48,49,50,51,52,53]
-    mD = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,24,25,26,18,19,20,21,22,23,42,43,44,33,30,27,34,31,28,35,32,29,36,37,38,39,40,41,51,52,53,45,46,47,48,49,50,15,16,17]
-    mL = [53,1,2,50,4,5,47,7,8,9,10,11,12,13,14,15,16,17,0,19,20,3,22,23,6,25,26,18,28,29,21,31,32,24,34,35,42,39,36,43,40,37,44,41,38,45,46,33,48,49,30,51,52,27]
-    mB = [11,14,17,3,4,5,6,7,8,9,10,35,12,13,34,15,16,33,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,36,39,42,2,37,38,1,40,41,0,43,44,51,48,45,52,49,46,53,50,47]
+        handleErr code = do 
+            errPtr <- c_solve_result_to_string code
+            errStr <- peekCString errPtr
+            return $ Left $ "Solver error (" ++ show code ++ "): "++ errStr
+
+
+unsafeSolve :: Cube -> Cube -> [Turn]
+unsafeSolve src tgt = case solve src tgt of 
+    Left err -> error err
+    Right ts -> ts
+
+solveFrom :: Cube -> Either String [Turn]
+solveFrom c = solve c cubeId 
+
+unsafeSolveFrom :: Cube -> [Turn]
+unsafeSolveFrom c = unsafeSolve c cubeId

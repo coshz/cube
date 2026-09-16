@@ -1,24 +1,18 @@
 #include "table.hh"
 #include "coord.hh"
-#include "utils.hpp"
+#include "internal.hh"
 #include <filesystem>
 #include <cstdlib>
 
-namespace fs = std::filesystem;
-
-static fs::path table_dir_fallback(std::string dir) 
-{
-    if(dir != "") return fs::path(dir);
-    try {
-        return get_cache_dir() / "cube" / "tables";
-    } catch (...) {
-#ifdef INSTALL_PREFIX
-    return fs::path(INSTALL_PREFIX) / "cube" / "tables";
-#else 
-    return fs::current_path() / "tables";
+#if defined(VERBOSE) && VERBOSE
+#define VPRINT(...) printf(__VA_ARGS__)
+#else
+#define VPRINT(...)
 #endif
-    }
-}
+
+namespace cube::pdb {
+
+namespace fs = std::filesystem;
 
 template <typename Table>
 void save_to(const Table &table, fs::path path)
@@ -45,7 +39,7 @@ template<typename Table, typename F1, typename F2>
 std::enable_if_t<Table::shape[0] == N_MOVE>
 TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string filename)
 {
-    VPRINT("creating move table %s of shape (%zu,%zu)... ", 
+    VPRINT("creating move table %s of shape (%zu,%zu)... ",
            filename.c_str(), t.shape[0], t.shape[1]);
     for(size_t i = 0; i < t.shape[0]; i++) for(size_t j = 0; j < t.shape[1]; j++) {
         t[i][j] = coord2i(i2coord(j) * ElementaryMove[i]);
@@ -55,8 +49,8 @@ TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string f
 }
 
 template<typename T>
-TableMove<T>::TableMove(std::string dir)
-:tdir(table_dir_fallback(dir))
+TableMove<T>::TableMove(std::filesystem::path dir)
+:tdir(dir)
 {
     VPRINT("INIT MOVE TABLES -- \n");
     pTMTwist     = new NArray<T,N_MOVE,N_TWIST>;
@@ -102,7 +96,7 @@ std::enable_if_t<Table::shape[0] == MT1::shape[1] && Table::shape[1] == MT2::sha
 TablePrunning<T>::buildPrunningTable(
     Table &t, const MT1 &mt1, const MT2 &mt2, std::string filename)
 {
-    VPRINT("creating prunning table %s of shape (%zu,%zu):\n", 
+    VPRINT("creating prunning table %s of shape (%zu,%zu):\n",
            filename.c_str(), mt1.shape[1], mt2.shape[1]);
     std::fill_n(&t.data[0][0], t.size, (typename Table::value_type) ~0UL);
     t[0][0] = 0;
@@ -118,7 +112,7 @@ TablePrunning<T>::buildPrunningTable(
             for(auto k = 0; k < N_MOVE; k++) {
                 auto ii = mt1[k][i], jj = mt2[k][j];
                 if(t[ii][jj] == (typename Table::value_type)~0UL) { t[ii][jj] = depth + 1; count++; }
-            } 
+            }
         }
         depth++;
         VPRINT("\tdepth %2d: %10zu / %-10zu.\n", depth, count, t.size);
@@ -128,8 +122,8 @@ TablePrunning<T>::buildPrunningTable(
 }
 
 template<typename T>
-TablePrunning<T>::TablePrunning(std::string dir)
-:tdir(table_dir_fallback(dir))
+TablePrunning<T>::TablePrunning(std::filesystem::path dir)
+:tdir(dir)
 {
     VPRINT("INIT PRUNNING TABLES -- \n");
     pTPSliceFlip     = new NArray<T,N_SLICE,N_FLIP>;
@@ -138,7 +132,7 @@ TablePrunning<T>::TablePrunning(std::string dir)
     pTPEdge4Corner   = new NArray<T,N_EDGE4,N_CORNER>;
 
     if(!fs::exists(tdir/"tp_slicetwist.dat")) {
-        const auto &TM = SingletonTM<>::instance();
+        const auto &TM = get_TM();
         buildPrunningTable(*pTPSliceTwist, *TM.pTMSlice, *TM.pTMTwist, "tp_slicetwist.dat");
         buildPrunningTable(*pTPSliceFlip, *TM.pTMSlice, *TM.pTMFlip, "tp_sliceflip.dat");
         buildPrunningTable(*pTPEdge4Corner, *TM.pTMEdge4, *TM.pTMCorner, "tp_edge4corner.dat");
@@ -163,3 +157,5 @@ TablePrunning<T>::~TablePrunning()
 
 template struct TableMove<>;
 template struct TablePrunning<>;
+
+} // namespace pdb

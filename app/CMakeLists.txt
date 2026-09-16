@@ -1,4 +1,4 @@
-set(cli_sources 
+set(cli_sources
     cli.cpp
 )
 

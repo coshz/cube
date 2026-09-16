@@ -6,9 +6,12 @@
 //!
 //! ```rust
 //! use cube_rust::{Cube, CubeSolver};
-//!
-//! // Construct a solved cube and apply a scramble maneuver sequence
-//! let cube = Cube::default().apply_maneuver("R U R' U'");
+//! 
+//! // Initialize a cube in standard solved state
+//! let cube = Cube::default();
+//! 
+//! // Apply moves
+//! cube.apply_maneuver("R U R' U'").unwrap();
 //!
 //! // Verify solvability
 //! assert!(cube.is_solvable());
@@ -20,76 +23,30 @@
 //! }
 //! ```
 
-pub mod ffi;
+pub(crate) mod ffi;
+pub(crate) mod err;
 
-use std::error::Error;
+use err::{CubeError, CubeStringError};
+use ffi::CUBE_BS;
+pub use ffi::CUBE_ID;
+
 use std::ffi::{CStr, CString};
 use std::fmt;
 use std::ops::Deref;
 use std::os::raw::c_char;
-
-use ffi::CUBE_BS;
-pub use ffi::CUBE_ID;
-
-/// Errors that can occur during cube solving and state manipulation.
-#[repr(i32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CubeError {
-    /// The cube state violates physical or state constraints and cannot be solved.
-    Unsolvable = ffi::SolveResult::Unsolvable as i32,
-    /// No solution was found within the specified maximum step limit.
-    NotFound = ffi::SolveResult::NotFound as i32,
-    /// The input source cube string format is invalid.
-    InvalidSrc = ffi::SolveResult::InvalidSrc as i32,
-    /// The input target cube string format is invalid.
-    InvalidTgt = ffi::SolveResult::InvalidTgt as i32,
-    /// An unknown internal error occurred.
-    UnknownErr = ffi::SolveResult::UnknownErr as i32,
-}
-
-impl From<ffi::SolveResult> for CubeError {
-    fn from(res: ffi::SolveResult) -> Self {
-        match res {
-            ffi::SolveResult::Unsolvable => CubeError::Unsolvable,
-            ffi::SolveResult::NotFound => CubeError::NotFound,
-            ffi::SolveResult::InvalidSrc => CubeError::InvalidSrc,
-            ffi::SolveResult::InvalidTgt => CubeError::InvalidTgt,
-            _ => CubeError::UnknownErr,
-        }
-    }
-}
-
-impl fmt::Display for CubeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let c_code = match self {
-            CubeError::Unsolvable => ffi::SolveResult::Unsolvable,
-            CubeError::NotFound => ffi::SolveResult::NotFound,
-            CubeError::InvalidSrc => ffi::SolveResult::InvalidSrc,
-            CubeError::InvalidTgt => ffi::SolveResult::InvalidTgt,
-            CubeError::UnknownErr => ffi::SolveResult::UnknownErr,
-        };
-        unsafe {
-            let c_str_ptr = ffi::solve_result_to_string(c_code);
-            let description = CStr::from_ptr(c_str_ptr).to_string_lossy();
-            write!(f, "{}", description)
-        }
-    }
-}
-
-impl Error for CubeError {}
 
 /// An opaque domain type wrapping a 54-facelet cube configuration string.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cube(CString);
 
 impl Cube {
-    /// Creates a new `Cube` from a string representation.
-    ///
-    /// # Panics
-    /// Panics if the input string contains an interior NUL byte (`\0`).
-    pub fn new(s: impl AsRef<str>) -> Self {
-        let c_str = CString::new(s.as_ref()).expect("cube string contains interior NUL byte");
-        Cube(c_str)
+    pub fn new(s: impl AsRef<str>) -> Result<Self, CubeStringError> {
+        let str_ref = s.as_ref();
+        if str_ref.len() != 54 {
+            return Err(CubeStringError::InvalidLength(str_ref.len()))
+        }
+        let c_str = CString::new(s.as_ref()).map_err(|_| CubeStringError::InteriorNulByte)?;
+        Ok(Cube(c_str))
     }
 
     pub(crate) fn as_ptr(&self) -> *const c_char {
@@ -106,26 +63,32 @@ impl Cube {
     }
 
     /// Modifies `self` in place by applying a maneuver sequence (e.g., `"R U R' U'"`).
-    pub fn apply_maneuver_mut(&mut self, maneuver: impl AsRef<str>) {
-        let c_maneuver = CString::new(maneuver.as_ref()).expect("maneuver contains interior NUL byte");
+    pub fn apply_maneuver_mut(&mut self, maneuver: impl AsRef<str>) -> Result<(), CubeStringError>{
+        let c_maneuver = CString::new(maneuver.as_ref()).map_err(|_| CubeStringError::InteriorNulByte)?;
         let mut buffer = [0u8; CUBE_BS];
-        unsafe {
+        
+        let success = unsafe {
             ffi::facecube(
-                self.as_ptr(),
-                c_maneuver.as_ptr(),
                 buffer.as_mut_ptr() as *mut c_char,
-            );
-            let c_str = CStr::from_ptr(buffer.as_ptr() as *const c_char);
-            self.0 = c_str.to_owned();
+                c_maneuver.as_ptr(),
+                self.as_ptr()
+            )
+        }; 
+
+        if !success {
+            return Err(CubeStringError::InvalidManeuver);
         }
 
+        let c_str = unsafe { CStr::from_ptr(buffer.as_ptr() as *const c_char) };
+        self.0 = c_str.to_owned();
+        Ok(())
     }
 
     /// Returns a new `Cube` after applying a maneuver sequence (immutable version).
-    pub fn apply_maneuver(&self, maneuver: impl AsRef<str>) -> Cube {
+    pub fn apply_maneuver(&self, maneuver: impl AsRef<str>) -> Result<Cube, CubeStringError> {
         let mut cloned = self.clone();
-        cloned.apply_maneuver_mut(maneuver);
-        cloned
+        cloned.apply_maneuver_mut(maneuver)?;
+        Ok(cloned)
     }
 
     /// Solves the current cube using default solver configuration (30 max steps, optimal search).
@@ -140,7 +103,7 @@ impl Cube {
 /// Returns a `Cube` in the default solved state
 impl Default for Cube {
     fn default() -> Self {
-        Cube::new(CUBE_ID)
+        Cube::new(CUBE_ID).unwrap()
     }
 }
 
@@ -158,26 +121,25 @@ impl fmt::Display for Cube {
     }
 }
 
-impl From<&str> for Cube {
-    fn from(s: &str) -> Self {
-        Cube::new(s)
-    }
-}
+/// Converts a color cube or move sequence into its structural permutation string representation.
+pub fn permutation(ms_or_cube: impl AsRef<str>, fmt: i32) -> String {
+    let Ok(ms_or_cube) = CString::new(ms_or_cube.as_ref()) else {
+        return "???".to_string();
+    };
 
-impl From<String> for Cube {
-    fn from(s: String) -> Self {
-        Cube::new(s)
-    }
-}
-
-/// Converts a move sequence (e.g., `"R U R' U'"`) into its structural permutation string representation.
-pub fn permutation(maneuver: impl AsRef<str>) -> String {
-    let c_maneuver = CString::new(maneuver.as_ref()).expect("maneuver contains interior NUL byte");
     let mut buffer = [0u8; CUBE_BS];
     unsafe {
-        ffi::permutation(c_maneuver.as_ptr(), buffer.as_mut_ptr() as *mut c_char);
-        let c_str = CStr::from_ptr(buffer.as_ptr() as *const c_char);
-        c_str.to_string_lossy().into_owned()
+        let success = ffi::permutation(
+            buffer.as_mut_ptr() as *mut c_char,
+            ms_or_cube.as_ptr(), 
+            fmt
+        );
+        if !success {
+            return "???".to_string();
+        }
+        CStr::from_ptr(buffer.as_ptr() as *const c_char)
+            .to_string_lossy()
+            .into_owned()
     }
 }
 
@@ -236,13 +198,12 @@ impl CubeSolver {
         let mut buffer = [0u8; CUBE_BS];
 
         let res = unsafe {
-            ffi::solve_ultimate(
+            ffi::solve(
+                buffer.as_mut_ptr() as *mut c_char,
                 src_ptr,
                 tgt_ptr,
-                buffer.as_mut_ptr() as *mut c_char,
                 self.step,
                 self.best,
-                1,
             )
         };
 

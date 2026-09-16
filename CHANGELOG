@@ -1,3 +1,9 @@
+v0.4.0
+
+- **Language Bindings**: Support for Haskell and Rust
+- **Refactoring**: Introduce namespaces & polish public API
+- **Robustness**: Improved input validation to prevent throwing exceptions
+
 v0.3.0-202609
   - **Swift Integration**: Build `Cube.framework` for Swift projects
   - **CMake Improvements**: Embed custom build task directly into CMake

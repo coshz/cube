@@ -3,12 +3,12 @@
 import argparse
 import re 
 import os
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 def make_parser():
     parser = argparse.ArgumentParser(
-        description="Expand user headers into a single amalgamated source file."
+        description="Expand user C++ files into a single amalgamated source file."
     )
     parser.add_argument(
         "sources", nargs='+', help="C++ source files")
@@ -23,7 +23,7 @@ def make_parser():
 
 def resolve_header_path(
     header_name: str, current_dir, include_dirs: list[str]
-) -> str | None: 
+) -> Optional[str]: 
     cand = os.path.abspath(os.path.join(current_dir, header_name))
     if os.path.isfile(cand): 
         return cand
