@@ -12,11 +12,11 @@ const moduleLoader = async ():Promise<any> => {
     return import(path);
 };
 
-const createCubeApi = async () => {
+const createCubeAPI = async () => {
     const module = await moduleLoader();
     const factory = module.default;
     return createAPI(factory);
 }
 
 export type { CubeAPI };
-export { createCubeApi, SolveResult, CubeID };
+export { createCubeAPI, SolveResult, CubeID };

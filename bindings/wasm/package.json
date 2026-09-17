@@ -1,0 +1,47 @@
+{
+    "name": "@coshz/jscube",
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
+    },
+    "type": "module",
+    "version": "0.4.1",
+    "description": "A WASM-based Rubik's Cube library",
+    "keywords": [
+        "rubiks-cube-solver",
+        "binding",
+        "wasm"
+    ],
+    "bugs": {
+        "url": "https://github.com/coshz/cube/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/coshz/cube.git"
+    },
+    "license": "MIT",
+    "author": "coshz <fsinhx@gmail.com>",
+    "main": "./dist/index.mjs",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.mts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "types": "./dist/index.d.mts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build:wasm": "make -f ../../dev/gen_wasm.mk",
+        "build:ts": "tsc --build",
+        "build": "npm run build:wasm && npm run build:ts",
+        "test": "tsx test/test_jscube.mts",
+        "watch": "tsc --watch"
+    },
+    "devDependencies": {
+        "@types/node": "^25.9.7",
+        "typescript": "^5.9.3"
+    }
+}

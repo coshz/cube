@@ -1,7 +1,8 @@
 .DS_Store
 .vscode/
 tmp/
-build/
-build*
-dist/
-doc/
+build
+build-*
+dist
+dist-*
+/doc

@@ -3,7 +3,7 @@
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
  * Version: 0.4.0
- * Date: 2026-09-18
+ * Date: 2026-09-17
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
@@ -18,6 +18,7 @@
 #include <utility>
 #include <numeric>
 #include <stdexcept>
+#include <cassert>
 #include <cstdlib>
 #include <regex>
 #include <string>
@@ -27,7 +28,6 @@
 #include <optional>
 #include <type_traits>
 #include <string_view>
-#include <cassert>
 #include <cmath>
 #include <fstream>
 #include <limits>
@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <format>
+#include <cstring>
 
 enum Face       { U1,U2,U3,U4,U5,U6,U7,U8,U9,R1,R2,R3,R4,R5,R6,R7,R8,R9,F1,F2,F3,F4,F5,F6,F7,F8,F9,D1,D2,D3,D4,D5,D6,D7,D8,D9,L1,L2,L3,L4,L5,L6,L7,L8,L9,B1,B2,B3,B4,B5,B6,B7,B8,B9 };
 enum Layer      { U,R,F,D,L,B };
@@ -645,7 +646,7 @@ struct CubieCube
     EdgePerm    ep;
     EdgeOri     eo;
     FaceCube toFaceCube() const;
-    constexpr bool isSolvable() const
+    bool isSolvable() const
     {  return cp.parity() == ep.parity() && co.sum() == 0 && eo.sum() == 0; }
     friend constexpr CubieCube operator*(const CubieCube &a, const CubieCube &b)
     { return { a.cp*b, a.co*b, a.ep*b, a.eo*b }; }
@@ -688,6 +689,12 @@ inline constexpr FaceCube pL = {{53,1,2,50,4,5,47,7,8,9,10,11,12,13,14,15,16,17,
 inline constexpr FaceCube pB = {{11,14,17,3,4,5,6,7,8,9,10,35,12,13,34,15,16,33,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,36,39,42,2,37,38,1,40,41,0,43,44,51,48,45,52,49,46,53,50,47}};
 inline constexpr std::array<FaceCube,18>
     ElementaryPerm = { pU,pU*pU,pU*pU*pU,pR,pR*pR,pR*pR*pR,pF,pF*pF,pF*pF*pF,pD,pD*pD,pD*pD*pD,pL,pL*pL,pL*pL*pL,pB,pB*pB,pB*pB*pB };
+inline FaceCube operator*(const FaceCube &c, const std::vector<TurnMove> &ms)
+{
+    FaceCube fc = c;
+    for (auto m : ms) fc = fc * ElementaryPerm[m];
+    return fc;
+}
 inline CubieCube operator*(const CubieCube &c, const std::vector<TurnMove> &ms)
 {
     CubieCube cc = c;

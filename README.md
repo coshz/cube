@@ -1,58 +1,117 @@
 # Cube
 
-## 0 - Introduction
+[![Hackage](https://img.shields.io/hackage/v/cube-hs.svg?logo=haskell&color=orange)](https://hackage.haskell.org/package/cube-hs)
+[![Crates.io](https://img.shields.io/crates/v/cube-rust.svg)](https://crates.io/crates/cube-rust)
+[![PyPI](https://img.shields.io/pypi/v/cube-python.svg)](https://pypi.org/project/cube-python/)
+[![npm](https://img.shields.io/npm/v/@coshz/jscube.svg)](https://www.npmjs.com/package/@coshz/jscube)
 
-This project is a Rubik's Cube solver built around a C++ re-implementation 
-of Kociemba's twophase algorithm, inspired by the original mathematica code from [1].
+An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17, implementing Kociemba's Two-Phase Algorithm.
 
-It includes the following components:
-  - libcube: the core C++ library with C-style interface exported;
-  - pycube: the Python binding package via [ctypes](https://docs.python.org/3/library/ctypes.html);
-  - jscube: the JavaScript binding package via [emscripten](https://emscripten.org/);
-  - Cube.framework: the swift framework;
-  - icube: the command-line executable.
+## ✨ Features
 
-## 1 - Build, install & package
+* **⚡ High Performance**: Fast and resource-efficient core implementation.
+* **🌐 Multi-Language**: Native bindings for Python, Rust, Haskell, and WebAssembly/TypeScript.
+* **📦 Cross-Platform SDK**: Ships C dynamic/static libraries, Swift module (`Cube.framework`), and interactive CLI (`icube`).
+* **🛠️ Standalone**: Zero external third-party dependencies.
 
-Prerequisites:
-  - Cmake: to build libcube;
-  - Emscripten & npm: to build jscube;
-  - Python: to build pycube.
+---
 
-1. Build
+## 📦 Language Bindings
 
-```sh
-# build
-cmake -B build -G "Ninja" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SWIFT_MODULE=on \
-  -DBUILD_PYTHON_BINDING=on \
-  -DBUILD_WASM_BINDING=on \
-  -DCMAKE_INSTALL_PREFIX="<prefix>" \
-  -DCUBE_PACK_DIR="<dir>"
+| Language | Package | Badge | Documentation |
+| :--- | :--- | :--- | :--- |
+| **Python** | `cube-python` | [![PyPI](https://img.shields.io/pypi/v/cube-python.svg?v=1)](https://pypi.org/project/cube-python/) | [Python Docs](bindings/python/README.md) |
+| **Rust** | `cube-rust` | [![Crates.io](https://img.shields.io/crates/v/cube-rust.svg)](https://crates.io/crates/cube-rust) | [Rust Docs](bindings/rust/README.md) |
+| **Haskell** | `cube-hs` | [![Hackage](https://img.shields.io/hackage/v/cube-hs.svg?logo=haskell&color=orange)](https://hackage.haskell.org/package/cube-hs) | [Haskell Docs](bindings/haskell/README.md) |
+| **TypeScript** | `@coshz/jscube` | [![npm](https://img.shields.io/npm/v/@coshz/jscube.svg)](https://www.npmjs.com/package/@coshz/jscube) | [WASM Docs](bindings/wasm/README.md) |
 
-cmake --build build --config Release
+---
 
-# install 
-# (default location: 
-#   - linux,macOS: "/usr/local"
-#   - win: "C:/Program Files/${PROJECT_NAME}")
-cmake --build build --target install --config Release
+## 🚀 Quick Start
 
-# package (default location: "build/dist")
-cmake --build build --target pack --config Release
+### 1. Interactive CLI (`icube`)
+
+```bash
+# Launch interactive solver
+icube
+
+# Or solve directly via state string
+icube solve "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 ```
 
-### 2 - Usage
-
-1. icube
 ![icube-demo](asset/icube-demo.png)
 
-2. bindings
-  - [pycube](bindings/python/pycube/core.py)
-  - [jscube](bindings/wasm/src/api.mts)
-  - [Cube.framework](bindings/swift/Cube.swift)
+### 2. SDK Usage
 
-## References
+```c
+#include <cube/cube.h>
+#include <stdio.h>
+#include <string.h>
+
+int main() 
+{
+  char buf[CUBE_BS], sol[CUBE_BS];
+
+  // apply maneuver to give cube (here, CUBE_ID)
+  facecube(buf, "U F U' L2 R L' D2 B", CUBE_ID);
+
+  // solve from buf to CUBE_ID
+  SolveResult sr = solve(sol, buf, CUBE_ID, 30, true);
+
+  if(sr == SolveResultSuccess) {
+    puts(sol);
+    // verify the solution 
+    char solved[CUBE_BS];
+    facecube(solved, sol, buf);
+    if(strcmp(solved, CUBE_ID) == 0) {
+      puts("solution verified");
+    } else {
+      puts("wrong solution");
+    }
+  } else {
+    fprintf(stderr, "%s\n", solve_result_to_string(sr));
+  }
+  return 0;
+}
+```
+
+---
+
+## 🛠️ Build & Install
+
+### Prerequisites
+* CMake 3.15+
+* C++17 compatible compiler (Clang, GCC, MSVC)
+* Ninja (Optional, recommended)
+
+### Instructions
+
+```bash
+# Configure & build core SDK
+cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+
+# Install C++ artifacts to system default path
+cmake --build build --target install
+```
+
+---
+
+## 📂 Repository Layout
+
+```text
+.
+├── amalg/            # amalgamated C++ source
+├── asset             # project static resources
+├── bindings/         # Language bindings
+├── cli/              # Source code for `icube` command-line tool
+├── cmake/            # templates or modules for cmake use
+├── dev/              # Scripts to eases development
+├── include/          # Public C++ SDK headers
+├── src/              # Core Two-Phase Algorithm implementation
+└── test/             # Testing
+```
+
+## 🔗 References
 
 1. [http://kociemba.org/cube.htm](http://kociemba.org/cube.htm)

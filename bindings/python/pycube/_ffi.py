@@ -1,43 +1,53 @@
-import ctypes 
-import os
-import platform 
+"""
+Python ctypes wrapper and FFI definitions for the C++ shared library.
 
+Ref: 
+    ../cxx_src/cube.h
+    
+See Also:
+    ../cxx_src/cube_amalg.min.cpp
+"""
 
-class CubeCDLL(ctypes.CDLL):
+from ctypes import CDLL, c_char_p, c_int32, c_bool
+from pathlib import Path
+
+class CubeCDLL(CDLL):
     CUBE_BS = 128
     CUBE_ID = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 
 
 def _load_library() -> CubeCDLL:
-    if platform.system() == "Windows":
-        lib_name = "cube.dll"
-    elif platform.system() == "Darwin":
-        lib_name = "libcube.dylib"
-    else:
-        lib_name = "libcube.so"
+    package_dir = Path(__file__).parent 
+    allowed_suffixes = { '.so', '.dylib', '.dll', '.pyd' }
+    candidates = [ 
+        p for p in package_dir.glob("_native*")
+        if p.suffix in allowed_suffixes
+    ]
 
-    lib_path = os.path.join(
-        os.path.dirname(__file__), lib_name
-    )
-
-    if not os.path.exists(lib_path):
-        lib_path = lib_name 
-
+    if not candidates: 
+        raise FileNotFoundError(
+            f"Could not find compiled C++ shared library inside '{package_dir}'.\n"
+            "If you are developing locally, run `pip install -e .` or "
+            "`python setup.py build_ext --inplace` to build the native extension first."
+        )
+        
+    lib_path = str(candidates[0])
     return CubeCDLL(lib_path)
+
 
 _libcube = _load_library() 
 
-_libcube.solve_ultimate.argtypes = [ctypes.c_char_p, ctypes.c_char_p,  ctypes.c_char_p, ctypes.c_int, ctypes.c_bool, ctypes.c_int]
-_libcube.solve_ultimate.restype = ctypes.c_int
+_libcube.solve.argtypes = [c_char_p, c_char_p,  c_char_p, c_int32, c_bool]
+_libcube.solve.restype = c_int32
 
-_libcube.facecube.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
+_libcube.facecube.argtypes = [c_char_p, c_char_p, c_char_p]
 _libcube.facecube.restype = None
 
-_libcube.solvable.argtypes = [ctypes.c_char_p]
-_libcube.solvable.restype = ctypes.c_bool
+_libcube.solvable.argtypes = [c_char_p]
+_libcube.solvable.restype = c_bool
 
-_libcube.permutation.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+_libcube.permutation.argtypes = [c_char_p, c_char_p]
 _libcube.permutation.restype = None
 
-_libcube.solve_result_to_string.argtypes = [ctypes.c_int32]
-_libcube.solve_result_to_string.restype = ctypes.c_char_p
+_libcube.solve_result_to_string.argtypes = [c_int32]
+_libcube.solve_result_to_string.restype = c_char_p

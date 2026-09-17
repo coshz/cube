@@ -18,33 +18,24 @@ jobs:
         include:
           - os: ubuntu-latest
             arch: x86_64
-            cmake_flags: "-DBUILD_PYTHON_BINDING=on -DBUILD_WASM_BINDING=on"
+            cmake_flags: ""
           - os: macos-latest
             arch: x86_64
-            cmake_flags: "-DBUILD_PYTHON_BINDING=on -DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=x86_64"
+            cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=x86_64"
             generator: "-G Ninja"
           - os: macos-latest
             arch: arm64
-            cmake_flags: "-DBUILD_PYTHON_BINDING=on -DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=arm64"
+            cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=arm64"
             generator: "-G Ninja"
           - os: windows-latest
             arch: x64
-            cmake_flags: "-DBUILD_PYTHON_BINDING=on"
+            cmake_flags: ""
             generator: "-G Ninja"
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      
-      - name: Install Python Build Dependencies 
-        shell: bash 
-        run: pip install build
 
       - name: Setup Ninja (macOS)
         if: startsWith(matrix.os, 'macos')
@@ -53,12 +44,6 @@ jobs:
       - name: Setup MSVC (Windows)
         if: startsWith(matrix.os, 'windows')
         uses: ilammy/msvc-dev-cmd@v1
-        
-      - name: Setup Emscripten (Linux)
-        if: startsWith(matrix.os, 'ubuntu')
-        uses: mymindstorm/setup-emsdk@v14
-        with: 
-          version: 'latest' 
 
       - name: Configure CMake 
         shell: bash
@@ -74,7 +59,7 @@ jobs:
           
       - name: Package 
         shell: bash
-        run: cmake --build build --target pack --config Release
+        run: cmake --build build --target package --config Release
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

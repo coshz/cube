@@ -10,15 +10,13 @@ Tags:
     EnumKind: CFEnum
 
 Functions:
-  - Name: solve_ultimate
-    SwiftName: "c_solve_ultimate(_:_:_:_:_:_:)"
   - Name: solve
-    SwiftName: "c_solve(_:_:_:)"
+    SwiftName: "c_solve(_:_:_:_:_:)"
   - Name: solvable
     SwiftName: "c_solvable(_:)"
   - Name: facecube
     SwiftName: "c_facecube(_:_:_:)"
   - Name: permutation
-    SwiftName: "c_permutation(_:_:)"
+    SwiftName: "c_permutation(_:_:_:)"
   - Name: solve_result_to_string
     SwiftName: "c_solve_result_to_string(_:)"

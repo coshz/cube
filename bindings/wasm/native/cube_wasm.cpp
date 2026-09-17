@@ -7,13 +7,13 @@
 using std::string;
 using namespace emscripten;
 
-val wasm_solve_ultimate(
+val wasm_solve(
     const string &src, const string &tgt, int step, bool best
 ) {
     char buf[CUBE_BS] = {0};
     const char *p_src = src.empty() ? nullptr : src.c_str();
     const char *p_tgt = tgt.empty() ? nullptr : tgt.c_str();
-    SolveResult sr = solve_ultimate(p_src, p_tgt, buf, step, best, 1);
+    SolveResult sr = solve(buf, p_src, p_tgt, step, best);
     val obj = val::object();
     if(sr == SolveResultSuccess) {
         obj.set("ok", true);
@@ -30,15 +30,15 @@ string wasm_facecube(
 ) {
     char buf[CUBE_BS] = {0};
     const char *p_cube = cube.empty() ? CUBE_ID : cube.c_str();
-    facecube(p_cube, maneuver.c_str(), buf);
+    facecube(buf, maneuver.c_str(), p_cube);
     return string(buf);
 }
 
 string wasm_permutation(
-    const string &maneuver
+    const string &maneuver, int fmt
 ) {
     char buf[CUBE_BS] = {0};
-    permutation(maneuver.c_str(), buf);
+    permutation(buf, maneuver.c_str(), fmt);
     return string(buf);
 }
 
@@ -52,5 +52,5 @@ EMSCRIPTEN_BINDINGS(cube_module) {
     function("solvable", &wasm_solvable);
     function("facecube", &wasm_facecube);
     function("permutation", &wasm_permutation);
-    function("solveUltimate", &wasm_solve_ultimate);
+    function("solve", &wasm_solve);
 }

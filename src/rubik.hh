@@ -81,7 +81,7 @@ struct CubieCube
 
     FaceCube toFaceCube() const;
 
-    constexpr bool isSolvable() const
+    bool isSolvable() const
     {  return cp.parity() == ep.parity() && co.sum() == 0 && eo.sum() == 0; }
 
     friend constexpr CubieCube operator*(const CubieCube &a, const CubieCube &b)

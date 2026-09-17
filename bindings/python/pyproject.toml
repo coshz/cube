@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cube-python"
+version = "0.4.0"
+description = "Python binding for Cube C++ library"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "coshz", email = "fsinhx@gmail.com" }
+]
+keywords = ["game", "rubiks-cube", "bindings"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C++",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Documentation = "https://github.com/coshz/cube/tree/master/bindings/python#readme"
+Source = "https://github.com/coshz/cube"
+"Bug Tracker" = "https://github.com/coshz/cube/issues"
+
+[tool.setuptools]
+packages = ["pycube"]
+
+[tool.pytest.ini_options]
+markers = [
+    "fast: Quick basic verification tests",
+    "slow: Heavy algorithm or long-running tests",
+    "solver: Core C++ engine solving functions",
+]

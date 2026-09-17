@@ -4,6 +4,8 @@
 #include "twophase.hh"
 #include "utils.hpp"
 
+#include <cstring>
+
 using namespace cube;
 
 const std::string_view cid = CUBE_ID;

@@ -32,13 +32,13 @@ async function createAPI(
         return module_.facecube(maneuver, cube);
     }
     
-    function permutation(maneuver:string) {
-        return module_.permutation(maneuver);
+    function permutation(ms_or_cube:string, fmt: number = 2) {
+        return module_.permutation(ms_or_cube, fmt);
     }
 
     function trySolve(src:string = CubeID, options?: SolveOptions): SolveResult {
         const { target = CubeID, maxSteps = 30, best = true } = options ? options : {};
-        return module_.solveUltimate(src, target, maxSteps, best);
+        return module_.solve(src, target, maxSteps, best);
     }
 
     function solve(src:string = CubeID, options?: SolveOptions): string {
@@ -59,5 +59,5 @@ async function createAPI(
     };
 }
 
-export { createAPI, SolveResult, CubeID };
+export { createAPI, SolveResult, CubeID, SolveOptions };
 export type { CubeAPI };

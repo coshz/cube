@@ -1,0 +1,8 @@
+{
+  "name": "Cube Polyglot Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/rust:1": {},
+    "ghcr.io/devcontainers/features/haskell:1": {}
+  }
+}

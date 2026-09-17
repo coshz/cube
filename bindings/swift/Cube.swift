@@ -32,7 +32,7 @@ public func solve(
     best: Bool = false
 ) throws -> String {
     var buffer = [CChar](repeating: 0, count: Int(CUBE_BS))
-    let result = c_solve_ultimate(src,tgt,&buffer,steps,best,1)
+    let result = c_solve(&buffer,src,tgt,steps,best)
     guard result == .success else {
         throw result
     }
@@ -53,18 +53,23 @@ public func solvable(cube: String) -> Bool {
 ///   - cube: The initial color configuration string;
 ///   - maneuver: The sequence of moves to execute;12
 /// - Returns: The resulting color configuration.
-public func facecube(cube: String, maneuver: String) -> String {
+///
+public func facecube(maneuver: String, cube: String = String(CUBE_ID)) -> String {
     var buffer = [CChar](repeating: 0, count: Int(CUBE_BS))
-    c_facecube(cube,maneuver,&buffer)
+    c_facecube(&buffer,maneuver,cube)
     return String(cString:buffer)
 }
 
-/// Computes the cycle-decomposed cubie permutation for a given move sequence.
+/// Computes the permutation for a given maneuver or cube
 ///
-/// - Parameter maneuver: The sequence of moves to analyze;
-/// - Returns: The cycle decomposition representation string.
-public func permutation(maneuver: String) -> String {
+/// - Parameter ms_or_cube: the color cube or maneuver (move sequence);
+/// - Returns: 
+///     0 => 54-face;   eg. "U1U2U3...B9"
+///     1 => 20-cubie;  eg. "ABCDEFGH00000000opqrstuvwxyz000000000000"
+///     2 => cycles:    eg. "(ufl,urf,ubr)(uf,ul,ur)(+u)(−d)"
+///
+public func permutation(ms_or_cube: String, fmt: Int32 = 2) -> String {
     var buffer = [CChar](repeating: 0, count: Int(CUBE_BS))
-    c_permutation(maneuver,&buffer)
+    c_permutation(&buffer, ms_or_cube, fmt)
     return String(cString:buffer)
 }

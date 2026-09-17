@@ -2,6 +2,7 @@
 #include "def.h"
 #include "help.hpp"
 
+#include <cassert>
 #include <cstdlib>
 #include <set>
 #include <regex>

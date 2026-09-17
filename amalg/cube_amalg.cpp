@@ -3,7 +3,7 @@
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
  * Version: 0.4.0
- * Date: 2026-09-18
+ * Date: 2026-09-17
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
@@ -18,6 +18,7 @@
 #include <utility>
 #include <numeric>
 #include <stdexcept>
+#include <cassert>
 #include <cstdlib>
 #include <regex>
 #include <string>
@@ -27,7 +28,6 @@
 #include <optional>
 #include <type_traits>
 #include <string_view>
-#include <cassert>
 #include <cmath>
 #include <fstream>
 #include <limits>
@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <format>
+#include <cstring>
 
 /*
          U1 U2 U3
@@ -921,7 +922,7 @@ struct CubieCube
 
     FaceCube toFaceCube() const;
 
-    constexpr bool isSolvable() const
+    bool isSolvable() const
     {  return cp.parity() == ep.parity() && co.sum() == 0 && eo.sum() == 0; }
 
     friend constexpr CubieCube operator*(const CubieCube &a, const CubieCube &b)
@@ -984,6 +985,13 @@ inline constexpr FaceCube pB = {{11,14,17,3,4,5,6,7,8,9,10,35,12,13,34,15,16,33,
 
 inline constexpr std::array<FaceCube,18>
     ElementaryPerm = { pU,pU*pU,pU*pU*pU,pR,pR*pR,pR*pR*pR,pF,pF*pF,pF*pF*pF,pD,pD*pD,pD*pD*pD,pL,pL*pL,pL*pL*pL,pB,pB*pB,pB*pB*pB };
+
+inline FaceCube operator*(const FaceCube &c, const std::vector<TurnMove> &ms)
+{
+    FaceCube fc = c;
+    for (auto m : ms) fc = fc * ElementaryPerm[m];
+    return fc;
+}
 
 inline CubieCube operator*(const CubieCube &c, const std::vector<TurnMove> &ms)
 {
@@ -1890,7 +1898,6 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
 #  define CUBE_DEPRECATED_NO_EXPORT CUBE_NO_EXPORT CUBE_DEPRECATED
 #endif
 
-/* NOLINTNEXTLINE(readability-avoid-unconditional-preprocessor-if) */
 #if 0 /* DEFINE_NO_DEPRECATED */
 #  ifndef CUBE_NO_DEPRECATED
 #    define CUBE_NO_DEPRECATED
