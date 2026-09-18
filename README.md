@@ -1,5 +1,7 @@
 # Cube
 
+[![GitHub License](https://img.shields.io/github/license/coshz/cube?color=blue)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/coshz/cube?color=blue&logo=github)](https://github.com/coshz/cube/releases)
 [![Hackage](https://img.shields.io/hackage/v/cube-hs.svg?logo=haskell&color=orange)](https://hackage.haskell.org/package/cube-hs)
 [![Crates.io](https://img.shields.io/crates/v/cube-rust.svg)](https://crates.io/crates/cube-rust)
 [![PyPI](https://img.shields.io/pypi/v/cube-python.svg)](https://pypi.org/project/cube-python/)
@@ -14,18 +16,16 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 * **📦 Cross-Platform SDK**: Ships C dynamic/static libraries, Swift module (`Cube.framework`), and interactive CLI (`icube`).
 * **🛠️ Standalone**: Zero external third-party dependencies.
 
----
 
 ## 📦 Language Bindings
 
-| Language | Package | Badge | Documentation |
-| :--- | :--- | :--- | :--- |
-| **Python** | `cube-python` | [![PyPI](https://img.shields.io/pypi/v/cube-python.svg?v=1)](https://pypi.org/project/cube-python/) | [Python Docs](bindings/python/README.md) |
-| **Rust** | `cube-rust` | [![Crates.io](https://img.shields.io/crates/v/cube-rust.svg)](https://crates.io/crates/cube-rust) | [Rust Docs](bindings/rust/README.md) |
-| **Haskell** | `cube-hs` | [![Hackage](https://img.shields.io/hackage/v/cube-hs.svg?logo=haskell&color=orange)](https://hackage.haskell.org/package/cube-hs) | [Haskell Docs](bindings/haskell/README.md) |
-| **TypeScript** | `@coshz/jscube` | [![npm](https://img.shields.io/npm/v/@coshz/jscube.svg)](https://www.npmjs.com/package/@coshz/jscube) | [WASM Docs](bindings/wasm/README.md) |
+| Language | Directory & Guide | Package |
+| :--- | :--- | :--- |
+| **Python** | [bindings/python](bindings/python/README.md)| [cube-python](https://pypi.org/project/cube-python/) |
+| **Rust** | [bindings/rust](bindings/rust/README.md)  | [cube-rust](https://crates.io/crates/cube-rust) |
+| **Haskell** | [bindings/haskell](bindings/haskell/README.md) | [cube-hs](https://hackage.haskell.org/package/cube-hs) |
+| **TypeScript** | [bindings/wasm](bindings/wasm/README.md) | [@coshz/jscube](https://www.npmjs.com/package/@coshz/jscube) |
 
----
 
 ## 🚀 Quick Start
 
@@ -38,8 +38,11 @@ icube
 # Or solve directly via state string
 icube solve "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 ```
+<details>
+  <summary>Click to view CLI screenshot (shotsnap)</summary>
+  <img src="asset/icube-demo.png" alt="shotsnap-1">
+</details>
 
-![icube-demo](asset/icube-demo.png)
 
 ### 2. SDK Usage
 
@@ -75,7 +78,6 @@ int main()
 }
 ```
 
----
 
 ## 🛠️ Build & Install
 
@@ -95,7 +97,6 @@ cmake --build build --config Release
 cmake --build build --target install
 ```
 
----
 
 ## 📂 Repository Layout
 
@@ -111,6 +112,10 @@ cmake --build build --target install
 ├── src/              # Core Two-Phase Algorithm implementation
 └── test/             # Testing
 ```
+
+## 📄 License
+
+[MIT](LICENSE) © coshz
 
 ## 🔗 References
 

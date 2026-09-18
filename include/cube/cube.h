@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 coshz
+
 #pragma once
 
 #include <cube/cube_export.h> // CUBE_EXPORT

@@ -2,11 +2,12 @@ name: Release Pipeline
 
 on:
   push:
-    branches:
-      - 'master'
-      - 'fix/ci-debug'
     tags:
-      - '*'
+      - 'v*'
+    pull_request:
+      branches:
+        - 'master'
+    workflow_dispatch:
 
 jobs:
   build-and-package:
