@@ -2,7 +2,7 @@
 
 [![GitHub License](https://img.shields.io/github/license/coshz/cube?color=blue)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/coshz/cube?color=blue&logo=github)](https://github.com/coshz/cube/releases)
-[![Hackage](https://img.shields.io/hackage/v/cube-hs.svg?logo=haskell&color=orange)](https://hackage.haskell.org/package/cube-hs)
+[![Hackage](https://img.shields.io/hackage/v/cube-hs.svg?logo=haskell)](https://hackage.haskell.org/package/cube-hs)
 [![Crates.io](https://img.shields.io/crates/v/cube-rust.svg)](https://crates.io/crates/cube-rust)
 [![PyPI](https://img.shields.io/pypi/v/cube-python.svg)](https://pypi.org/project/cube-python/)
 [![npm](https://img.shields.io/npm/v/@coshz/jscube.svg)](https://www.npmjs.com/package/@coshz/jscube)
@@ -104,8 +104,8 @@ cmake --build build --target install
 .
 ├── amalg/            # amalgamated C++ source
 ├── asset             # project static resources
+├── app/              # Source code for `icube` command-line tool
 ├── bindings/         # Language bindings
-├── cli/              # Source code for `icube` command-line tool
 ├── cmake/            # templates or modules for cmake use
 ├── dev/              # Scripts to eases development
 ├── include/          # Public C++ SDK headers

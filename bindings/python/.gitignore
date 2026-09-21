@@ -3,3 +3,7 @@ __pycache__/
 .pytest_cache/
 dist/
 cxx/
+*.so
+*.dll
+*.pyd
+*.dylib

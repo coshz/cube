@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/cube-python.svg)](https://pypi.org/project/cube-python/)
 [![PyPI License](https://img.shields.io/pypi/l/cube-python.svg)](https://pypi.org/project/cube-python/)
-[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/master/bindings/python)
+[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/HEAD/bindings/python)
 
 
 High-performance Rubik's Cube solver Python bindings powered by C/C++ FFI.
@@ -18,7 +18,7 @@ pip install cube-python
 ## Quickstart
 
 ```python
-iimport pycube
+import pycube
 from pycube import SolveError
 
 # Default solved cube string representation

@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/coshz/cube/tree/master/bindings/python#readme"
+Documentation = "https://github.com/coshz/cube/tree/HEAD/bindings/python#readme"
 Source = "https://github.com/coshz/cube"
 "Bug Tracker" = "https://github.com/coshz/cube/issues"
 

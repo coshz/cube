@@ -2,8 +2,8 @@
 
 [![Crates.io](https://img.shields.io/crates/v/cube-rust.svg)](https://crates.io/crates/cube-rust)
 [![Documentation](https://docs.rs/cube-rust/badge.svg)](https://docs.rs/cube-rust)
-[![License](https://img.shields.io/crates/l/cube-rust.svg)](https://github.com/coshz/cube/tree/master/bindings/rust#license)
-[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/master/bindings/rust)
+[![License](https://img.shields.io/crates/l/cube-rust.svg)](https://github.com/coshz/cube/tree/HEAD/bindings/rust#license)
+[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/HEAD/bindings/rust)
 
 A high-performance, memory-safe Rust FFI wrapper for a C++ Rubik's Cube solver engine (Two-Phase Algorithm).
 

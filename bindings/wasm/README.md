@@ -4,7 +4,7 @@
 
 ![npm version](https://img.shields.io/npm/v/@coshz/jscube?style=flat-square&color=blue)
 ![license](https://img.shields.io/npm/l/@coshz/jscube?style=flat-square)
-[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/master/bindings/wasm)
+[![GitHub](https://img.shields.io/badge/github-coshz%2Fcube-blue?logo=github)](https://github.com/coshz/cube/tree/HEAD/bindings/wasm)
 
 **High-performance, cross-platform WebAssembly Rubik's Cube core algorithm engine.**
 
