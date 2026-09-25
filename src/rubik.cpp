@@ -1,8 +1,16 @@
-#include "utils.hpp"
 #include "rubik.hh"
+#include "data.hpp"
+
+#include <algorithm>
+#include <array>
+#include <set>
 #include <cassert>
+#include <stdexcept>
+#include <string_view>
 
 namespace cube {
+
+using namespace cube::data;
 
 ColorState ColorState::fromString(std::string_view cube)
 {
@@ -21,6 +29,34 @@ ColorState ColorState::fromString(std::string_view cube)
         }
     });
     return { xs };
+}
+
+bool ColorState::is_valid_config(std::string_view cfg)
+{
+    // check size
+    if(cfg.size() != 54) return false;
+       
+    // check centers
+    std::set<char> vs { cfg[CC[0]],cfg[CC[1]],cfg[CC[2]],cfg[CC[3]],cfg[CC[4]],cfg[CC[5]] };
+    if(vs.size() != 6) return false;
+
+    // check cubies
+    for(size_t i = 0, x = 0; i < 8; i++) {
+        for(x = 0; x < 24; x++) {
+            if(cfg[CC[CCI[i][0]]] == cfg[CF[x/3][x%3]]
+               && cfg[CC[CCI[i][1]]] == cfg[CF[x/3][(x+1)%3]]
+               && cfg[CC[CCI[i][2]]] == cfg[CF[x/3][(x+2)%3]]) break;
+        }
+        if(x >= 24) return false;
+    }
+    for(size_t i = 0, y = 0; i < 12; i++) {
+        for(y = 0; y < 24; y++) {
+            if(cfg[CC[ECI[i][0]]] == cfg[EF[y/2][y%2]]
+               && cfg[CC[ECI[i][1]]] == cfg[EF[y/2][(y+1)%2]]) break;
+        }
+        if(y >= 24) return false;
+    }
+    return true;
 }
 
 FaceCube ColorState::toFaceCube() const

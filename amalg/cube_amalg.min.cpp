@@ -2,41 +2,224 @@
  * File: cube_amalg.min.cpp
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
- * Version: 0.4.0
- * Date: 2026-09-17
+ * Version: v0.4.2
+ * Date: 2026-09-26
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
  * Copyright (c) 2026 coshz <fsinhx@gmail.com>. All rights reserved.
  */
 
-#include <iostream>
+#include <cstddef>
 #include <vector>
 #include <array>
-#include <set>
 #include <algorithm>
 #include <utility>
 #include <numeric>
 #include <stdexcept>
+#include <initializer_list>
 #include <cassert>
-#include <cstdlib>
-#include <regex>
-#include <string>
-#include <sstream>
+#include <cstdint>
+#include <string_view>
+#include <set>
 #include <filesystem>
+#include <type_traits>
+#include <limits>
+#include <fstream>
+#include <ios>
+#include <tuple>
+#include <cstdlib>
 #include <chrono>
 #include <optional>
-#include <type_traits>
-#include <string_view>
-#include <cmath>
-#include <fstream>
-#include <limits>
-#include <tuple>
+#include <string>
+#include <cstring>
+#include <regex>
+#include <sstream>
 #include <stdbool.h>
 #include <stdint.h>
-#include <format>
-#include <cstring>
 
+namespace cube::math {
+using std::size_t;
+template<typename VectorLike>
+auto decomposite(const VectorLike &xs) -> std::pair<
+    std::vector<typename VectorLike::value_type>,
+    std::vector<std::vector<typename VectorLike::value_type>>
+>
+{
+    using T = typename VectorLike::value_type;
+    std::vector<T> fixed;
+    std::vector<std::vector<T>> cycles;
+    std::vector<bool> visited(xs.size(),false);
+    for(int i = 0; i < xs.size(); ++i) {
+        if(visited[i]) continue;
+        std::vector<T> cycle;
+        for(int j = xs[i]; j != i; j = xs[j]) {
+            visited[j] = true;
+            cycle.push_back(static_cast<T>(j));
+        }
+        visited[i] = true;
+        cycle.push_back(static_cast<T>(i));
+        if(cycle.size() > 1) cycles.push_back(cycle);
+        else fixed.push_back(cycle[0]);
+    }
+    std::sort(cycles.begin(), cycles.end(), [](auto &v1, auto &v2){
+        return v1.size() > v2.size();
+    });
+    return std::make_pair(fixed,cycles);
+}
+constexpr size_t factorial(size_t n)
+{
+    if(n>=21) throw std::invalid_argument("factorial(n) overflows for n >= 21");
+    return n == 0 ? 1 : n * factorial(n-1);
+}
+constexpr size_t binomial(size_t n, size_t k)
+{
+    if(n < k)   return 0;
+    if(n == k)  return 1;
+    size_t r = 1, m = std::min(k, n-k);
+    for(size_t i = 1; i <= m; i++) r *= n-i+1;
+    for(size_t i = 1; i <= m; i++) r /= i;
+    return r;
+};
+template<typename T, size_t N>
+size_t orderOf(const std::array<T,N> &xs)
+{
+    size_t m = 1;
+    auto cs = decomposite(xs);
+    for(size_t i = 1; i < cs.size(); i++) { m = std::lcm(m, cs[i].size()); }
+    return m;
+}
+template<typename T, size_t N>
+constexpr size_t rankOf(const std::array<T,N> &xs)
+{
+    size_t r = 0;
+    std::array<bool,N> used {false};
+    for(size_t i = 0; i < N; i++)
+    {
+        int cnt = 0;
+        for(int j=0; j < xs[i]; j++) if(!used[j]) cnt++;
+        r += cnt * factorial(N - i - 1);
+        used[xs[i]] = true;
+    }
+    return r;
+}
+template<typename T, size_t N>
+constexpr std::array<T,N> fromRank(size_t r)
+{
+    std::array<T,N> A{};
+    std::array<bool,N> used {false};
+    for(size_t i = 0; i < N; i++)
+    {
+        size_t f = factorial(N - i - 1);
+        size_t cnt = r / f;
+        r %= f;
+        for(size_t j = 0; j < N; j++)
+        {
+            if(used[j]) continue;
+            if(cnt-- == 0) {
+                A[i] = j;
+                used[j] = true;
+                break;
+            }
+        }
+    }
+    return A;
+}
+template<typename F, typename T, size_t N>
+constexpr std::array<T,N+1> nestList(F &&f, T &&x)
+{
+    std::array<T,N+1> r;
+    r[0] = x;
+    for(auto i = 1; i <= N; i++) r[i] = f(r[i-1]);
+    return r;
+}
+template<size_t Begin, size_t End, typename T, size_t N>
+constexpr auto takeByRange(const std::array<T,N>& xs) -> std::array<T,End-Begin+1>
+{
+    static_assert(Begin <= End && End < N);
+    std::array<T,End-Begin+1> ys;
+    std::copy(xs.begin()+Begin,xs.begin()+End+1,ys.begin());
+    return ys;
+}
+template<size_t B, typename Int, size_t N>
+constexpr auto fromDigits(const std::array<Int,N> &xs) -> size_t
+{
+    auto pow = [](size_t base, size_t exp) -> size_t {
+        size_t prod = 1;
+        for(size_t i = 0; i < exp; i++) prod *= base;
+        return prod;
+    };
+    size_t res = 0;
+    for(size_t i = 0; i < N; i++) res += static_cast<size_t>(xs[i]) * pow(B, N-i-1);
+    return res;
+}
+template<size_t B, size_t N, typename Int>
+constexpr auto toDigits(size_t i) -> std::array<Int,N>
+{
+    auto pow = [](size_t base, size_t exp) -> size_t {
+        size_t prod = 1;
+        for(size_t i = 0; i < exp; i++) prod *= base;
+        return prod;
+    };
+    std::array<Int,N> a {};
+    for(size_t k = 0; k < N; k++) {
+        size_t z = pow(B, N-1-k);
+        a[k] = static_cast<Int>(i / z);
+        i = i % z;
+    }
+    return a;
+}
+template<size_t N, size_t M>
+constexpr auto lexicalOrderFromIndices(const std::array<size_t,M> &X) -> int
+{
+    static_assert(M<=N);
+    int rank = 0;
+    for(size_t i = 0; i < M; i++) rank += binomial(N-1-X[i],M-i);
+    return rank;
+}
+template<size_t N, size_t M>
+constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>
+{
+    static_assert(M<=N);
+    std::array<size_t,M> X {};
+    size_t n=rank, k=0;
+    for(size_t i = 0; i < M; i++) {
+        while(binomial(N-1-k,M-i) > n || n >= binomial(N-k,M-i)) k++;
+        X[i] = k;
+        n -= binomial(N-1-k,M-i);
+        k += 1;
+    }
+    return X;
+}
+template<size_t N, typename ArrayLike>
+constexpr bool isValidPermutation(const ArrayLike& xs)
+{
+    if(xs.size() != N) return false;
+    std::array<bool,N> visited{};
+    for(auto i = 0; i < N; ++i) {
+        size_t val = static_cast<size_t>(xs[i]);
+        if(xs[i] < 0 || xs[i] >= N) return false;
+        if(visited[val]) return false;
+        visited[val] = true;
+    }
+    return true;
+}
+template<typename Array, typename Perm>
+constexpr Array backpermute(const Array& src, const Perm& P)
+{
+    Array out{src};
+    for (size_t i = 0; i < P.size(); ++i) { out[i] = src[P[i]]; }
+    return out;
+}
+template<typename Array, typename Perm>
+constexpr Array forepermute(const Array& src, const Perm& P)
+{
+    Array out{src};
+    for (size_t i = 0; i < P.size(); ++i) { out[P[i]] = src[i]; }
+    return out;
+}
+}
+namespace cube::data {
 enum Face       { U1,U2,U3,U4,U5,U6,U7,U8,U9,R1,R2,R3,R4,R5,R6,R7,R8,R9,F1,F2,F3,F4,F5,F6,F7,F8,F9,D1,D2,D3,D4,D5,D6,D7,D8,D9,L1,L2,L3,L4,L5,L6,L7,L8,L9,B1,B2,B3,B4,B5,B6,B7,B8,B9 };
 enum Layer      { U,R,F,D,L,B };
 enum TurnMove   { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
@@ -120,336 +303,6 @@ enum Constant {
     EQ_FLIPSLICE= 64430,
     EQ_CORNER   = 2768,
 };
-namespace cube::math {
-using std::size_t;
-template<typename VectorLike>
-auto decomposite(const VectorLike &xs) -> std::pair<std::vector<typename VectorLike::value_type>,std::vector<std::vector<typename VectorLike::value_type>>>;
-template<typename T, size_t N>
-size_t orderOf(const std::array<T,N> &xs);
-template<typename T, size_t N>
-constexpr size_t rankOf(const std::array<T,N> &xs);
-template<typename T, size_t N>
-constexpr std::array<T,N> fromRank(size_t r);
-template<typename F, typename T, size_t N>
-constexpr std::array<T,N+1> nestList(F &&f, T &&x);
-template<size_t Begin, size_t End, typename T, size_t N>
-constexpr auto takeByRange(const std::array<T,N>&) -> std::array<T,End-Begin+1>;
-template<size_t B, typename Int, size_t N>
-constexpr auto fromDigits(const std::array<Int,N> &xs) -> size_t;
-template<size_t B, size_t N, typename Int>
-constexpr auto toDigits(size_t i) -> std::array<Int,N>;
-constexpr size_t factorial(size_t n);
-constexpr size_t binomial(size_t n, size_t k);
-template<size_t N, size_t M>
-constexpr auto lexicalOrderFromIndices(const std::array<size_t,M> &X) -> int;
-template<size_t N, size_t M>
-constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>;
-template<size_t N, typename ArrayLike>
-constexpr bool isValidPermutation(const ArrayLike& xs);
-template<typename Array, typename Perm>
-constexpr Array backpermute(const Array& src, const Perm& P);
-template<typename Array, typename Perm>
-constexpr Array forepermute(const Array& src, const Perm& P);
-template<typename VectorLike>
-auto decomposite(const VectorLike &xs) -> std::pair<std::vector<typename VectorLike::value_type>,std::vector<std::vector<typename VectorLike::value_type>>>
-{
-    using T = typename VectorLike::value_type;
-    std::vector<T> fixed;
-    std::vector<std::vector<T>> cycles;
-    std::vector<bool> visited(xs.size(),false);
-    for(int i = 0; i < xs.size(); ++i) {
-        if(visited[i]) continue;
-        std::vector<T> cycle;
-        for(int j = xs[i]; j != i; j = xs[j]) {
-            visited[j] = true;
-            cycle.push_back(static_cast<T>(j));
-        }
-        visited[i] = true;
-        cycle.push_back(static_cast<T>(i));
-        if(cycle.size() > 1) cycles.push_back(cycle);
-        else fixed.push_back(cycle[0]);
-    }
-    std::sort(cycles.begin(), cycles.end(), [](auto &v1, auto &v2){
-        return v1.size() > v2.size();
-    });
-    return std::make_pair(fixed,cycles);
-}
-template<typename T, size_t N>
-size_t orderOf(const std::array<T,N> &xs)
-{
-    size_t m = 1;
-    auto cs = decomposite(xs);
-    for(size_t i = 1; i < cs.size(); i++) { m = std::lcm(m, cs[i].size()); }
-    return m;
-}
-template<typename T, size_t N>
-constexpr size_t rankOf(const std::array<T,N> &xs)
-{
-    size_t r = 0;
-    std::array<bool,N> used {false};
-    for(size_t i = 0; i < N; i++)
-    {
-        int cnt = 0;
-        for(int j=0; j < xs[i]; j++) if(!used[j]) cnt++;
-        r += cnt * factorial(N - i - 1);
-        used[xs[i]] = true;
-    }
-    return r;
-}
-template<typename T, size_t N>
-constexpr std::array<T,N> fromRank(size_t r)
-{
-    std::array<T,N> A{};
-    std::array<bool,N> used {false};
-    for(size_t i = 0; i < N; i++)
-    {
-        size_t f = factorial(N - i - 1);
-        size_t cnt = r / f;
-        r %= f;
-        for(size_t j = 0; j < N; j++)
-        {
-            if(used[j]) continue;
-            if(cnt-- == 0) {
-                A[i] = j;
-                used[j] = true;
-                break;
-            }
-        }
-    }
-    return A;
-}
-template<typename F, typename T, size_t N>
-constexpr std::array<T,N+1> nestList(F &&f, T &&x)
-{
-    std::array<T,N+1> r;
-    r[0] = x;
-    for(auto i = 1; i <= N; i++) r[i] = f(r[i-1]);
-    return r;
-}
-template<size_t Begin, size_t End, typename T, size_t N>
-constexpr auto takeByRange(const std::array<T,N> &xs) -> std::array<T,End-Begin+1>
-{
-    static_assert(Begin <= End && End < N);
-    std::array<T,End-Begin+1> ys;
-    std::copy(xs.begin()+Begin,xs.begin()+End+1,ys.begin());
-    return ys;
-}
-template<size_t B, typename Int, size_t N>
-constexpr auto fromDigits(const std::array<Int,N> &xs) -> size_t
-{
-    auto pow = [](size_t base, size_t exp) -> size_t {
-        size_t prod = 1;
-        for(size_t i = 0; i < exp; i++) prod *= base;
-        return prod;
-    };
-    size_t res = 0;
-    for(size_t i = 0; i < N; i++) res += static_cast<size_t>(xs[i]) * pow(B, N-i-1);
-    return res;
-}
-template<size_t B, size_t N, typename Int>
-constexpr auto toDigits(size_t i) -> std::array<Int,N>
-{
-    auto pow = [](size_t base, size_t exp) -> size_t {
-        size_t prod = 1;
-        for(size_t i = 0; i < exp; i++) prod *= base;
-        return prod;
-    };
-    std::array<Int,N> a {};
-    for(size_t k = 0; k < N; k++) {
-        size_t z = pow(B, N-1-k);
-        a[k] = static_cast<Int>(i / z);
-        i = i % z;
-    }
-    return a;
-}
-constexpr size_t binomial(size_t n, size_t k)
-{
-    if(n < k)   return 0;
-    if(n == k)  return 1;
-    size_t r = 1, m = std::min(k, n-k);
-    for(size_t i = 1; i <= m; i++) r *= n-i+1;
-    for(size_t i = 1; i <= m; i++) r /= i;
-    return r;
-};
-constexpr size_t factorial(size_t n)
-{
-    if(n>=21) throw std::invalid_argument("factorial(n) overflows for n >= 21");
-    return n == 0 ? 1 : n * factorial(n-1);
-}
-template<size_t N, size_t M>
-constexpr auto lexicalOrderFromIndices(const std::array<size_t,M> &X) -> int
-{
-    static_assert(M<=N);
-    int rank = 0;
-    for(size_t i = 0; i < M; i++) rank += binomial(N-1-X[i],M-i);
-    return rank;
-}
-template<size_t N, size_t M>
-constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>
-{
-    static_assert(M<=N);
-    std::array<size_t,M> X {};
-    size_t n=rank, k=0;
-    for(size_t i = 0; i < M; i++) {
-        while(binomial(N-1-k,M-i) > n || n >= binomial(N-k,M-i)) k++;
-        X[i] = k;
-        n -= binomial(N-1-k,M-i);
-        k += 1;
-    }
-    return X;
-}
-template<size_t N, typename ArrayLike>
-constexpr bool isValidPermutation(const ArrayLike& xs)
-{
-    if(xs.size() != N) return false;
-    std::array<bool,N> visited{};
-    for(auto i = 0; i < N; ++i) {
-        size_t val = static_cast<size_t>(xs[i]);
-        if(xs[i] < 0 || xs[i] >= N) return false;
-        if(visited[val]) return false;
-        visited[val] = true;
-    }
-    return true;
-}
-template<typename Array, typename Perm>
-constexpr Array backpermute(const Array& src, const Perm& P)
-{
-    Array out{src};
-    for (size_t i = 0; i < P.size(); ++i) { out[i] = src[P[i]]; }
-    return out;
-}
-template<typename Array, typename Perm>
-constexpr Array forepermute(const Array& src, const Perm& P)
-{
-    Array out{src};
-    for (size_t i = 0; i < P.size(); ++i) { out[P[i]] = src[i]; }
-    return out;
-}
-}
-namespace cube::utils {
-inline auto get_cache_dir() -> std::filesystem::path
-{
-#ifdef _WIN32
-    const char* localAppData = std::getenv("LOCALAPPDATA");
-    if (localAppData) return std::filesystem::path(localAppData);
-#elif __APPLE__
-    const char* home = std::getenv("HOME");
-    if (home) return std::filesystem::path(home) / "Library" / "Caches";
-#else
-    const char* xdgCache = std::getenv("XDG_CACHE_HOME");
-    if (xdgCache) return std::filesystem::path(xdgCache);
-    const char* home = std::getenv("HOME");
-    if (home) return std::filesystem::path(home) / ".cache";
-#endif
-    throw std::runtime_error("Unable to determine cache path");
-}
-template<typename F, typename... Args>
-inline auto time_execution(F&& f, Args&&... args)
-{
-    using Rf = std::invoke_result_t<F, Args...>;
-    auto start = std::chrono::high_resolution_clock::now();
-    auto duration_from_start = [start](){
-        auto end = std::chrono::high_resolution_clock::now();
-        return std::chrono::duration_cast<std::chrono::microseconds>(end-start);
-    };
-    if constexpr (std::is_void_v<Rf>) {
-        std::forward<F>(f)(std::forward<Args>(args)...);
-        return std::make_pair(
-            duration_from_start(),
-            std::nullopt
-        );
-    } else {
-        auto result = std::forward<F>(f)(std::forward<Args>(args)...);
-        return std::make_pair(
-            duration_from_start(),
-            std::make_optional(result)
-        );
-    }
-}
-template<typename VectorLike>
-bool is_valid_config(const VectorLike &cfg)
-{
-    if(cfg.size() != 54) return false;
-    std::set<char> vs { cfg[CC[0]],cfg[CC[1]],cfg[CC[2]],cfg[CC[3]],cfg[CC[4]],cfg[CC[5]] };
-    if(vs.size() != 6) return false;
-    for(size_t i = 0, x = 0; i < 8; i++) {
-        for(x = 0; x < 24; x++) {
-            if(cfg[CC[CCI[i][0]]] == cfg[CF[x/3][x%3]]
-               && cfg[CC[CCI[i][1]]] == cfg[CF[x/3][(x+1)%3]]
-               && cfg[CC[CCI[i][2]]] == cfg[CF[x/3][(x+2)%3]]) break;
-        }
-        if(x >= 24) return false;
-    }
-    for(size_t i = 0, y = 0; i < 12; i++) {
-        for(y = 0; y < 24; y++) {
-            if(cfg[CC[ECI[i][0]]] == cfg[EF[y/2][y%2]]
-               && cfg[CC[ECI[i][1]]] == cfg[EF[y/2][(y+1)%2]]) break;
-        }
-        if(y >= 24) return false;
-    }
-    return true;
-}
-inline bool is_valid_maneuver(std::string_view s)
-{
-    static const std::regex pat(
-        R"(\s*(([UDLRFB]['23]?|\(([UDLRFB]['23]?\s*)+\)(\{\d+\})?)\s*)*)"
-    );
-    return std::regex_match(s.begin(), s.end(), pat);
-}
-inline auto parse_manuever(std::string_view s) -> std::vector<TurnMove>
-{
-    assert(is_valid_maneuver(s) && "invalid maneuver");
-    auto expand = [](std::string_view in) -> std::string {
-        static const std::regex group_re(R"(\(([^)]+)\)(?:\{(\d+)\})?)");
-        std::string res;
-        auto start = in.cbegin();
-        std::match_results<std::string_view::const_iterator> m;
-        while (std::regex_search(start, in.cend(), m, group_re)) {
-            res.append(start, m[0].first);
-            int repeat = m[2].matched ? std::stoi(m[2].str()) : 1;
-            for (int i = 0; i < repeat; ++i) res += m[1].str();
-            start = m[0].second;
-        }
-        res.append(start, in.cend());
-        return res;
-    };
-    auto char_to_move = [](char c) -> TurnMove {
-        switch(c) {
-        case 'U': return Ux1;
-        case 'R': return Rx1;
-        case 'F': return Fx1;
-        case 'D': return Dx1;
-        case 'L': return Lx1;
-        case 'B': return Bx1;
-        default: throw std::invalid_argument("char_to_move: ???");
-        }
-    };
-    std::string in = expand(s);
-    std::vector<TurnMove> ms;
-    ms.reserve(in.size());
-    for (char c : in)
-    {
-        switch (c) {
-        case ' ': break;
-        case '2':
-            ms.back() = static_cast<TurnMove>(ms.back() + 1);
-            break;
-        case '\'':
-            ms.back() = static_cast<TurnMove>(ms.back() + 2);
-            break;
-        default:
-            ms.push_back(char_to_move(c));
-            break;
-        }
-    }
-    return ms;
-}
-inline std::vector<TurnMove> operator""_Tm(const char* ts, size_t n)
-{
-    return parse_manuever(std::string(ts,n));
-}
-}
-namespace cube::data {
 using std::size_t;
 using namespace cube::math;
 template<size_t N,typename T=int>
@@ -600,8 +453,7 @@ struct NArray
 }
 namespace cube {
 using namespace cube::data;
-using namespace cube::utils;
-typedef int8_t cube_value_t;
+typedef std::int8_t cube_value_t;
 typedef Perm<54,    cube_value_t>   FacePerm;
 typedef Perm<8,     cube_value_t>   CornerPerm;
 typedef Perm<12,    cube_value_t>   EdgePerm;
@@ -620,6 +472,7 @@ struct ColorState
     Layer & operator[](size_t i) noexcept           { return s[i]; }
     const Layer operator[](size_t i) const noexcept { return s[i]; }
     static ColorState fromString(std::string_view cube);
+    static bool is_valid_config(std::string_view cube);
     FaceCube  toFaceCube() const;
     CubieCube toCubieCube() const;
     static const ColorState id;
@@ -709,6 +562,7 @@ inline ColorState operator*(const ColorState &c, const std::vector<TurnMove> &ms
 }
 }
 namespace cube {
+using namespace cube::data;
 ColorState ColorState::fromString(std::string_view cube)
 {
     assert(is_valid_config(cube) && "invalid cube config");
@@ -725,6 +579,28 @@ ColorState ColorState::fromString(std::string_view cube)
         }
     });
     return { xs };
+}
+bool ColorState::is_valid_config(std::string_view cfg)
+{
+    if(cfg.size() != 54) return false;
+    std::set<char> vs { cfg[CC[0]],cfg[CC[1]],cfg[CC[2]],cfg[CC[3]],cfg[CC[4]],cfg[CC[5]] };
+    if(vs.size() != 6) return false;
+    for(size_t i = 0, x = 0; i < 8; i++) {
+        for(x = 0; x < 24; x++) {
+            if(cfg[CC[CCI[i][0]]] == cfg[CF[x/3][x%3]]
+               && cfg[CC[CCI[i][1]]] == cfg[CF[x/3][(x+1)%3]]
+               && cfg[CC[CCI[i][2]]] == cfg[CF[x/3][(x+2)%3]]) break;
+        }
+        if(x >= 24) return false;
+    }
+    for(size_t i = 0, y = 0; i < 12; i++) {
+        for(y = 0; y < 24; y++) {
+            if(cfg[CC[ECI[i][0]]] == cfg[EF[y/2][y%2]]
+               && cfg[CC[ECI[i][1]]] == cfg[EF[y/2][(y+1)%2]]) break;
+        }
+        if(y >= 24) return false;
+    }
+    return true;
 }
 FaceCube ColorState::toFaceCube() const
 {
@@ -954,19 +830,17 @@ CubieCube Coord::Coord2CubieCube(const Coord &c)
     };
 }
 }
-namespace cube::internal
-{
-void set_table_dir(std::string_view dir);
+namespace cube::config {
+void set_table_dir(std::filesystem::path dir);
 auto get_table_dir() -> std::filesystem::path;
-bool is_table_ready();
-void preload_tables();
 }
 namespace cube::pdb {
-#define TABLE_DIR_DEFAULT cube::internal::get_table_dir()
+using namespace cube::data;
+namespace fs = std::filesystem;
 typedef uint16_t    mt_value_t;
 typedef uint8_t     pt_value_t;
-template <typename Table> void save_to(const Table &table, std::filesystem::path path);
-template <typename Table> void load_from(Table &table, std::filesystem::path path);
+template <typename Table> void save_to(const Table &table, fs::path path);
+template <typename Table> void load_from(Table &table, fs::path path);
 template<class T>
 class Singleton
 {
@@ -989,14 +863,15 @@ struct TableMove
     static_assert(std::is_integral<T>::value);
     static_assert(std::numeric_limits<T>::digits >= 16);
     using value_t = T;
-    TableMove(std::filesystem::path dir = TABLE_DIR_DEFAULT);
+    TableMove(fs::path dir = {});
     TableMove(const TableMove &) = delete;
     ~TableMove();
     TableMove& operator=(const TableMove &) = delete;
     template<typename Table, typename F1, typename F2>
     std::enable_if_t<Table::shape[0] == N_MOVE, void>
-    buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string filename="");
-    const std::filesystem::path tdir;
+    buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, fs::path filename);
+    static bool is_ready(fs::path);
+    const fs::path tdir;
     NArray<T,N_MOVE,N_TWIST>   *pTMTwist;
     NArray<T,N_MOVE,N_FLIP>    *pTMFlip;
     NArray<T,N_MOVE,N_SLICE>   *pTMSlice;
@@ -1008,21 +883,35 @@ template<typename T=pt_value_t>
 struct TablePrunning
 {
     using value_type = T;
-    TablePrunning(std::filesystem::path dir = TABLE_DIR_DEFAULT);
+    TablePrunning(fs::path dir = {});
     TablePrunning(const TablePrunning &) = delete;
     ~TablePrunning();
     TablePrunning operator=(const TablePrunning &) = delete;
     template<typename Table, typename MT1, typename MT2>
     std::enable_if_t<Table::shape[0] == MT1::shape[1] && Table::shape[1] == MT2::shape[1]>
-    buildPrunningTable(Table &t, const MT1 &mt1, const MT2 &mt2, std::string filename);
-    const std::filesystem::path tdir;
+    buildPrunningTable(Table &t, const MT1 &mt1, const MT2 &mt2, fs::path filename);
+    static bool is_ready(fs::path);
+    const fs::path tdir;
     NArray<T,N_SLICE,N_FLIP>   *pTPSliceFlip;
     NArray<T,N_SLICE,N_TWIST>  *pTPSliceTwist;
     NArray<T,N_EDGE4,N_EDGE8>  *pTPEdge4Edge8;
     NArray<T,N_EDGE4,N_CORNER> *pTPEdge4Corner;
 };
-inline const auto &get_TM() { return Singleton<TableMove<mt_value_t>>::instance(); }
-inline const auto &get_TP() { return Singleton<TablePrunning<pt_value_t>>::instance(); }
+template<typename T=mt_value_t>
+using SingletonTM = Singleton<TableMove<T>>;
+template<typename T=pt_value_t>
+using SingletonTP = Singleton<TablePrunning<T>>;
+inline const auto &get_TM() { return SingletonTM<>::instance(); }
+inline const auto &get_TP() { return SingletonTP<>::instance(); }
+inline bool tables_ready(fs::path dir = {})
+{
+    return TableMove<>::is_ready(dir) && TablePrunning<>::is_ready(dir);
+}
+inline void preload_tables()
+{
+    (void) get_TM();
+    (void) get_TP();
+}
 }
 #if defined(VERBOSE) && VERBOSE
 #define VPRINT(...) printf(__VA_ARGS__)
@@ -1030,7 +919,11 @@ inline const auto &get_TP() { return Singleton<TablePrunning<pt_value_t>>::insta
 #define VPRINT(...)
 #endif
 namespace cube::pdb {
-namespace fs = std::filesystem;
+using namespace cube::data;
+auto table_dir_or_default(fs::path dir) -> fs::path
+{
+    return dir.empty() ? cube::config::get_table_dir() : dir;
+}
 template <typename Table>
 void save_to(const Table &table, fs::path path)
 {
@@ -1052,7 +945,7 @@ void load_from(Table &table, fs::path path)
 template<typename T>
 template<typename Table, typename F1, typename F2>
 std::enable_if_t<Table::shape[0] == N_MOVE>
-TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string filename)
+TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, fs::path filename)
 {
     VPRINT("creating move table %s of shape (%zu,%zu)... ",
            filename.c_str(), t.shape[0], t.shape[1]);
@@ -1063,8 +956,8 @@ TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string f
     VPRINT("done.\n");
 }
 template<typename T>
-TableMove<T>::TableMove(std::filesystem::path dir)
-:tdir(dir)
+TableMove<T>::TableMove(fs::path dir)
+:tdir{table_dir_or_default(dir)}
 {
     VPRINT("INIT MOVE TABLES -- \n");
     pTMTwist     = new NArray<T,N_MOVE,N_TWIST>;
@@ -1073,7 +966,7 @@ TableMove<T>::TableMove(std::filesystem::path dir)
     pTMCorner    = new NArray<T,N_MOVE,N_CORNER>;
     pTMEdge4     = new NArray<T,N_MOVE,N_EDGE4>;
     pTMEdge8     = new NArray<T,N_MOVE,N_EDGE8>;
-    if(!fs::exists(tdir/"tm_twist.dat")) {
+    if(!is_ready(tdir)) {
         if(!fs::exists(tdir)) fs::create_directories(tdir);
         buildMoveTable(*pTMTwist, Coord::co2twist, Coord::twist2co, "tm_twist.dat");
         buildMoveTable(*pTMFlip, Coord::eo2flip, Coord::flip2eo, "tm_flip.dat");
@@ -1102,10 +995,21 @@ TableMove<T>::~TableMove()
     delete pTMEdge8;
 }
 template<typename T>
+bool TableMove<T>::is_ready(fs::path tdir)
+{
+    tdir = table_dir_or_default(tdir);
+    return fs::exists(tdir/"tm_twist.dat") &&
+           fs::exists(tdir/"tm_flip.dat") &&
+           fs::exists(tdir/"tm_slice.dat") &&
+           fs::exists(tdir/"tm_corner.dat") &&
+           fs::exists(tdir/"tm_edge4.dat") &&
+           fs::exists(tdir/"tm_edge8.dat");
+}
+template<typename T>
 template<typename Table, typename MT1, typename MT2>
 std::enable_if_t<Table::shape[0] == MT1::shape[1] && Table::shape[1] == MT2::shape[1]>
 TablePrunning<T>::buildPrunningTable(
-    Table &t, const MT1 &mt1, const MT2 &mt2, std::string filename)
+    Table &t, const MT1 &mt1, const MT2 &mt2, fs::path filename)
 {
     VPRINT("creating prunning table %s of shape (%zu,%zu):\n",
            filename.c_str(), mt1.shape[1], mt2.shape[1]);
@@ -1116,8 +1020,7 @@ TablePrunning<T>::buildPrunningTable(
     VPRINT("\tdepth %2d: %10zu / %-10zu.\n", depth, count, t.size);
     while(count < t.size)
     {
-        for(size_t i = 0; i < t.shape[0]; i++)
-        for(size_t j = 0; j < t.shape[1]; j++)
+        for(size_t i = 0; i < t.shape[0]; i++) for(size_t j = 0; j < t.shape[1]; j++)
         if(t[i][j] == depth) {
             for(auto k = 0; k < N_MOVE; k++) {
                 auto ii = mt1[k][i], jj = mt2[k][j];
@@ -1131,15 +1034,15 @@ TablePrunning<T>::buildPrunningTable(
     VPRINT("done.\n");
 }
 template<typename T>
-TablePrunning<T>::TablePrunning(std::filesystem::path dir)
-:tdir(dir)
+TablePrunning<T>::TablePrunning(fs::path dir)
+:tdir{table_dir_or_default(dir)}
 {
     VPRINT("INIT PRUNNING TABLES -- \n");
     pTPSliceFlip     = new NArray<T,N_SLICE,N_FLIP>;
     pTPSliceTwist    = new NArray<T,N_SLICE,N_TWIST>;
     pTPEdge4Edge8    = new NArray<T,N_EDGE4,N_EDGE8>;
     pTPEdge4Corner   = new NArray<T,N_EDGE4,N_CORNER>;
-    if(!fs::exists(tdir/"tp_slicetwist.dat")) {
+    if(!is_ready(tdir)) {
         const auto &TM = get_TM();
         buildPrunningTable(*pTPSliceTwist, *TM.pTMSlice, *TM.pTMTwist, "tp_slicetwist.dat");
         buildPrunningTable(*pTPSliceFlip, *TM.pTMSlice, *TM.pTMFlip, "tp_sliceflip.dat");
@@ -1161,10 +1064,20 @@ TablePrunning<T>::~TablePrunning()
     delete pTPEdge4Edge8;
     delete pTPEdge4Corner;
 }
+template<typename T>
+bool TablePrunning<T>::is_ready(fs::path tdir)
+{
+    tdir = table_dir_or_default(tdir);
+    return fs::exists(tdir/"tp_slicetwist.dat") &&
+           fs::exists(tdir/"tp_sliceflip.dat") &&
+           fs::exists(tdir/"tp_edge4corner.dat") &&
+           fs::exists(tdir/"tp_edge4edge8.dat");
+}
 template struct TableMove<>;
 template struct TablePrunning<>;
 }
 namespace cube::solver {
+using namespace cube::data;
 using namespace cube::pdb;
 class TwoPhaseSolver
 {
@@ -1209,9 +1122,9 @@ private:
     std::array<std::pair<size_t,std::array<int,DS>>,2>  rsolution_;
 };
 }
-#define TM get_TM()
-#define TP get_TP()
 namespace cube::solver {
+#define TM cube::pdb::get_TM()
+#define TP cube::pdb::get_TP()
 inline bool is_dull_triple(const TurnMove A, const int B, const int C)
 {
     return ( B>=Ux1 && B<=Bx3 ) &&
@@ -1302,6 +1215,160 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
     return std::make_tuple(true, solution[0], solution[1]);
 }
 }
+namespace cube::utils {
+inline auto get_cache_dir() -> std::filesystem::path
+{
+#ifdef _WIN32
+    const char* localAppData = std::getenv("LOCALAPPDATA");
+    if (localAppData) return std::filesystem::path(localAppData);
+#elif __APPLE__
+    const char* home = std::getenv("HOME");
+    if (home) return std::filesystem::path(home) / "Library" / "Caches";
+#else
+    const char* xdgCache = std::getenv("XDG_CACHE_HOME");
+    if (xdgCache) return std::filesystem::path(xdgCache);
+    const char* home = std::getenv("HOME");
+    if (home) return std::filesystem::path(home) / ".cache";
+#endif
+    throw std::runtime_error("Unable to determine cache path");
+}
+template<typename F, typename... Args>
+inline auto time_execution(F&& f, Args&&... args)
+{
+    using Rf = std::invoke_result_t<F, Args...>;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto duration_from_start = [start](){
+        auto end = std::chrono::high_resolution_clock::now();
+        return std::chrono::duration_cast<std::chrono::microseconds>(end-start);
+    };
+    if constexpr (std::is_void_v<Rf>) {
+        std::forward<F>(f)(std::forward<Args>(args)...);
+        return std::make_pair(
+            duration_from_start(),
+            std::nullopt
+        );
+    } else {
+        auto result = std::forward<F>(f)(std::forward<Args>(args)...);
+        return std::make_pair(
+            duration_from_start(),
+            std::make_optional(result)
+        );
+    }
+}
+}
+namespace cube::config
+{
+namespace fs = std::filesystem;
+static fs::path& get_custom_dir_storage()
+{
+    static fs::path custom_dir = "";
+    return custom_dir;
+}
+void set_table_dir(fs::path dir)
+{
+    get_custom_dir_storage() = dir;
+}
+fs::path get_table_dir()
+{
+    const auto user_dir = get_custom_dir_storage();
+    if(!user_dir.empty()) return user_dir;
+    if(const char *env = std::getenv("CUBE_TABLE_DIR")) {
+        if(env[0] != '\0') return fs::path(env);
+    }
+    try {
+        return utils::get_cache_dir() / "cube.coshz" / "tables";
+    } catch (...) {
+        return fs::absolute("tables");
+    }
+}
+}
+namespace cube::internal
+{
+using namespace cube::data;
+std::string apply_maneuver(std::string_view s, const std::vector<TurnMove>& ms);
+auto parse_maneuver(std::string_view s) -> std::vector<TurnMove>;
+inline auto operator""_Tm(const char* ts, size_t n) -> std::vector<TurnMove>
+{
+    return parse_maneuver(std::string(ts,n));
+}
+bool is_valid_maneuver(std::string_view);
+}
+namespace cube {
+using namespace cube::data;
+namespace internal {
+std::string apply_maneuver(std::string_view s, const std::vector<TurnMove> &ms)
+{
+    assert(s.size() == 54 && "invalid cube length");
+    char buf[2][54];
+    std::memcpy(buf[0], s.data(), 54);
+    size_t curr = 0;
+    for(const auto &m : ms)
+    {
+        const auto& p   = ElementaryPerm[m].f;
+        const char* src = buf[curr];
+        char*       dst = buf[1-curr];
+        for(int i = 0; i < 54; ++i) dst[i] = src[p[i]];
+        curr = 1-curr;
+    }
+    return std::string(buf[curr],54);
+}
+auto parse_maneuver(std::string_view s) -> std::vector<TurnMove>
+{
+    assert(is_valid_maneuver(s) && "invalid maneuver");
+    auto expand = [](std::string_view in) -> std::string {
+        static const std::regex group_re(R"(\(([^)]+)\)(?:\{(\d+)\})?)");
+        std::string res;
+        auto start = in.cbegin();
+        std::match_results<std::string_view::const_iterator> m;
+        while (std::regex_search(start, in.cend(), m, group_re)) {
+            res.append(start, m[0].first);
+            int repeat = m[2].matched ? std::stoi(m[2].str()) : 1;
+            for (int i = 0; i < repeat; ++i) res += m[1].str();
+            start = m[0].second;
+        }
+        res.append(start, in.cend());
+        return res;
+    };
+    auto char_to_move = [](char c) -> TurnMove {
+        switch(c) {
+        case 'U': return Ux1;
+        case 'R': return Rx1;
+        case 'F': return Fx1;
+        case 'D': return Dx1;
+        case 'L': return Lx1;
+        case 'B': return Bx1;
+        default: throw std::invalid_argument("char_to_move: ???");
+        }
+    };
+    std::string in = expand(s);
+    std::vector<TurnMove> ms;
+    ms.reserve(in.size());
+    for (char c : in)
+    {
+        switch (c) {
+        case ' ': break;
+        case '2':
+            ms.back() = static_cast<TurnMove>(ms.back() + 1);
+            break;
+        case '\'':
+            ms.back() = static_cast<TurnMove>(ms.back() + 2);
+            break;
+        default:
+            ms.push_back(char_to_move(c));
+            break;
+        }
+    }
+    return ms;
+}
+bool is_valid_maneuver(std::string_view s)
+{
+    static const std::regex pat(
+        R"(\s*(([UDLRFB]['23]?|\(([UDLRFB]['23]?\s*)+\)(\{\d+\})?)\s*)*)"
+    );
+    return std::regex_match(s.begin(), s.end(), pat);
+}
+}
+}
 #ifndef CUBE_EXPORT_H
 #define CUBE_EXPORT_H
 #ifdef CUBE_STATIC_DEFINE
@@ -1334,84 +1401,68 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
 #  endif
 #endif
 #endif
-#define CUBE_VERSION_FULL  v0.4.0-alpha
-#define CUBE_VERSION_MAJOR 0
-#define CUBE_VERSION_MINOR 4
-#define CUBE_VERSION_PATCH 0
-#define CUBE_VERSION_BUILD alpha
-#if defined(__GNUC__) || defined(__clang__)
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT __attribute__((used))
-#else
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT
+#ifndef __cplusplus
+#error "This is a C++ header; please use a C++ compiler OR include cube/cube.h instead"
 #endif
-#ifdef __cplusplus
-    #define Default(x) = x
-#else
-    #define Default(x)
-#endif
-#define CUBE_BS 128
-#define CUBE_ID "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
-#ifndef CF_ENUM
-    #if defined(__cplusplus)
-        #define CF_ENUM(_type, _name) \
-            int __CF_ENUM_##_name; \
-            enum _name : _type
-    #elif defined(__clang__) || defined(__OBJC__)
-        #define CF_ENUM(_type, _name) \
-            enum _name : _type _name; \
-            enum _name: _type
-    #else
-        #define CF_ENUM(_type, _name) \
-            _type _name; \
-            enum
-    #endif
-#endif
-typedef CF_ENUM(int32_t,SolveResult) {
-    SolveResultSuccess = 0,
-    SolveResultUnsolvable = 1,
-    SolveResultNotFound = 2,
-    SolveResultInvalidSrc = 3,
-    SolveResultInvalidTgt = 4,
-    SolveResultUnknownErr = 5
+namespace cube {
+constexpr std::string_view cubeId = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+enum class SolveResult : int32_t {
+    Success       = 0,
+    Unsolvable    = 1,
+    NotFound      = 2,
+    InvalidSrc    = 3,
+    InvalidTgt    = 4,
+    UnknownErr    = 5
 };
-#ifdef __cplusplus
-extern "C" {
-#endif
-CUBE_EXPORT_FORCE inline const char *solve_result_to_string(SolveResult sr) {
-    switch(sr) {
-        case SolveResultSuccess:    return "Success.";
-        case SolveResultUnsolvable: return "The cube configuration is unsolvable.";
-        case SolveResultNotFound:   return "No solution found within the step limit.";
-        case SolveResultInvalidSrc: return "Invalid source color configuration.";
-        case SolveResultInvalidTgt: return "Invalid target color configuration.";
-        case SolveResultUnknownErr: return "Unknown error.";
-        default:                    return "???";
+CUBE_EXPORT constexpr std::string_view to_string(SolveResult status) noexcept {
+    switch (status) {
+    case SolveResult::Success:      return "Success";
+    case SolveResult::Unsolvable:   return "The cube configuration is unsolvable";
+    case SolveResult::NotFound:     return "No solution found within the step limit";
+    case SolveResult::InvalidSrc:   return "Invalid source color configuration";
+    case SolveResult::InvalidTgt:   return "Invalid target color configuration";
+    case SolveResult::UnknownErr:   return "Unknown error";
     }
 }
-CUBE_EXPORT SolveResult solve(
-    char*       buf,
-    const char* src         Default(CUBE_ID),
-    const char* tgt         Default(CUBE_ID),
-    int         step        Default(30),
-    bool        best        Default(true)
+enum class PermFormat : int {
+    Face  = 0,
+    Cubie = 1,
+    Cycle = 2
+};
+struct Solution {
+    SolveResult status;
+    std::string maneuver;
+    bool is_success() const noexcept {
+        return status == SolveResult::Success;
+    }
+};
+CUBE_EXPORT bool is_solvable(std::string_view color_cube);
+[[nodiscard]] CUBE_EXPORT Solution solve(
+    std::string_view src,
+    std::string_view tgt = cubeId,
+    int step = 30,
+    bool best = true
 );
-CUBE_EXPORT bool solvable(
-    const char* color_cube  Default(CUBE_ID)
+[[nodiscard]] CUBE_EXPORT std::string apply_maneuver(
+    std::string_view maneuver,
+    std::string_view cube = cubeId
 );
-CUBE_EXPORT bool facecube(
-    char* buf,
-    const char* maneuver    Default(""),
-    const char *cube        Default(CUBE_ID)
+[[nodiscard]] CUBE_EXPORT std::string show_permutation(
+    std::string_view ms_or_cube,
+    PermFormat format = PermFormat::Cycle
 );
-CUBE_EXPORT bool permutation(
-    char*       buf,
-    const char* ms_or_cube  Default(CUBE_ID),
-    int         format      Default(2)
-);
-#ifdef __cplusplus
 }
-#endif
+namespace cube {
+CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
+CUBE_EXPORT auto get_table_dir() -> std::filesystem::path;
+CUBE_EXPORT bool tables_ready();
+CUBE_EXPORT void preload_tables();
+CUBE_EXPORT bool is_valid_config(std::string_view cube);
+CUBE_EXPORT bool is_valid_maneuver(std::string_view maneuver);
+}
 namespace cube::show {
+using std::size_t;
+using namespace cube::data;
 template<size_t N>
 using StringArr = std::array<std::string_view,N>;
 inline constexpr StringArr< 8> CornerToString       = { "urf", "ufl", "ulb", "ubr", "dfr", "dlf", "dbl", "drb" };
@@ -1459,7 +1510,7 @@ inline std::string seq2str(const Container &xs,
     };
     return seq2str_fmt(xs, default_formatter, sep, pre, suf);
 }
-std::string to_string(const ColorState& cs)
+inline std::string to_string(const ColorState& cs)
 {
     return seq2str_fmt(cs.s, [](auto v) {
         switch(v){
@@ -1473,7 +1524,7 @@ std::string to_string(const ColorState& cs)
         }
     });
 }
-std::string to_string(const FaceCube& fc, bool use_digit=true)
+inline std::string to_string(const FaceCube& fc, bool use_digit=true)
 {
     if(use_digit){
         return seq2str(fc.f);
@@ -1481,7 +1532,7 @@ std::string to_string(const FaceCube& fc, bool use_digit=true)
         return seq2str_fmt(fc.f, [](auto v) { return Face2Str[v]; });
     }
 }
-std::string to_string(const CubieCube& cc, CubeFormat fmt)
+inline std::string to_string(const CubieCube& cc, CubeFormat fmt)
 {
     switch(fmt){
     case CubeFormat::Face:
@@ -1527,139 +1578,198 @@ std::string to_string(const CubieCube& cc, CubeFormat fmt)
         return s1.empty() && s2.empty() ? "id" : s1 + s2;
     }
 }
-std::string to_string(const std::vector<TurnMove>& ms)
+inline std::string to_string(const std::vector<TurnMove>& ms)
 {
     return seq2str_fmt(ms, [](auto v){
         return Move2Str[v];
     }, " ");
 }
 }
-using namespace cube;
-const std::string_view cid = CUBE_ID;
+namespace cube {
+using namespace cube::data;
+namespace fs = std::filesystem;
+void set_table_dir(fs::path dir) { config::set_table_dir(dir); }
+auto get_table_dir() -> fs::path { return config::get_table_dir(); }
+bool tables_ready() { return pdb::tables_ready(); }
+void preload_tables() { pdb::preload_tables(); }
+bool is_valid_config(std::string_view cube) { return ColorState::is_valid_config(cube); }
+bool is_valid_maneuver(std::string_view maneuver) { return internal::is_valid_maneuver(maneuver); }
 cube::solver::TwoPhaseSolver TPS;
-std::string apply_moves(std::string_view s, const std::vector<TurnMove> &ms)
-{
-    assert(s.size() == 54 && "invalid cube length");
-    char buf[2][54];
-    std::memcpy(buf[0], s.data(), 54);
-    size_t curr = 0;
-    for(const auto &m : ms)
-    {
-        const auto& p   = ElementaryPerm[m].f;
-        const char* src = buf[curr];
-        char*       dst = buf[1-curr];
-        for(int i = 0; i < 54; ++i) dst[i] = src[p[i]];
-        curr = 1-curr;
+Solution solve(std::string_view src, std::string_view tgt, int step, bool best) {
+    if (src != cubeId && !is_valid_config(src)) return {SolveResult::InvalidSrc, ""};
+    if (tgt != cubeId && !is_valid_config(tgt)) return {SolveResult::InvalidTgt, ""};
+    if (src == tgt) return {SolveResult::Success, ""};
+    auto cc_src = ColorState::fromString(src).toCubieCube();
+    auto cc_tgt = ColorState::fromString(tgt).toCubieCube();
+    CubieCube cc = ~cc_tgt * cc_src;
+    if (!cc.isSolvable()) return {SolveResult::Unsolvable, ""};
+    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), step, best);
+    if (!found) return {SolveResult::NotFound, ""};
+    std::vector<TurnMove> sol;
+    size_t n1 = s1.size(), n2 = s2.size();
+    if (!s1.empty() && !s2.empty() && s1[n1 - 1] / 3 == s2[0] / 3) {
+        sol.insert(sol.end(), s1.begin(), s1.end() - 1);
+        int m = (s1[n1 - 1] + s2[0] - s2[0] / 3 * 6 + 2) % 4;
+        if (m != 0) sol.push_back(static_cast<TurnMove>(s2[0] / 3 * 3 + m - 1));
+        sol.insert(sol.end(), s2.begin() + 1, s2.end());
+    } else {
+        sol.insert(sol.end(), s1.begin(), s1.end());
+        sol.insert(sol.end(), s2.begin(), s2.end());
     }
-    return std::string(buf[curr],54);
+    return {SolveResult::Success, show::to_string(sol)};
+}
+bool is_solvable(std::string_view color_cube) {
+    return is_valid_config(color_cube) &&
+           ColorState::fromString(color_cube).toCubieCube().isSolvable();
+}
+std::string apply_maneuver(std::string_view maneuver, std::string_view cube_state) {
+    if (cube_state.size() != 54 || !is_valid_maneuver(maneuver)) {
+        throw std::invalid_argument("Invalid cube format or maneuver string.");
+    }
+    const auto ms = internal::parse_maneuver(maneuver);
+    return internal::apply_maneuver(cube_state, ms);
+}
+std::string show_permutation(std::string_view ms_or_cube, PermFormat format) {
+    std::string cube_str;
+    if (is_valid_config(ms_or_cube)) {
+        cube_str = ms_or_cube;
+    } else if (is_valid_maneuver(ms_or_cube)) {
+        auto ms = internal::parse_maneuver(ms_or_cube);
+        cube_str = internal::apply_maneuver(cubeId, ms);
+    } else {
+        throw std::invalid_argument("Input is neither a valid configuration nor a valid maneuver.");
+    }
+    auto cc = ColorState::fromString(cube_str).toCubieCube();
+    return show::to_string(cc, show::CubeFormat(static_cast<int>(format)));
+}
+}
+#define CUBE_VERSION_FULL  v0.4.2
+#define CUBE_VERSION_MAJOR 0
+#define CUBE_VERSION_MINOR 4
+#define CUBE_VERSION_PATCH 2
+#define CUBE_VERSION_BUILD
+#if defined(__GNUC__) || defined(__clang__)
+    #define CUBE_EXPORT_FORCE CUBE_EXPORT __attribute__((used))
+#else
+    #define CUBE_EXPORT_FORCE CUBE_EXPORT
+#endif
+#ifdef __cplusplus
+    #define Default(x) = x
+#else
+    #define Default(x)
+#endif
+#define CUBE_BS 128
+#define CUBE_ID "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
+#ifndef CF_ENUM
+    #if defined(__cplusplus)
+        #define CF_ENUM(_type, _name) \
+            int __CF_ENUM_##_name; \
+            enum _name : _type
+    #elif defined(__clang__) || defined(__OBJC__)
+        #define CF_ENUM(_type, _name) \
+            enum _name : _type _name; \
+            enum _name: _type
+    #else
+        #define CF_ENUM(_type, _name) \
+            _type _name; \
+            enum
+    #endif
+#endif
+typedef CF_ENUM(int32_t,SolveResult) {
+    SolveResultSuccess = 0,
+    SolveResultUnsolvable = 1,
+    SolveResultNotFound = 2,
+    SolveResultInvalidSrc = 3,
+    SolveResultInvalidTgt = 4,
+    SolveResultUnknownErr = 5
+};
+static inline const char* solve_result_info(SolveResult sr)
+{
+    switch(sr) {
+    case SolveResultSuccess:    return "Success.";
+    case SolveResultUnsolvable: return "The cube configuration is unsolvable.";
+    case SolveResultNotFound:   return "No solution found within the step limit.";
+    case SolveResultInvalidSrc: return "Invalid source color configuration.";
+    case SolveResultInvalidTgt: return "Invalid target color configuration.";
+    case SolveResultUnknownErr: return "Unknown error.";
+    default:                    return "???";
+    }
+}
+#ifdef __cplusplus
+extern "C" {
+#endif
+CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
+CUBE_EXPORT SolveResult solve(
+    char*       buf,
+    const char* src         Default(CUBE_ID),
+    const char* tgt         Default(CUBE_ID),
+    int         step        Default(30),
+    bool        best        Default(true)
+);
+CUBE_EXPORT bool solvable(
+    const char* color_cube  Default(CUBE_ID)
+);
+CUBE_EXPORT bool facecube(
+    char* buf,
+    const char* maneuver    Default(""),
+    const char *cube        Default(CUBE_ID)
+);
+CUBE_EXPORT bool permutation(
+    char*       buf,
+    const char* ms_or_cube  Default(CUBE_ID),
+    int         format      Default(2)
+);
+#ifdef __cplusplus
+}
+#endif
+extern "C" {
+const char* solve_result_to_string(int sr)
+{
+    return solve_result_info(static_cast<SolveResult>(sr));
 }
 SolveResult solve(
     char* buf, const char *src, const char* tgt, int step, bool best)
 {
-    auto s_src = src == NULL ? cid : std::string_view(src);
-    auto s_tgt = tgt == NULL ? cid : std::string_view(tgt);
-    if(s_src != cid && !cube::utils::is_valid_config(s_src)) return SolveResultInvalidSrc;
-    if(s_tgt != cid && !cube::utils::is_valid_config(s_tgt)) return SolveResultInvalidTgt;
-    if(s_src == s_tgt) { buf[0] = '\0'; return SolveResultSuccess; }
-    auto cc_src = ColorState::fromString(s_src).toCubieCube();
-    auto cc_tgt = ColorState::fromString(s_tgt).toCubieCube();
-    CubieCube cc = ~cc_tgt*cc_src;
-    if(!cc.isSolvable()) return SolveResultUnsolvable;
-    const auto & [found, s1, s2] = TPS.solve(cube::pdb::Coord::CubieCube2Coord(cc), step, best);
-    if(!found) return SolveResultNotFound;
-    std::vector<TurnMove> sol = [](const auto &s1, const auto &s2) {
-        std::vector<TurnMove> solution;
-        size_t n1 = s1.size(), n2 = s2.size();
-        if(!s1.empty() && !s2.empty() && s1[n1-1]/3 == s2[0]/3) {
-            std::copy(s1.begin(), s1.end()-1, std::back_inserter(solution));
-            int m = (s1[n1-1] + s2[0]- s2[0]/3 *6 +2) %4;
-            if(m!=0) solution.push_back(static_cast<TurnMove>(s2[0]/3*3+m-1));
-            std::copy(s2.begin()+1, s2.end(), std::back_inserter(solution));
-        } else {
-            std::copy(s1.begin(), s1.end(), std::back_inserter(solution));
-            std::copy(s2.begin(), s2.end(), std::back_inserter(solution));
-        }
-        return solution;
-    }(s1,s2);
-    auto s = show::to_string(sol);
-    std::copy(s.cbegin(), s.cend(), buf);
-    buf[s.length()] = '\0';
-    return SolveResultSuccess;
+    if(!buf) return SolveResultUnknownErr;
+    auto s_src = src == NULL ? cube::cubeId : std::string_view(src);
+    auto s_tgt = tgt == NULL ? cube::cubeId : std::string_view(tgt);
+    auto res = cube::solve(s_src, s_tgt, step, best);
+    if(res.is_success()) {
+        const auto& s = res.maneuver;
+        std::memcpy(buf,s.c_str(),s.size()+1);
+        return SolveResultSuccess;
+    }
+    return static_cast<SolveResult>(res.status);
 }
 bool solvable(const char* cube)
 {
-    return cube::utils::is_valid_config<std::string_view>(cube)
-           && ColorState::fromString(cube).toCubieCube().isSolvable();
+    return cube::is_solvable(cube ? cube : cube::cubeId);
 }
 bool facecube(char* buf, const char *maneuver, const char *cube)
 {
     if(!buf) return false;
-    std::string cube_str = cube ? std::string(cube) : std::string(CUBE_ID);
-    std::string maneuver_str = maneuver ? std::string(maneuver) : std::string("");
-    if(cube_str.size()!= 54 || !cube::utils::is_valid_maneuver(maneuver_str)) {
+    try {
+        auto s = cube::apply_maneuver(maneuver, cube);
+        std::memcpy(buf, s.c_str(), s.size()+1);
+        return true;
+    } catch(...) {
         buf[0] = '\0';
         return false;
     }
-    const auto ms = cube::utils::parse_manuever(maneuver_str);
-    const auto color = apply_moves(cube_str, ms);
-    std::copy(color.cbegin(), color.cend(), buf);
-    buf[color.length()] = '\0';
-    return true;
 }
 bool permutation(char* buf, const char* ms_or_cube, int format)
 {
     if(!buf) return false;
-    std::string cube_str{};
-    if(ms_or_cube) {
-        if(cube::utils::is_valid_config<std::string_view>(ms_or_cube)) {
-            cube_str = std::string(ms_or_cube);
-        } else if(cube::utils::is_valid_maneuver(ms_or_cube)) {
-            auto ms = cube::utils::parse_manuever(ms_or_cube);
-            cube_str = apply_moves(cid,ms);
-        } else {
-            buf[0] = '\0';
-            return false;
-        }
-    } else {
-        cube_str = cid;
-    }
-    std::string perm_str{};
-    auto cc = ColorState::fromString(cube_str).toCubieCube();
-    perm_str = show::to_string(cc, show::CubeFormat(format));
-    std::copy(perm_str.cbegin(), perm_str.cend(), buf);
-    buf[perm_str.length()] = '\0';
-    return true;
-}
-namespace cube::internal {
-namespace fs = std::filesystem;
-static std::string& get_custom_dir_storage()
-{
-    static std::string custom_dir = "";
-    return custom_dir;
-}
-void set_table_dir(std::string_view dir)
-{
-    get_custom_dir_storage() = dir;
-}
-fs::path get_table_dir()
-{
-    std::string user_dir = get_custom_dir_storage();
-    if(!user_dir.empty()) return fs::path(user_dir);
-    if(const char *env = std::getenv("CUBE_TABLE_DIR")) {
-        if(env[0] != '\0') return fs::path(env);
-    }
     try {
-        return cube::utils::get_cache_dir() / "cube" / "tables";
-    } catch (...) {}
-    return fs::current_path() / "tables";
-}
-bool is_table_ready()
-{
-    return fs::exists(get_table_dir() / "tm_twist.dat");
-}
-void preload_tables()
-{
-    (void)pdb::get_TM();
-    (void)pdb::get_TP();
+        auto s = cube::show_permutation(
+            ms_or_cube ? ms_or_cube : cube::cubeId,
+            static_cast<cube::PermFormat>(format)
+        );
+        std::memcpy(buf, s.c_str(), s.size()+1);
+        return true;
+    } catch(...) {
+        buf[0] = '\0';
+        return false;
+    }
 }
 }

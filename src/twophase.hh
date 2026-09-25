@@ -1,13 +1,15 @@
 #pragma once
 #include "coord.hh"
-#include "rubik.hh"
-#include "table.hh"
+#include "data.hpp"
 
+#include <algorithm>
 #include <array>
+#include <utility>
 #include <vector>
 #include <tuple>
 
 namespace cube::solver {
+using namespace cube::data;
 using namespace cube::pdb;
 
 /*!

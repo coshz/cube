@@ -3,7 +3,7 @@ import Foundation
 
 extension SolveResult: LocalizedError, CustomStringConvertible {
     public var description: String {
-        return String(cString: c_solve_result_to_string(self))
+        return String(cString: c_solve_result_info(self))
     }
 
     public var errorDescription: String? {

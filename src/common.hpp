@@ -1,15 +1,11 @@
 #pragma once
+#include <cstddef>
 #include <vector>
 #include <array>
-#include <set>
 #include <algorithm>
 #include <utility>
 #include <numeric>
 #include <stdexcept>
-
-///
-///////////////////////////////  Declarations  ///////////////////////////////
-///
 
 namespace cube::math {
 
@@ -23,72 +19,10 @@ using std::size_t;
     - second: vector of cycles in order of length descending
  */
 template<typename VectorLike>
-auto decomposite(const VectorLike &xs) -> std::pair<std::vector<typename VectorLike::value_type>,std::vector<std::vector<typename VectorLike::value_type>>>;
-
-/* the order (period) of permutation */
-template<typename T, size_t N>
-size_t orderOf(const std::array<T,N> &xs);
-
-/* the rank of permutation */
-template<typename T, size_t N>
-constexpr size_t rankOf(const std::array<T,N> &xs);
-
-/* create a permutation from rank */
-template<typename T, size_t N>
-constexpr std::array<T,N> fromRank(size_t r);
-
-/* creat a list by applying f for N times */
-template<typename F, typename T, size_t N>
-constexpr std::array<T,N+1> nestList(F &&f, T &&x);
-
-/* take subarray of index range [Begin,End] */
-template<size_t Begin, size_t End, typename T, size_t N>
-constexpr auto takeByRange(const std::array<T,N>&) -> std::array<T,End-Begin+1>;
-
-/* transform: from array of digits to integer */
-template<size_t B, typename Int, size_t N>
-constexpr auto fromDigits(const std::array<Int,N> &xs) -> size_t;
-
-/* transform: from integer to array of digits */
-template<size_t B, size_t N, typename Int>
-constexpr auto toDigits(size_t i) -> std::array<Int,N>;
-
-constexpr size_t factorial(size_t n);
-
-constexpr size_t binomial(size_t n, size_t k);
-
-/* the lexical order of M indices choosing from total N */
-template<size_t N, size_t M>
-constexpr auto lexicalOrderFromIndices(const std::array<size_t,M> &X) -> int;
-
-/* the indices reconstructed from lexical order */
-template<size_t N, size_t M>
-constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>;
-
-/* check the validity of permutation */
-template<size_t N, typename ArrayLike>
-constexpr bool isValidPermutation(const ArrayLike& xs);
-
-/*!
- * \brief Pull / Gather permute: out[i] = src[ X[i] ]
- * @note src and X must have the same dimension and X must be a permutation
- */
-template<typename Array, typename Perm>
-constexpr Array backpermute(const Array& src, const Perm& P);
-
-/*!
- * \brief Push / Scatter permute: out[ X[i] ] = src[i]
- * @note src and X must have the same dimension and X must be a permutation
- */
-template<typename Array, typename Perm>
-constexpr Array forepermute(const Array& src, const Perm& P);
-
-///
-/////////////////////////////// Implementations ///////////////////////////////
-///
-
-template<typename VectorLike>
-auto decomposite(const VectorLike &xs) -> std::pair<std::vector<typename VectorLike::value_type>,std::vector<std::vector<typename VectorLike::value_type>>>
+auto decomposite(const VectorLike &xs) -> std::pair<
+    std::vector<typename VectorLike::value_type>,
+    std::vector<std::vector<typename VectorLike::value_type>>
+>
 {
     using T = typename VectorLike::value_type;
     std::vector<T> fixed;
@@ -112,6 +46,23 @@ auto decomposite(const VectorLike &xs) -> std::pair<std::vector<typename VectorL
     return std::make_pair(fixed,cycles);
 }
 
+constexpr size_t factorial(size_t n)
+{
+    if(n>=21) throw std::invalid_argument("factorial(n) overflows for n >= 21");
+    return n == 0 ? 1 : n * factorial(n-1);
+}
+
+constexpr size_t binomial(size_t n, size_t k)
+{
+    if(n < k)   return 0;
+    if(n == k)  return 1;
+    size_t r = 1, m = std::min(k, n-k);
+    for(size_t i = 1; i <= m; i++) r *= n-i+1;
+    for(size_t i = 1; i <= m; i++) r /= i;
+    return r;
+};
+
+/* the order (period) of permutation */
 template<typename T, size_t N>
 size_t orderOf(const std::array<T,N> &xs)
 {
@@ -121,6 +72,7 @@ size_t orderOf(const std::array<T,N> &xs)
     return m;
 }
 
+/* the rank of permutation */
 template<typename T, size_t N>
 constexpr size_t rankOf(const std::array<T,N> &xs)
 {
@@ -136,6 +88,7 @@ constexpr size_t rankOf(const std::array<T,N> &xs)
     return r;
 }
 
+/* create a permutation from rank */
 template<typename T, size_t N>
 constexpr std::array<T,N> fromRank(size_t r)
 {
@@ -159,6 +112,7 @@ constexpr std::array<T,N> fromRank(size_t r)
     return A;
 }
 
+/* creat a list by applying f for N times */
 template<typename F, typename T, size_t N>
 constexpr std::array<T,N+1> nestList(F &&f, T &&x)
 {
@@ -168,8 +122,9 @@ constexpr std::array<T,N+1> nestList(F &&f, T &&x)
     return r;
 }
 
+/* take subarray of index range [Begin,End] */
 template<size_t Begin, size_t End, typename T, size_t N>
-constexpr auto takeByRange(const std::array<T,N> &xs) -> std::array<T,End-Begin+1>
+constexpr auto takeByRange(const std::array<T,N>& xs) -> std::array<T,End-Begin+1>
 {
     static_assert(Begin <= End && End < N);
     std::array<T,End-Begin+1> ys;
@@ -177,6 +132,7 @@ constexpr auto takeByRange(const std::array<T,N> &xs) -> std::array<T,End-Begin+
     return ys;
 }
 
+/* transform: from array of digits to integer */
 template<size_t B, typename Int, size_t N>
 constexpr auto fromDigits(const std::array<Int,N> &xs) -> size_t
 {
@@ -190,6 +146,7 @@ constexpr auto fromDigits(const std::array<Int,N> &xs) -> size_t
     return res;
 }
 
+/* transform: from integer to array of digits */
 template<size_t B, size_t N, typename Int>
 constexpr auto toDigits(size_t i) -> std::array<Int,N>
 {
@@ -207,22 +164,7 @@ constexpr auto toDigits(size_t i) -> std::array<Int,N>
     return a;
 }
 
-constexpr size_t binomial(size_t n, size_t k)
-{
-    if(n < k)   return 0;
-    if(n == k)  return 1;
-    size_t r = 1, m = std::min(k, n-k);
-    for(size_t i = 1; i <= m; i++) r *= n-i+1;
-    for(size_t i = 1; i <= m; i++) r /= i;
-    return r;
-};
-
-constexpr size_t factorial(size_t n)
-{
-    if(n>=21) throw std::invalid_argument("factorial(n) overflows for n >= 21");
-    return n == 0 ? 1 : n * factorial(n-1);
-}
-
+/* the lexical order of M indices choosing from total N */
 template<size_t N, size_t M>
 constexpr auto lexicalOrderFromIndices(const std::array<size_t,M> &X) -> int
 {
@@ -232,6 +174,7 @@ constexpr auto lexicalOrderFromIndices(const std::array<size_t,M> &X) -> int
     return rank;
 }
 
+/* the indices reconstructed from lexical order */
 template<size_t N, size_t M>
 constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>
 {
@@ -247,6 +190,7 @@ constexpr auto lexicalOrderToIndices(int rank) -> std::array<size_t,M>
     return X;
 }
 
+/* check the validity of permutation */
 template<size_t N, typename ArrayLike>
 constexpr bool isValidPermutation(const ArrayLike& xs)
 {
@@ -261,6 +205,10 @@ constexpr bool isValidPermutation(const ArrayLike& xs)
     return true;
 }
 
+/*!
+ * \brief Pull / Gather permute: out[i] = src[ X[i] ]
+ * @note src and X must have the same dimension and X must be a permutation
+ */
 template<typename Array, typename Perm>
 constexpr Array backpermute(const Array& src, const Perm& P)
 {
@@ -269,6 +217,10 @@ constexpr Array backpermute(const Array& src, const Perm& P)
     return out;
 }
 
+/*!
+ * \brief Push / Scatter permute: out[ X[i] ] = src[i]
+ * @note src and X must have the same dimension and X must be a permutation
+ */
 template<typename Array, typename Perm>
 constexpr Array forepermute(const Array& src, const Perm& P)
 {

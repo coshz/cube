@@ -1,9 +1,18 @@
 #include "twophase.hh"
+#include "rubik.hh"
+#include "table.hh"
+#include "coord.hh"
+#include "data.hpp"
 
-#define TM get_TM()
-#define TP get_TP()
+#include <algorithm>
+#include <array>
+#include <tuple>
+#include <vector>
 
 namespace cube::solver {
+
+#define TM cube::pdb::get_TM()
+#define TP cube::pdb::get_TP()
 
 /* for optimization
  * the continuation of TurnMoves A,B,C are dull (could be reduced) in cases like:

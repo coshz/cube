@@ -1,3 +1,10 @@
+v0.4.2
+- provide c++ public header
+- some refinement
+
+v0.4.1
+- some fixes
+
 v0.4.0
 
 - **Language Bindings**: Support for Haskell and Rust

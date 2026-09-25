@@ -1,5 +1,4 @@
 from enum import IntEnum
-from ._ffi import _libcube as lib
 
 __all__ = ['SolveResult', 'SolveError']
 
@@ -14,7 +13,19 @@ class SolveResult(IntEnum):
 
 
 class SolveError(Exception):
+    _MSG_MAP = {
+        SolveResult.SUCCESS:        "Success",
+        SolveResult.UNSOLVABLE:     "The cube configuration is unsolvable",
+        SolveResult.NOT_FOUND:      "No solution found within the step limit",
+        SolveResult.INVALID_SRC:    "Invalid source color configuration",
+        SolveResult.INVALID_TGT:    "Invalid target color configuration",
+        SolveResult.UNKNOWN_ERR:    "Unknown error",
+    }
+
     def __init__(self, sr: SolveResult):
         self.value = sr
-        msg = lib.solve_result_to_string(sr)
-        super().__init__(f"[{sr.name}] {msg}")
+        super().__init__(str(self))
+
+    def __str__(self):
+        msg = self._MSG_MAP.get(self.value, "Unknown error")
+        return f"[{self.value.name}] {msg}"

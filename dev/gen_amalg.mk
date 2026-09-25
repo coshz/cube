@@ -5,7 +5,7 @@ ROOT := $(shell git rev-parse --show-toplevel)
 # ==============================================================================
 PYTHON       ?= python3
 PROJECT_NAME := cube
-VERSION      := 0.4.0
+VERSION      := $(strip $(shell cat $(ROOT)/VERSION))
 LICENSE      := MIT
 
 AMALG_DIR     := $(ROOT)/amalg
@@ -14,13 +14,15 @@ SCRIPT_HEADER := $(ROOT)/dev/scripts/update_header.py
 
 # Input Sources & Includes
 SOURCES := $(addprefix $(ROOT)/, \
-               src/rubik.cpp \
-               src/coord.cpp \
-               src/table.cpp \
-               src/twophase.cpp \
-               src/cube.cpp \
-               src/internal.cpp \
-           )
+	src/rubik.cpp \
+	src/coord.cpp \
+	src/table.cpp \
+	src/twophase.cpp \
+	src/config.cpp \
+	src/maneuver.cpp \
+	src/cube_impl.cpp \
+	src/cube_impl_c.cpp \
+)
 
 INCLUDES := $(ROOT)/build/include
 

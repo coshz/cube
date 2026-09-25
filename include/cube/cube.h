@@ -111,25 +111,29 @@ typedef CF_ENUM(int32_t,SolveResult) {
     SolveResultUnknownErr = 5
 };
 
+static inline const char* solve_result_info(SolveResult sr) 
+{
+    switch(sr) {
+    case SolveResultSuccess:    return "Success.";
+    case SolveResultUnsolvable: return "The cube configuration is unsolvable.";
+    case SolveResultNotFound:   return "No solution found within the step limit.";
+    case SolveResultInvalidSrc: return "Invalid source color configuration.";
+    case SolveResultInvalidTgt: return "Invalid target color configuration.";
+    case SolveResultUnknownErr: return "Unknown error.";
+    default:                    return "???";
+    }
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-CUBE_EXPORT_FORCE inline const char *solve_result_to_string(SolveResult sr) {
-    switch(sr) {
-        case SolveResultSuccess:    return "Success.";
-        case SolveResultUnsolvable: return "The cube configuration is unsolvable.";
-        case SolveResultNotFound:   return "No solution found within the step limit.";
-        case SolveResultInvalidSrc: return "Invalid source color configuration.";
-        case SolveResultInvalidTgt: return "Invalid target color configuration.";
-        case SolveResultUnknownErr: return "Unknown error.";
-        default:                    return "???";
-    }
-}
+/* export: solve result to string */
+CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
 
 /*! 
  * @brief solve the Rubik's cube
-
+ *
  * @param buf       the buffer to solution (space-seperated moves)
  * @param src       source color configuration, `NULL` means `id`
  * @param tgt       target color configuration, `NULL` means `id`

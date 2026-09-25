@@ -48,6 +48,3 @@ _libcube.solvable.restype = c_bool
 
 _libcube.permutation.argtypes = [c_char_p, c_char_p]
 _libcube.permutation.restype = None
-
-_libcube.solve_result_to_string.argtypes = [c_int32]
-_libcube.solve_result_to_string.restype = c_char_p

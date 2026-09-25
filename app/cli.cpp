@@ -1,10 +1,12 @@
-#include "cube/cube.h"
-#include "../src/internal.hh"
+#include "cube/cube.hh"
+#include "cube/advanced.hh"
+#include "cube/version.h"
+
+#include <cstddef>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <unordered_set>
 
 #define STRINGIFY(x) #x
 #define STR(x) STRINGIFY(x)
@@ -93,16 +95,20 @@ auto REPL::parse_args(std::string &line) -> REPL::S
   
     obj.cmd = s0;
 
+    auto resolve_cube = [](const std::string& arg) -> std::string {
+        return arg =="cid" || arg.empty() ? std::string(cube::cubeId) : arg;
+    };
+
     if(obj.cmd == "solve") {
-        obj.arg1 = s1=="cid" || s1.empty() ? CUBE_ID : s1;
-        obj.arg2 = s2=="cid" || s2.empty() ? CUBE_ID : s2;
+        obj.arg1 = resolve_cube(s1);
+        obj.arg2 = resolve_cube(s2);
     }
     else if(obj.cmd == "color") {
         obj.arg1 = s1;
-        obj.arg2 = s2=="cid" || s2.empty() ? CUBE_ID : s2;
+        obj.arg2 = resolve_cube(s2);
     }
     else if(obj.cmd == "perm") {
-        obj.arg1 = s1 == "cid" || s1.empty() ? CUBE_ID : s1;
+        obj.arg1 = resolve_cube(s1);
         obj.arg2 = s2;
     }
 
@@ -114,43 +120,45 @@ auto REPL::parse_args(std::string &line) -> REPL::S
 }
 
 void REPL::execute_cmd(const REPL::S &s) {
-    char result[CUBE_BS] = {0};
-  
     if (s.cmd == "solve") {
         if (s.arg3 < 0 || s.arg4 < 0) {
             std::cout << "!!! solve: invalid arguments\n";
             return;
         }
-        SolveResult sr = solve(result, s.arg1.c_str(), s.arg2.c_str(), s.arg3, s.arg4);
-        if (sr != SolveResultSuccess) {
-            std::cout << "!!! " << solve_result_to_string(sr) << std::endl;
+        auto sol = cube::solve(s.arg1.c_str(), s.arg2.c_str(), s.arg3, s.arg4);
+        if (!sol.is_success()) {
+            std::cout << "!!! " << cube::to_string(sol.status) << std::endl;
             return;
         }
+        std::cout << sol.maneuver << std::endl;
     } else if (s.cmd == "color") {
-        bool success = facecube(result, s.arg1.c_str(), s.arg2.c_str());
-        if (!success) {
-            std::cout << "!!! invalid maneuver or cube (wrap maneuver in quotes if it has spaces)" << std::endl;
+        try {
+            auto result = cube::apply_maneuver(s.arg1, s.arg2);
+            std::cout << result << std::endl;
+        } catch(...) {
+            std::cout << "!!! invalid maneuver or cube" << std::endl;
             return;
         }
     } else if (s.cmd == "perm") {
-        int format = 2;
-        try { format = std::stoi(s.arg2); } catch(...) {}
-        bool success = permutation(result, s.arg1.c_str(), format);
-        if (!success) {
-            std::cout << "!!! invalid cube or maneuver (wrap maneuver in quotes if it has spaces)" << std::endl;
+        int fmt_val = 2;
+        try { fmt_val = std::stoi(s.arg2); } catch(...) {}
+        auto fmt = static_cast<cube::PermFormat>(fmt_val);
+        try {
+            auto result = cube::show_permutation(s.arg1, fmt);
+            std::cout << result << std::endl;
+        } catch(...) {
+            std::cout << "!!! invalid cube or maneuver" << std::endl;
             return;
         }
     } else {
         std::cout << "!!! unsupported command `" << s.cmd << "`" << std::endl;
         return;
     }
-    std::cout << result << std::endl;
 }
 
 void REPL::run()
 {
-    size_t no=0;
-    char result[CUBE_BS];
+    std::size_t no=0;
 
     std::cout <<
         "Welcome to icube " STR(CUBE_VERSION_FULL) "!"
@@ -204,7 +212,7 @@ int main(int argc, char *argv[])
         } else if (arg == "--table-dir") {
             if (i + 1 < argc) {
                 custom_dir = argv[++i];
-                if(!custom_dir.empty()) cube::internal::set_table_dir(custom_dir);
+                if(!custom_dir.empty()) cube::set_table_dir(custom_dir);
             }
         } else {
             if (!inline_cmd.empty()) inline_cmd += " ";
@@ -215,8 +223,8 @@ int main(int argc, char *argv[])
             }
         }
     }
-    const bool first_run = !cube::internal::is_table_ready();
-    auto table_dir = cube::internal::get_table_dir().string();
+    const bool first_run = !cube::tables_ready();
+    auto table_dir = cube::get_table_dir().string();
 
     if(first_run) {
         std::cout << "[Info] First run detected. \n"
@@ -226,7 +234,7 @@ int main(int argc, char *argv[])
         std::cout << "[Info] Loading tables from " << table_dir << "..." << std::flush;
     }
 
-    cube::internal::preload_tables();
+    cube::preload_tables();
 
     if(first_run || verbose) std::cout << " Done!\n" << std::endl;
 

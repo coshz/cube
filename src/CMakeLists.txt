@@ -1,10 +1,12 @@
 set(CPP_SOURCES
-    cube.cpp
+    cube_impl.cpp
+    cube_impl_c.cpp
+    config.cpp
+    maneuver.cpp
     rubik.cpp
     twophase.cpp
     table.cpp
     coord.cpp
-    internal.cpp
 )
 
 list(TRANSFORM CPP_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")

@@ -1,9 +1,14 @@
 #pragma once
 
-#include "help.hpp"
+#include "common.hpp"
+#include <array>
+#include <initializer_list>
 #include <cassert>
+#include <cstddef>
 
 namespace cube::data {
+
+#include "data.def"
 
 using std::size_t;
 using namespace cube::math;
