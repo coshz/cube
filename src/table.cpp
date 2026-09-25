@@ -1,8 +1,13 @@
 #include "table.hh"
+#include "config.hh"
 #include "coord.hh"
-#include "internal.hh"
+#include "data.hpp"
+#include "rubik.hh"
+
 #include <filesystem>
-#include <cstdlib>
+#include <fstream>
+#include <ios>
+#include <type_traits>
 
 #if defined(VERBOSE) && VERBOSE
 #define VPRINT(...) printf(__VA_ARGS__)
@@ -11,8 +16,12 @@
 #endif
 
 namespace cube::pdb {
+using namespace cube::data;
 
-namespace fs = std::filesystem;
+auto table_dir_or_default(fs::path dir) -> fs::path 
+{ 
+    return dir.empty() ? cube::config::get_table_dir() : dir; 
+}
 
 template <typename Table>
 void save_to(const Table &table, fs::path path)
@@ -37,7 +46,7 @@ void load_from(Table &table, fs::path path)
 template<typename T>
 template<typename Table, typename F1, typename F2>
 std::enable_if_t<Table::shape[0] == N_MOVE>
-TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string filename)
+TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, fs::path filename)
 {
     VPRINT("creating move table %s of shape (%zu,%zu)... ",
            filename.c_str(), t.shape[0], t.shape[1]);
@@ -49,8 +58,8 @@ TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string f
 }
 
 template<typename T>
-TableMove<T>::TableMove(std::filesystem::path dir)
-:tdir(dir)
+TableMove<T>::TableMove(fs::path dir)
+:tdir{table_dir_or_default(dir)}
 {
     VPRINT("INIT MOVE TABLES -- \n");
     pTMTwist     = new NArray<T,N_MOVE,N_TWIST>;
@@ -60,7 +69,7 @@ TableMove<T>::TableMove(std::filesystem::path dir)
     pTMEdge4     = new NArray<T,N_MOVE,N_EDGE4>;
     pTMEdge8     = new NArray<T,N_MOVE,N_EDGE8>;
 
-    if(!fs::exists(tdir/"tm_twist.dat")) {
+    if(!is_ready(tdir)) {
         if(!fs::exists(tdir)) fs::create_directories(tdir);
         buildMoveTable(*pTMTwist, Coord::co2twist, Coord::twist2co, "tm_twist.dat");
         buildMoveTable(*pTMFlip, Coord::eo2flip, Coord::flip2eo, "tm_flip.dat");
@@ -91,10 +100,22 @@ TableMove<T>::~TableMove()
 }
 
 template<typename T>
+bool TableMove<T>::is_ready(fs::path tdir)
+{
+    tdir = table_dir_or_default(tdir);
+    return fs::exists(tdir/"tm_twist.dat") &&
+           fs::exists(tdir/"tm_flip.dat") &&
+           fs::exists(tdir/"tm_slice.dat") &&
+           fs::exists(tdir/"tm_corner.dat") &&
+           fs::exists(tdir/"tm_edge4.dat") &&
+           fs::exists(tdir/"tm_edge8.dat");
+}
+
+template<typename T>
 template<typename Table, typename MT1, typename MT2>
 std::enable_if_t<Table::shape[0] == MT1::shape[1] && Table::shape[1] == MT2::shape[1]>
 TablePrunning<T>::buildPrunningTable(
-    Table &t, const MT1 &mt1, const MT2 &mt2, std::string filename)
+    Table &t, const MT1 &mt1, const MT2 &mt2, fs::path filename)
 {
     VPRINT("creating prunning table %s of shape (%zu,%zu):\n",
            filename.c_str(), mt1.shape[1], mt2.shape[1]);
@@ -106,8 +127,7 @@ TablePrunning<T>::buildPrunningTable(
     VPRINT("\tdepth %2d: %10zu / %-10zu.\n", depth, count, t.size);
     while(count < t.size)
     {
-        for(size_t i = 0; i < t.shape[0]; i++)
-        for(size_t j = 0; j < t.shape[1]; j++)
+        for(size_t i = 0; i < t.shape[0]; i++) for(size_t j = 0; j < t.shape[1]; j++)
         if(t[i][j] == depth) {
             for(auto k = 0; k < N_MOVE; k++) {
                 auto ii = mt1[k][i], jj = mt2[k][j];
@@ -122,8 +142,8 @@ TablePrunning<T>::buildPrunningTable(
 }
 
 template<typename T>
-TablePrunning<T>::TablePrunning(std::filesystem::path dir)
-:tdir(dir)
+TablePrunning<T>::TablePrunning(fs::path dir)
+:tdir{table_dir_or_default(dir)}
 {
     VPRINT("INIT PRUNNING TABLES -- \n");
     pTPSliceFlip     = new NArray<T,N_SLICE,N_FLIP>;
@@ -131,7 +151,7 @@ TablePrunning<T>::TablePrunning(std::filesystem::path dir)
     pTPEdge4Edge8    = new NArray<T,N_EDGE4,N_EDGE8>;
     pTPEdge4Corner   = new NArray<T,N_EDGE4,N_CORNER>;
 
-    if(!fs::exists(tdir/"tp_slicetwist.dat")) {
+    if(!is_ready(tdir)) {
         const auto &TM = get_TM();
         buildPrunningTable(*pTPSliceTwist, *TM.pTMSlice, *TM.pTMTwist, "tp_slicetwist.dat");
         buildPrunningTable(*pTPSliceFlip, *TM.pTMSlice, *TM.pTMFlip, "tp_sliceflip.dat");
@@ -153,6 +173,16 @@ TablePrunning<T>::~TablePrunning()
     delete pTPSliceTwist;
     delete pTPEdge4Edge8;
     delete pTPEdge4Corner;
+}
+
+template<typename T>
+bool TablePrunning<T>::is_ready(fs::path tdir)
+{
+    tdir = table_dir_or_default(tdir);
+    return fs::exists(tdir/"tp_slicetwist.dat") &&
+           fs::exists(tdir/"tp_sliceflip.dat") &&
+           fs::exists(tdir/"tp_edge4corner.dat") &&
+           fs::exists(tdir/"tp_edge4edge8.dat");
 }
 
 template struct TableMove<>;

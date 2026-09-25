@@ -1,8 +1,8 @@
-#include <cmath>
-#include <numeric>
 #include "coord.hh"
 #include "rubik.hh"
-#include "help.hpp"
+#include "common.hpp"
+#include "data.hpp"
+#include <algorithm>
 
 namespace cube::pdb {
 

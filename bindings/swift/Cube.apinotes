@@ -18,5 +18,5 @@ Functions:
     SwiftName: "c_facecube(_:_:_:)"
   - Name: permutation
     SwiftName: "c_permutation(_:_:_:)"
-  - Name: solve_result_to_string
-    SwiftName: "c_solve_result_to_string(_:)"
+  - Name: solve_result_info
+    SwiftName: "c_solve_result_info(_:)"

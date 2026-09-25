@@ -1,14 +1,23 @@
 #include "rubik.hh"
-#include "utils.hpp"
+#include "common.hpp"
+#include "data.hpp"
 
+#include <cstddef>
+#include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
-#include <format>
 #include <sstream>
+#include <array>
+#include <type_traits>
+#include <vector>
 
 namespace cube::show {
-template<size_t N>
+    
+using std::size_t;
+using namespace cube::data;
 
+template<size_t N>
 using StringArr = std::array<std::string_view,N>;
 
 inline constexpr StringArr< 8> CornerToString       = { "urf", "ufl", "ulb", "ubr", "dfr", "dlf", "dbl", "drb" };
@@ -73,7 +82,7 @@ inline std::string seq2str(const Container &xs,
     return seq2str_fmt(xs, default_formatter, sep, pre, suf);
 }
 
-std::string to_string(const ColorState& cs)
+inline std::string to_string(const ColorState& cs)
 {
     return seq2str_fmt(cs.s, [](auto v) {
         switch(v){
@@ -88,7 +97,7 @@ std::string to_string(const ColorState& cs)
     });
 }
 
-std::string to_string(const FaceCube& fc, bool use_digit=true)
+inline std::string to_string(const FaceCube& fc, bool use_digit=true)
 {
     if(use_digit){
         return seq2str(fc.f);
@@ -97,7 +106,7 @@ std::string to_string(const FaceCube& fc, bool use_digit=true)
     }
 }
 
-std::string to_string(const CubieCube& cc, CubeFormat fmt)
+inline std::string to_string(const CubieCube& cc, CubeFormat fmt)
 {
     switch(fmt){
     case CubeFormat::Face:
@@ -149,7 +158,7 @@ std::string to_string(const CubieCube& cc, CubeFormat fmt)
     }
 }
 
-std::string to_string(const std::vector<TurnMove>& ms)
+inline std::string to_string(const std::vector<TurnMove>& ms)
 {
     return seq2str_fmt(ms, [](auto v){
         return Move2Str[v];

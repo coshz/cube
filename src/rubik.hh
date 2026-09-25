@@ -1,16 +1,16 @@
 #pragma once
-#include "def.h"
 #include "data.hpp"
-#include "utils.hpp"
+
+#include <cstdint>
 #include <string_view>
 #include <array>
+#include <vector>
 
 namespace cube {
 
 using namespace cube::data;
-using namespace cube::utils;
 
-typedef int8_t cube_value_t;
+typedef std::int8_t cube_value_t;
 typedef Perm<54,    cube_value_t>   FacePerm;
 typedef Perm<8,     cube_value_t>   CornerPerm;
 typedef Perm<12,    cube_value_t>   EdgePerm;
@@ -36,6 +36,8 @@ struct ColorState
     // ? Should we make toFaceCube / toCubieCube constexpr
 
     static ColorState fromString(std::string_view cube);
+
+    static bool is_valid_config(std::string_view cube);
 
     FaceCube  toFaceCube() const;
     CubieCube toCubieCube() const;

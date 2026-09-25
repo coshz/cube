@@ -11,18 +11,18 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 
 ## ✨ Features
 
-* **⚡ High Performance**: Fast and resource-efficient core implementation.
-* **🌐 Multi-Language**: Native bindings for Python, Rust, Haskell, and WebAssembly/TypeScript.
-* **📦 Cross-Platform SDK**: Ships C dynamic/static libraries, Swift module (`Cube.framework`), and interactive CLI (`icube`).
-* **🛠️ Standalone**: Zero external third-party dependencies.
+- **⚡ High Performance**: Fast and resource-efficient core implementation.
+- **🌐 Multi-Language**: Native bindings for Python, Rust, Haskell, and WebAssembly/TypeScript.
+- **📦 Cross-Platform SDK**: Ships C dynamic/static libraries, Swift module (`Cube.framework`), and interactive CLI (`icube`).
+- **🛠️ Standalone**: Zero external third-party dependencies.
 
 
 ## 📦 Language Bindings
 
 | Language | Directory & Guide | Package |
 | :--- | :--- | :--- |
-| **Python** | [bindings/python](bindings/python/README.md)| [cube-python](https://pypi.org/project/cube-python/) |
-| **Rust** | [bindings/rust](bindings/rust/README.md)  | [cube-rust](https://crates.io/crates/cube-rust) |
+| **Python** | [bindings/python](bindings/python/README.md) | [cube-python](https://pypi.org/project/cube-python/) |
+| **Rust** | [bindings/rust](bindings/rust/README.md) | [cube-rust](https://crates.io/crates/cube-rust) |
 | **Haskell** | [bindings/haskell](bindings/haskell/README.md) | [cube-hs](https://hackage.haskell.org/package/cube-hs) |
 | **TypeScript** | [bindings/wasm](bindings/wasm/README.md) | [@coshz/jscube](https://www.npmjs.com/package/@coshz/jscube) |
 
@@ -39,12 +39,12 @@ icube
 icube solve "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 ```
 <details>
-  <summary>Click to view CLI screenshot (shotsnap)</summary>
+  <summary>Click to view CLI screenshot</summary>
   <img src="asset/icube-demo.png" alt="shotsnap-1">
 </details>
 
 
-### 2. SDK Usage
+### 2. C/C++ SDK Usage
 
 ```c
 #include <cube/cube.h>
@@ -82,9 +82,9 @@ int main()
 ## 🛠️ Build & Install
 
 ### Prerequisites
-* CMake 3.15+
-* C++17 compatible compiler (Clang, GCC, MSVC)
-* Ninja (Optional, recommended)
+- CMake 3.28+
+- C++17 compatible compiler (Clang, GCC, MSVC)
+- Ninja (Optional, recommended)
 
 ### Instructions
 
@@ -102,12 +102,12 @@ cmake --build build --target install
 
 ```text
 .
-├── amalg/            # amalgamated C++ source
-├── asset             # project static resources
+├── amalg/            # Amalgamated C++ source (single-file distribution)
+├── asset             # Project static resources
 ├── app/              # Source code for `icube` command-line tool
 ├── bindings/         # Language bindings
-├── cmake/            # templates or modules for cmake use
-├── dev/              # Scripts to eases development
+├── cmake/            # CMake templates and modules
+├── dev/              # Development scripts
 ├── include/          # Public C++ SDK headers
 ├── src/              # Core Two-Phase Algorithm implementation
 └── test/             # Testing

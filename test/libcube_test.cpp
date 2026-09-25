@@ -1,10 +1,8 @@
 #include "cube/cube.h"
-#include "utils.hpp"
+
 #include <gtest/gtest.h>
-#include <string>
 #include <cstring>
 
-const std::string Move2Str[18] = { "U","U2","U'","R","R2","R'","F","F2","F'","D","D2","D'","L","L2","L'","B","B2","B'" };
 
 bool check_solution(const char *cube, const char *solution)
 {

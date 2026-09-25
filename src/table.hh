@@ -1,25 +1,23 @@
 #pragma once
-#include "def.h"
-#include "help.hpp"
-#include "coord.hh"
-#include "internal.hh"
+#include "data.hpp"
+#include "config.hh"
 
-#include <fstream>
+#include <cstdint>
 #include <filesystem>
 #include <type_traits>
 #include <limits>
 
 namespace cube::pdb {
-
-#define TABLE_DIR_DEFAULT cube::internal::get_table_dir()
+    
+using namespace cube::data;
+namespace fs = std::filesystem;
 
 typedef uint16_t    mt_value_t;
 typedef uint8_t     pt_value_t;
 
 /* dump / load Tables */
-template <typename Table> void save_to(const Table &table, std::filesystem::path path);
-template <typename Table> void load_from(Table &table, std::filesystem::path path);
-
+template <typename Table> void save_to(const Table &table, fs::path path);
+template <typename Table> void load_from(Table &table, fs::path path);
 
 template<class T>
 class Singleton
@@ -56,17 +54,20 @@ struct TableMove
     static_assert(std::numeric_limits<T>::digits >= 16);
 
     using value_t = T;
-    TableMove(std::filesystem::path dir = TABLE_DIR_DEFAULT);
+    TableMove(fs::path dir = {});
     TableMove(const TableMove &) = delete;
     ~TableMove();
     TableMove& operator=(const TableMove &) = delete;
    
     template<typename Table, typename F1, typename F2>
     std::enable_if_t<Table::shape[0] == N_MOVE, void>
-    buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, std::string filename="");
+    buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, fs::path filename);
+
+    /* check if tables exist in the table directory */
+    static bool is_ready(fs::path);
 
     /* directory to save tables */
-    const std::filesystem::path tdir;
+    const fs::path tdir;
 
     NArray<T,N_MOVE,N_TWIST>   *pTMTwist;
     NArray<T,N_MOVE,N_FLIP>    *pTMFlip;
@@ -97,17 +98,20 @@ template<typename T=pt_value_t>
 struct TablePrunning
 {
     using value_type = T;
-    TablePrunning(std::filesystem::path dir = TABLE_DIR_DEFAULT);
+    TablePrunning(fs::path dir = {});
     TablePrunning(const TablePrunning &) = delete;
     ~TablePrunning();
     TablePrunning operator=(const TablePrunning &) = delete;
 
     template<typename Table, typename MT1, typename MT2>
     std::enable_if_t<Table::shape[0] == MT1::shape[1] && Table::shape[1] == MT2::shape[1]>
-    buildPrunningTable(Table &t, const MT1 &mt1, const MT2 &mt2, std::string filename);
+    buildPrunningTable(Table &t, const MT1 &mt1, const MT2 &mt2, fs::path filename);
+
+    /* check if tables exist in the table directory */
+    static bool is_ready(fs::path);
 
     /* directory to save tables */
-    const std::filesystem::path tdir;
+    const fs::path tdir;
 
     NArray<T,N_SLICE,N_FLIP>   *pTPSliceFlip;
     NArray<T,N_SLICE,N_TWIST>  *pTPSliceTwist;
@@ -115,13 +119,30 @@ struct TablePrunning
     NArray<T,N_EDGE4,N_CORNER> *pTPEdge4Corner;
 };
 
+template<typename T=mt_value_t>
+using SingletonTM = Singleton<TableMove<T>>;
+
+template<typename T=pt_value_t>
+using SingletonTP = Singleton<TablePrunning<T>>;
 
 /* shortcut to TableMove instance */
-inline const auto &get_TM() { return Singleton<TableMove<mt_value_t>>::instance(); }
+inline const auto &get_TM() { return SingletonTM<>::instance(); }
 
 /* shortcut to TablePrunning instance */
-inline const auto &get_TP() { return Singleton<TablePrunning<pt_value_t>>::instance(); }
+inline const auto &get_TP() { return SingletonTP<>::instance(); }
 
+/* check if tables exist in the table directory */
+inline bool tables_ready(fs::path dir = {}) 
+{
+    return TableMove<>::is_ready(dir) && TablePrunning<>::is_ready(dir);
+}
+
+/* load tables explicitly  */
+inline void preload_tables() 
+{
+    (void) get_TM();
+    (void) get_TP();
+}
 
 /* symmetry table
 d(s^-1*x*s,1) = d(x,1), s in S.

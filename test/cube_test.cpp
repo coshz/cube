@@ -1,14 +1,19 @@
 #include "rubik.hh"
+#include "data.hpp"
 #include "show.hpp"
-#include "utils.hpp"
+#include <array>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 using namespace cube;
+using namespace cube::data;
 
 TEST(CubeTest_0, BasicAssertions)
 {
-    auto fR = std::array<int8_t,54>{U1,U2,F3,U4,U5,F6,U7,U8,F9,R7,R4,R1,R8,R5,R2,R9,R6,R3,F1,F2,D3,F4,F5,D6,F7,F8,D9,D1,D2,B7,D4,D5,B4,D7,D8,B1,L1,L2,L3,L4,L5,L6,L7,L8,L9,U9,B2,B3,U6,B5,B6,U3,B8,B9};
+    auto fR = std::array<std::int8_t,54>{U1,U2,F3,U4,U5,F6,U7,U8,F9,R7,R4,R1,R8,R5,R2,R9,R6,R3,F1,F2,D3,F4,F5,D6,F7,F8,D9,D1,D2,B7,D4,D5,B4,D7,D8,B1,L1,L2,L3,L4,L5,L6,L7,L8,L9,U9,B2,B3,U6,B5,B6,U3,B8,B9};
     auto cR = std::string("UUFUUFUUFRRRRRRRRRFFDFFDFFDDDBDDBDDBLLLLLLLLLUBBUBBUBB");
 
     auto cc = CubieCube::id * std::vector<TurnMove>{Rx1};

@@ -29,6 +29,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN TRUE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -56,11 +57,19 @@ option(ENABLE_TEST "Enable testing" OFF)
 
 set(CUBE_BUILD_INCLUDE_DIR "${PROJECT_BINARY_DIR}/include" )
 
-configure_file(
-    "${PROJECT_SOURCE_DIR}/include/cube/cube.h"
-    "${CUBE_BUILD_INCLUDE_DIR}/cube/cube.h"
-    COPYONLY
+set(cube_public_headers 
+    cube.h
+    cube.hh
+    advanced.hh
 )
+
+foreach(header IN LISTS cube_public_headers)
+    configure_file(
+        "${PROJECT_SOURCE_DIR}/include/cube/${header}"
+        "${CUBE_BUILD_INCLUDE_DIR}/cube/${header}"
+        COPYONLY
+    )
+endforeach()
 
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/Templates/version.h.in"
