@@ -1,6 +1,6 @@
 v0.4.2
-- provide c++ public header
-- some refinement
+- Add public C++ headers
+- Refine icube CLI and CMake package export
 
 v0.4.1
 - some fixes

@@ -43,41 +43,34 @@ icube solve "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
   <img src="asset/icube-demo.png" alt="shotsnap-1">
 </details>
 
-
 ### 2. C/C++ SDK Usage
 
-```c
-#include <cube/cube.h>
-#include <stdio.h>
-#include <string.h>
+#### A simple example
 
-int main() 
+```cpp
+#include <cube/cube.hh>
+#include <iostream>
+#include <string_view>
+
+int main()
 {
-  char buf[CUBE_BS], sol[CUBE_BS];
-
-  // apply maneuver to give cube (here, CUBE_ID)
-  facecube(buf, "U F U' L2 R L' D2 B", CUBE_ID);
-
-  // solve from buf to CUBE_ID
-  SolveResult sr = solve(sol, buf, CUBE_ID, 30, true);
-
-  if(sr == SolveResultSuccess) {
-    puts(sol);
-    // verify the solution 
-    char solved[CUBE_BS];
-    facecube(solved, sol, buf);
-    if(strcmp(solved, CUBE_ID) == 0) {
-      puts("solution verified");
-    } else {
-      puts("wrong solution");
-    }
+  std::string_view cube = "FFLBURBURUUFRRRDDBUFBUFDFBRUDFBDFLLRDLLULLBRRULLFBBDDD";
+  auto sol = cube::solve(cube);
+  if(sol.is_success()) {
+    std::cout << sol.maneuver << std::endl;
+    if(cube::cubeId == cube::apply_maneuver(sol.maneuver, cube))
+      std::cout << "solution verified\n"; 
+    else 
+      std::cout << "wrong solution\n";
   } else {
-    fprintf(stderr, "%s\n", solve_result_to_string(sr));
+    std::cerr << "solve failed: " << cube::to_string(sol.status) << std::endl;
   }
-  return 0;
 }
 ```
 
+#### Complete examples
+1. [`example/eg_c`](example/eg_c/) - C, built with make
+2. [`example/eg_cpp`](example/eg_cpp/) - C++, built with CMake
 
 ## 🛠️ Build & Install
 
@@ -97,18 +90,17 @@ cmake --build build --config Release
 cmake --build build --target install
 ```
 
-
 ## 📂 Repository Layout
 
 ```text
 .
 ├── amalg/            # Amalgamated C++ source (single-file distribution)
 ├── asset             # Project static resources
-├── app/              # Source code for `icube` command-line tool
+├── app/              # Source code for command-line tool `icube`
 ├── bindings/         # Language bindings
 ├── cmake/            # CMake templates and modules
 ├── dev/              # Development scripts
-├── include/          # Public C++ SDK headers
+├── include/          # Public headers
 ├── src/              # Core Two-Phase Algorithm implementation
 └── test/             # Testing
 ```

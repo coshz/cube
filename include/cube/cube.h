@@ -9,12 +9,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if defined(__GNUC__) || defined(__clang__)
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT __attribute__((used))
-#else 
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT
-#endif
-
 #ifdef __cplusplus
     #define Default(x) = x
 #else 

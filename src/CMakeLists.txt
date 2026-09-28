@@ -9,12 +9,41 @@ set(CPP_SOURCES
     coord.cpp
 )
 
-list(TRANSFORM CPP_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
-set(CPP_SOURCES ${CPP_SOURCES} PARENT_SCOPE)
+add_library(cube_headers INTERFACE)
+add_library(cube_objs OBJECT ${CPP_SOURCES})
+add_library(cube_shared SHARED)
 
-include(GenerateExportHeader)
+add_library(${PROJECT_NAME}::objs ALIAS cube_objs)
+add_library(${PROJECT_NAME}::core ALIAS cube_shared)
+add_library(${PROJECT_NAME}::shared ALIAS cube_shared)
+
+set(cube_install_targets cube_headers cube_shared)
+
+# Generate exported header
 
 set(cube_export_macro "cube_EXPORTS")
+include(GenerateExportHeader)
+generate_export_header(cube_shared
+    BASE_NAME CUBE
+    EXPORT_MACRO_NAME CUBE_EXPORT
+    EXPORT_FILE_NAME "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
+)
+
+# ------------------------------------------------------------------------------
+# Public header
+# ------------------------------------------------------------------------------
+
+target_sources(cube_headers INTERFACE 
+    FILE_SET HEADERS 
+    BASE_DIRS
+        ${CUBE_BUILD_INCLUDE_DIR}
+    FILES
+        "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
+        "${CUBE_BUILD_INCLUDE_DIR}/cube/version.h"
+        "${CUBE_BUILD_INCLUDE_DIR}/cube/cube.h"
+        "${CUBE_BUILD_INCLUDE_DIR}/cube/cube.hh"
+        "${CUBE_BUILD_INCLUDE_DIR}/cube/advanced.hh"
+)
 
 # ------------------------------------------------------------------------------
 # Internal object library
@@ -23,12 +52,7 @@ set(cube_export_macro "cube_EXPORTS")
 #   - ${PROJECT_NAME}::Framework
 # ------------------------------------------------------------------------------
 
-add_library(cube_objs OBJECT ${CPP_SOURCES})
-add_library(${PROJECT_NAME}::objs ALIAS cube_objs)
-
-target_include_directories(cube_objs PUBLIC
-    $<BUILD_INTERFACE:${CUBE_BUILD_INCLUDE_DIR}>
-)
+target_link_libraries(cube_objs PUBLIC cube_headers)
 
 # ------------------------------------------------------------------------------
 # [Windows / MSVC Workaround]
@@ -45,19 +69,13 @@ target_include_directories(cube_objs PUBLIC
 target_compile_definitions(cube_objs PRIVATE ${cube_export_macro})
 
 # ------------------------------------------------------------------------------
-# Main C++ library
-#   - shared: primary
-#   - static: optional
+# Main C++ library (shared & static)
 # ------------------------------------------------------------------------------
 
-# Shared library
-
-add_library(cube_shared SHARED)
-
-add_library(${PROJECT_NAME}::core ALIAS cube_shared)
-add_library(${PROJECT_NAME}::shared ALIAS cube_shared)
-
-target_link_libraries(cube_shared PRIVATE ${PROJECT_NAME}::objs)
+target_link_libraries(cube_shared 
+    PRIVATE ${PROJECT_NAME}::objs
+    PUBLIC cube_headers
+)
 
 set_target_properties(cube_shared PROPERTIES
     OUTPUT_NAME     cube
@@ -66,56 +84,20 @@ set_target_properties(cube_shared PROPERTIES
     DEFINE_SYMBOL   "${cube_export_macro}"
 )
 
-# Generate export header
-generate_export_header(cube_shared
-    BASE_NAME CUBE
-    EXPORT_MACRO_NAME CUBE_EXPORT
-    EXPORT_FILE_NAME "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
-)
-
-target_sources(cube_shared
-PUBLIC
-    FILE_SET HEADERS
-    BASE_DIRS
-        ${CUBE_BUILD_INCLUDE_DIR}
-    FILES
-        "${CUBE_BUILD_INCLUDE_DIR}/cube/cube.h"
-        "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
-        "${CUBE_BUILD_INCLUDE_DIR}/cube/version.h"
-)
-
-set(cube_libs cube_shared)
-
-# Static library
-
 if(BUILD_STATIC_LIBS)
+    # build static library from source !!!
     add_library(cube_static STATIC ${CPP_SOURCES})
     add_library(${PROJECT_NAME}::static ALIAS cube_static)
-    target_include_directories(cube_static PUBLIC
-        $<BUILD_INTERFACE:${CUBE_BUILD_INCLUDE_DIR}>
-    )
    
     if(WIN32)
-        set_target_properties(cube_static PROPERTIES
-            OUTPUT_NAME "cube_static"
-        )
+        set_target_properties(cube_static PROPERTIES OUTPUT_NAME "cube_static")
     else()
-        set_target_properties(cube_static PROPERTIES
-            OUTPUT_NAME "cube"
-        )
+        set_target_properties(cube_static PROPERTIES OUTPUT_NAME "cube")
     endif()
-   
     target_compile_definitions(cube_static PUBLIC CUBE_STATIC_DEFINE)
-    target_sources(cube_static PUBLIC
-        FILE_SET HEADERS
-        BASE_DIRS
-            ${CUBE_BUILD_INCLUDE_DIR}
-        FILES
-            "${CUBE_BUILD_INCLUDE_DIR}/cube/cube.h"
-            "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
-            "${CUBE_BUILD_INCLUDE_DIR}/cube/version.h"
-    )
-    list(APPEND cube_libs cube_static)
+    target_link_libraries(cube_static PUBLIC cube_headers)
+
+    list(APPEND cube_install_targets cube_static)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -123,7 +105,7 @@ endif()
 # ------------------------------------------------------------------------------
 
 install(
-    TARGETS ${cube_libs}
+    TARGETS ${cube_install_targets}
     EXPORT "${PROJECT_NAME}Targets"
     FILE_SET HEADERS
 )

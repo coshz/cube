@@ -48,7 +48,7 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
 set(CUBE_PACK_DIR "${PROJECT_BINARY_DIR}/dist" CACHE STRING "Cube packaging directory")
 
 option(BUILD_STATIC_LIBS "Build cube static library" ON)
-option(BUILD_SWIFT_MODULE "Build Apple Cube.framework and Swift module map" OFF)
+option(BUILD_SWIFT_MODULE "Build Apple Cube.framework and Swift module map" ON)
 option(ENABLE_TEST "Enable testing" OFF)
 
 # ------------------------------------------------------------------------------
