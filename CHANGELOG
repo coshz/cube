@@ -1,3 +1,7 @@
+v0.5.0
+- **Refinement**: significant performance improvement
+- **Refactoring**: change the signature of `solve`
+
 v0.4.2
 - Add public C++ headers
 - Refine icube CLI and CMake package export

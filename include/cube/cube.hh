@@ -48,7 +48,8 @@ struct Solution {
     SolveResult status;
     std::string maneuver;
 
-    bool is_success() const noexcept {
+    bool is_success() const noexcept 
+    {
         return status == SolveResult::Success;
     }
 };
@@ -60,12 +61,15 @@ CUBE_EXPORT bool is_solvable(std::string_view color_cube);
 
 /*!
  * @brief Solves the Rubik's cube from source state to target state.
+ * @param src,tgt   the source and target color configuration
+ * @param good      early-exit threshold. This search stops as soon as a solution
+ *                  of length <= `good` is found. If the returned length is 
+ *                  > `good`, the optimum is guaranteed.
  */
 [[nodiscard]] CUBE_EXPORT Solution solve(
     std::string_view src,
     std::string_view tgt = cubeId,
-    int step = 30,
-    bool best = true
+    int good = 22
 );
 
 /*!

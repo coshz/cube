@@ -2,8 +2,8 @@
  * File: cube_amalg.min.cpp
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
- * Version: v0.4.2
- * Date: 2026-09-26
+ * Version: v0.5.0
+ * Date: 2026-10-10
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
@@ -1079,16 +1079,25 @@ template struct TablePrunning<>;
 namespace cube::solver {
 using namespace cube::data;
 using namespace cube::pdb;
+enum enum_phase { Ph1=0, Ph2=1 };
+struct solve_session
+{
+    const Coord root;
+    const size_t good_enough;
+    const size_t max_step;
+};
 class TwoPhaseSolver
 {
 public:
-    auto solve(const Coord &c, int step, bool best)
+    auto solve(const Coord &c, int max_step = DS)
         -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>;
 protected:
-    enum enum_phase { Ph1=0, Ph2=1 };
-    template<enum_phase PhX> bool search_phase(const Coord &c, size_t togo);
-    template<enum_phase PhX> static Coord transform(const Coord &c, const TurnMove &m);
-    template<enum_phase PhX> static size_t distance(const Coord &c);
+    template<enum_phase PhX>
+    bool search_phase(const Coord &c, size_t togo);
+    template<enum_phase PhX>
+    static Coord transform(const Coord &c, const TurnMove &m);
+    template<enum_phase PhX>
+    static size_t distance(const Coord &c);
     static constexpr int D0 = 12, D1 = 18, DS = D0+D1;
     template<enum_phase PhX> static constexpr auto& D = std::get<PhX>(std::tie(D0,D1));
     static constexpr std::array<TurnMove,18> EM0
@@ -1097,17 +1106,21 @@ protected:
         = { Ux1,Ux2,Ux3,Rx2,Fx2,Dx1,Dx2,Dx3,Lx2,Bx2 };
     template<enum_phase PhX>
     static constexpr auto& EM = std::get<PhX>(std::tie(EM0,EM1));
-private:
+protected:
     template<enum_phase PhX>
-    void reset_ph_sofar_()  { sofar_[PhX].fill(-1); }
+    void reset_ph_sofar() { sofar_[PhX].fill(-1); }
     template<enum_phase PhX>
-    void set_ph_solution_(size_t L)
+    void set_ph_sofar(int step, int move) { sofar_[PhX][step] = move; }
+    template<enum_phase PhX>
+    int get_ph_sofar(int step) { return sofar_[PhX][step]; }
+    template<enum_phase PhX>
+    void set_ph_solution(size_t L)
     {
         rsolution_[PhX].first = L;
         std::copy(sofar_[PhX].begin(), sofar_[PhX].begin()+L, rsolution_[PhX].second.begin());
     }
     template<enum_phase PhX>
-    auto get_ph_solution_() const -> std::vector<TurnMove>
+    auto get_ph_solution() const -> std::vector<TurnMove>
     {
         size_t n = rsolution_[PhX].first;
         if(n == 0) return {};
@@ -1117,21 +1130,32 @@ private:
         }
         return sol;
     }
-    Coord ph2_origin_(Coord c) const;
+    Coord ph2_origin(Coord c) const;
+private:
     std::array<std::array<int,DS+2>,2>                  sofar_;
     std::array<std::pair<size_t,std::array<int,DS>>,2>  rsolution_;
+};
+class TwoPhaseOptimSolver: public TwoPhaseSolver
+{
+public:
+    auto solve(const Coord &c, size_t good = 0)
+        -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>;
+    int start_search_ph1(const Coord& c, size_t d, size_t d_orig, size_t maxL);
+    bool start_search_ph2(const Coord& c, size_t togo);
+private:
+    Coord root_;
+    size_t good_;
 };
 }
 namespace cube::solver {
 #define TM cube::pdb::get_TM()
 #define TP cube::pdb::get_TP()
-inline bool is_dull_triple(const TurnMove A, const int B, const int C)
+inline bool is_dull_pair(const TurnMove A, const int B)
 {
-    return ( B>=Ux1 && B<=Bx3 ) &&
-           ( (A/3==B/3) || ((C>=Ux1&&C<=Bx3) && A/3==C/3 && (3+A/3-B/3)%3==0) )
-    ;
+    if(!(B >= Ux1 && B <= Bx3)) return false;
+    return (A/3 == B/3) || (A/3 == B/3+3);
 }
-template<TwoPhaseSolver::enum_phase I>
+template<enum_phase I>
 Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
 {
     if constexpr (I == Ph1)
@@ -1145,7 +1169,7 @@ Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
         (*TM.pTMCorner)[m][c.corner], (*TM.pTMEdge4)[m][c.edge4], (*TM.pTMEdge8)[m][c.edge8]
     };
 }
-template<TwoPhaseSolver::enum_phase I>
+template<enum_phase I>
 size_t TwoPhaseSolver::distance(const Coord &c)
 {
     if constexpr (I == Ph1)
@@ -1155,25 +1179,25 @@ size_t TwoPhaseSolver::distance(const Coord &c)
     return std::max((*TP.pTPEdge4Corner)[c.edge4][c.corner],
                     (*TP.pTPEdge4Edge8)[c.edge4][c.edge8]);
 }
-template<TwoPhaseSolver::enum_phase PhX>
+template<enum_phase PhX>
 bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
 {
-    if(togo == 0) return distance<PhX>(c) == 0;
     if(togo < distance<PhX>(c)) return false;
+    if(togo == 0) return distance<PhX>(c) == 0;
     for(auto m: EM<PhX>)
     {
-        if(is_dull_triple(m,sofar_[PhX][togo],sofar_[PhX][togo+1])) continue;
-        sofar_[PhX][togo-1] = m;
+        if(is_dull_pair(m,get_ph_sofar<PhX>(togo))) continue;
+        set_ph_sofar<PhX>(togo-1,m);
         bool ret = search_phase<PhX>(transform<PhX>(c,m), togo-1);
         if(ret) return true;
     }
     return false;
 }
-Coord TwoPhaseSolver::ph2_origin_(Coord c) const
+Coord TwoPhaseSolver::ph2_origin(Coord c) const
 {
     int corner = c.corner, edge4, edge8;
     auto ep = Coord::see2ep(c.slice,c.edge4,c.edge8);
-    for(auto &m : get_ph_solution_<Ph1>())
+    for(auto &m : get_ph_solution<Ph1>())
     {
         corner = (*TM.pTMCorner)[m][corner];
         ep = ep * ElementaryMove[m].ep;
@@ -1182,37 +1206,86 @@ Coord TwoPhaseSolver::ph2_origin_(Coord c) const
     edge8 = Coord::ep2edge8(ep);
     return Coord { 0,0,0,corner,edge4,edge8 };
 }
-auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
+auto TwoPhaseSolver::solve(const Coord &c, int step)
     -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
 {
+    reset_ph_sofar<Ph1>();
+    reset_ph_sofar<Ph2>();
     const size_t maxL = std::clamp(step,0,DS);
-    size_t solL = maxL + 1;
-    std::array<std::vector<TurnMove>,2> solution;
-    reset_ph_sofar_<Ph1>();
-    reset_ph_sofar_<Ph2>();
     for(auto d1 = distance<Ph1>(c); d1 <= maxL; d1++)
     {
         bool ret1 = search_phase<Ph1>(c,d1);
         if(!ret1) continue;
-        set_ph_solution_<Ph1>(d1);
-        auto c2 = ph2_origin_(c);
-        size_t togo = (solL > rsolution_[Ph1].first) ? solL - rsolution_[Ph1].first : 0;
-        for(auto d2 = distance<Ph2>(c2); d2 < togo; d2++)
+        set_ph_solution<Ph1>(d1);
+        auto c2 = ph2_origin(c);
+        for(auto d2 = distance<Ph2>(c2); d2 <= maxL-d1; d2++)
         {
             bool ret2 = search_phase<Ph2>(c2,d2);
             if(!ret2) continue;
-            set_ph_solution_<Ph2>(d2);
-            solution[Ph1] = get_ph_solution_<Ph1>();
-            solution[Ph2] = get_ph_solution_<Ph2>();
-            solL = solution[1].size() + solution[0].size();
-            if(!best) goto found;
-            if(d2==0) goto found; else break;
+            set_ph_solution<Ph2>(d2);
+            return {true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>()};
         }
     }
-    if(solL > maxL)
-        return {false, {}, {}};
-    found:
-    return std::make_tuple(true, solution[0], solution[1]);
+    return {false, {}, {}};
+}
+auto TwoPhaseOptimSolver::solve(const Coord &c, size_t good)
+    -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
+{
+    good_ = good;
+    root_ = c;
+    size_t bestL = DS + 1;
+    reset_ph_sofar<Ph1>();
+    for(auto togo = distance<Ph1>(c); togo < bestL; ++togo)
+    {
+        int l = start_search_ph1(c,togo,togo,bestL-1);
+        if(l >= 0) bestL = std::min(bestL,static_cast<size_t>(l));
+        if(bestL <= good_) break;
+    }
+    if(bestL > DS) return {false, {}, {}};
+    else return { true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>() };
+}
+int TwoPhaseOptimSolver::start_search_ph1(const Coord& c, size_t d, size_t d_orig, size_t maxL)
+{
+    if(d < distance<Ph1>(c)) return -1;
+    if(d == 0) {
+        set_ph_solution<Ph1>(d_orig);
+        auto c2 = ph2_origin(root_);
+        reset_ph_sofar<Ph2>();
+        for(auto togo = distance<Ph2>(c2); togo <= maxL; ++togo)
+        {
+            bool succ = start_search_ph2(c2,togo);
+            if(succ) {
+                set_ph_solution<Ph2>(togo);
+                return togo;
+            }
+        }
+        return -1;
+    }
+    int bestL = maxL + 1;
+    for(auto m: EM<Ph1>)
+    {
+        if(is_dull_pair(m, get_ph_sofar<Ph1>(d))) continue;
+        set_ph_sofar<Ph1>(d-1,m);
+        auto l = start_search_ph1(transform<Ph1>(c,m), d-1, d_orig, bestL-2);
+        if(l >= 0 && bestL > l+1) {
+            bestL = l+1;
+        }
+        if(bestL + d_orig - d <= good_) break;
+        if(d >= bestL) break;
+    }
+    return bestL > static_cast<int>(maxL) ? -1 : bestL;
+}
+bool TwoPhaseOptimSolver::start_search_ph2(const Coord& c, size_t togo)
+{   if(togo < distance<Ph2>(c)) return false;
+    if(togo == 0) return distance<Ph2>(c) == 0;
+    for(auto m: EM<Ph2>)
+    {
+        if(is_dull_pair(m, get_ph_sofar<Ph2>(togo))) continue;
+        set_ph_sofar<Ph2>(togo-1,m);
+        bool ret = start_search_ph2(transform<Ph2>(c,m), togo-1);
+        if(ret) return true;
+    }
+    return false;
 }
 }
 namespace cube::utils {
@@ -1376,7 +1449,7 @@ bool is_valid_maneuver(std::string_view s)
 #  define CUBE_NO_EXPORT
 #else
 #  ifndef CUBE_EXPORT
-#    ifdef cube_EXPORTS
+#    ifdef cube_shared_EXPORTS
 #      define CUBE_EXPORT __attribute__((visibility("default")))
 #    else
 #      define CUBE_EXPORT __attribute__((visibility("default")))
@@ -1432,7 +1505,8 @@ enum class PermFormat : int {
 struct Solution {
     SolveResult status;
     std::string maneuver;
-    bool is_success() const noexcept {
+    bool is_success() const noexcept
+    {
         return status == SolveResult::Success;
     }
 };
@@ -1440,8 +1514,7 @@ CUBE_EXPORT bool is_solvable(std::string_view color_cube);
 [[nodiscard]] CUBE_EXPORT Solution solve(
     std::string_view src,
     std::string_view tgt = cubeId,
-    int step = 30,
-    bool best = true
+    int good = 22
 );
 [[nodiscard]] CUBE_EXPORT std::string apply_maneuver(
     std::string_view maneuver,
@@ -1594,8 +1667,9 @@ bool tables_ready() { return pdb::tables_ready(); }
 void preload_tables() { pdb::preload_tables(); }
 bool is_valid_config(std::string_view cube) { return ColorState::is_valid_config(cube); }
 bool is_valid_maneuver(std::string_view maneuver) { return internal::is_valid_maneuver(maneuver); }
-cube::solver::TwoPhaseSolver TPS;
-Solution solve(std::string_view src, std::string_view tgt, int step, bool best) {
+cube::solver::TwoPhaseOptimSolver TPS;
+Solution solve(std::string_view src, std::string_view tgt, int good)
+{
     if (src != cubeId && !is_valid_config(src)) return {SolveResult::InvalidSrc, ""};
     if (tgt != cubeId && !is_valid_config(tgt)) return {SolveResult::InvalidTgt, ""};
     if (src == tgt) return {SolveResult::Success, ""};
@@ -1603,7 +1677,7 @@ Solution solve(std::string_view src, std::string_view tgt, int step, bool best) 
     auto cc_tgt = ColorState::fromString(tgt).toCubieCube();
     CubieCube cc = ~cc_tgt * cc_src;
     if (!cc.isSolvable()) return {SolveResult::Unsolvable, ""};
-    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), step, best);
+    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), good < 0 ? 0 : good);
     if (!found) return {SolveResult::NotFound, ""};
     std::vector<TurnMove> sol;
     size_t n1 = s1.size(), n2 = s2.size();
@@ -1643,16 +1717,11 @@ std::string show_permutation(std::string_view ms_or_cube, PermFormat format) {
     return show::to_string(cc, show::CubeFormat(static_cast<int>(format)));
 }
 }
-#define CUBE_VERSION_FULL  v0.4.2
+#define CUBE_VERSION_FULL  v0.5.0
 #define CUBE_VERSION_MAJOR 0
-#define CUBE_VERSION_MINOR 4
-#define CUBE_VERSION_PATCH 2
+#define CUBE_VERSION_MINOR 5
+#define CUBE_VERSION_PATCH 0
 #define CUBE_VERSION_BUILD
-#if defined(__GNUC__) || defined(__clang__)
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT __attribute__((used))
-#else
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT
-#endif
 #ifdef __cplusplus
     #define Default(x) = x
 #else
@@ -1703,8 +1772,7 @@ CUBE_EXPORT SolveResult solve(
     char*       buf,
     const char* src         Default(CUBE_ID),
     const char* tgt         Default(CUBE_ID),
-    int         step        Default(30),
-    bool        best        Default(true)
+    int         good        Default(22)
 );
 CUBE_EXPORT bool solvable(
     const char* color_cube  Default(CUBE_ID)
@@ -1728,12 +1796,12 @@ const char* solve_result_to_string(int sr)
     return solve_result_info(static_cast<SolveResult>(sr));
 }
 SolveResult solve(
-    char* buf, const char *src, const char* tgt, int step, bool best)
+    char* buf, const char *src, const char* tgt, int good)
 {
     if(!buf) return SolveResultUnknownErr;
     auto s_src = src == NULL ? cube::cubeId : std::string_view(src);
     auto s_tgt = tgt == NULL ? cube::cubeId : std::string_view(tgt);
-    auto res = cube::solve(s_src, s_tgt, step, best);
+    auto res = cube::solve(s_src, s_tgt, good);
     if(res.is_success()) {
         const auto& s = res.maneuver;
         std::memcpy(buf,s.c_str(),s.size()+1);

@@ -12,12 +12,12 @@ const char* solve_result_to_string(int sr)
 }
     
 SolveResult solve(
-    char* buf, const char *src, const char* tgt, int step, bool best)
+    char* buf, const char *src, const char* tgt, int good)
 {
     if(!buf) return SolveResultUnknownErr;
     auto s_src = src == NULL ? cube::cubeId : std::string_view(src);
     auto s_tgt = tgt == NULL ? cube::cubeId : std::string_view(tgt);
-    auto res = cube::solve(s_src, s_tgt, step, best);
+    auto res = cube::solve(s_src, s_tgt, good);
     if(res.is_success()) {
         const auto& s = res.maneuver;
         std::memcpy(buf,s.c_str(),s.size()+1);

@@ -29,9 +29,11 @@ void preload_tables() { pdb::preload_tables(); }
 bool is_valid_config(std::string_view cube) { return ColorState::is_valid_config(cube); }
 bool is_valid_maneuver(std::string_view maneuver) { return internal::is_valid_maneuver(maneuver); }
 
-cube::solver::TwoPhaseSolver TPS;
+cube::solver::TwoPhaseOptimSolver TPS;
+// cube::solver::TwoPhaseSolver TPS;
 
-Solution solve(std::string_view src, std::string_view tgt, int step, bool best) {
+Solution solve(std::string_view src, std::string_view tgt, int good) 
+{
     if (src != cubeId && !is_valid_config(src)) return {SolveResult::InvalidSrc, ""};
     if (tgt != cubeId && !is_valid_config(tgt)) return {SolveResult::InvalidTgt, ""};
 
@@ -45,7 +47,7 @@ Solution solve(std::string_view src, std::string_view tgt, int step, bool best) 
     // unsolvable cube
     if (!cc.isSolvable()) return {SolveResult::Unsolvable, ""};
 
-    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), step, best);
+    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), good < 0 ? 0 : good);
 
     // solution is not found since the search depth is too small
     if (!found) return {SolveResult::NotFound, ""};

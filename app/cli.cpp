@@ -33,7 +33,6 @@ struct REPL
         std::string arg1;   /* solve: src | color: maneuver | perm: ms_or_cube */
         std::string arg2;   /* solve: tgt | color: cube     | perm: format */
         int         arg3;   /* solve: N */
-        int         arg4;   /* solve: best */
     };
 
     static void run();
@@ -69,7 +68,7 @@ std::string REPL::help(bool full)
 R"(
 [Help]==========================================================================
 § Commands:                                                                    §
-§   solve <src> [tgt] [N] [best]    Find solution (tgt=cid, N=30, best=1)      §
+§   solve <src> [tgt] [N]           Find solution (tgt=cid,N=22 is good enough)§
 §   color <maneuver> [cube]         Apply maneuver (cube=cid)                  §
 §   perm  <maneuver|cube> [format]  Display permutation (format=2)             §
 §   :h / :hh / :q                   Help / Full Help / Quit                    §
@@ -82,8 +81,8 @@ R"(
 R"(
 [Help]==========================================================================
 § Commands:                                                                    §
-§   solve <src> [tgt] [N] [best]                                               §
-§           -- find [best] solution from <src> to [tgt] within [N] steps       §
+§   solve <src> [tgt] [N]                                                      §
+§           -- find first solution under length [N] from <src> to [tgt]        §
 §   color <maneuver> [cube]                                                    §
 §           -- get resulting cube by applying <maneuver> to [cube]             §
 §   perm  <maneuver | cube> [format]                                           §
@@ -98,7 +97,7 @@ R"(
 §                                                                              §
 § Defaults:                                                                    §
 §   tgt,cube            :: cid (the identity cube)                             §
-§   N                   :: 30                                                  §
+§   N                   :: 22                                                  §
 §   best                :: 1                                                   §
 §   format              :: 2                                                   §
 §                                                                              §
@@ -136,10 +135,10 @@ R"(
 
 auto REPL::parse_args(const std::string &line) -> REPL::S
 {
-    S obj{"","","",-0xfe,-0xfe};
+    S obj{"","","",-0xfe};
     std::stringstream ss(line);
-    std::string s0,s1,s2,s3,s4;
-    ss >> s0 >> std::quoted(s1) >> std::quoted(s2) >> s3 >> s4;
+    std::string s0,s1,s2,s3;
+    ss >> s0 >> std::quoted(s1) >> std::quoted(s2) >> s3;
     obj.cmd = s0;
 
     auto resolve_cube = [](const std::string& arg) -> std::string {
@@ -159,19 +158,14 @@ auto REPL::parse_args(const std::string &line) -> REPL::S
         obj.arg2 = s2;
     }
 
-    if(s3.empty()) obj.arg3 = 30;
+    if(s3.empty()) obj.arg3 = 22;
     else try { obj.arg3 = std::stoi(s3); } catch(...) {}
-    if(s4.empty()) obj.arg4 = 1;
-    else try { obj.arg4 = std::stoi(s4); } catch(...) {}
     return obj;
 }
 
 auto REPL::execute_cmd(const REPL::S &s) -> std::string {
     if (s.cmd == "solve") {
-        if (s.arg3 < 0 || s.arg4 < 0) {
-            return "!!! solve: invalid arguments";
-        }
-        auto sol = cube::solve(s.arg1, s.arg2, s.arg3, s.arg4);
+        auto sol = cube::solve(s.arg1, s.arg2, s.arg3 < 0 ? 0 : s.arg3);
         return sol.is_success() 
             ? sol.maneuver
             : "!!! "s += cube::to_string(sol.status);
@@ -249,7 +243,7 @@ int main(int argc, char *argv[])
         } else if (arg == "-a" || arg == "--about") {
             std::cout <<  CUBE_ABOUT_MESSAGE;
             return 0;
-        } if (arg == "--verbose") {
+        } else if (arg == "--verbose") {
             verbose = true;
         } else if (arg == "--table-dir") {
             if (i + 1 < argc) { custom_dir = argv[++i]; }

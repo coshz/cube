@@ -14,19 +14,18 @@ namespace cube::solver {
 #define TM cube::pdb::get_TM()
 #define TP cube::pdb::get_TP()
 
-/* for optimization
- * the continuation of TurnMoves A,B,C are dull (could be reduced) in cases like:
- *  - A=Ux1,B=Ux2,C     (A and its prev B are "homogeneous")
- *  - A=Ux1,B=Dx1,C=Ux1 (A and B are "disjoint" && A and C are "homogeneous")
+/* important optimization
+ * the continuation of TurnMoves A and its prev B could be reduced in cases:
+ *  - A=Ux1,B=Ux2     (A and its prev B are "homogeneous")
+ *  - A=Dx1,B=Ux1     (A > B && A and B are "disjoint")
  */
-inline bool is_dull_triple(const TurnMove A, const int B, const int C)
+inline bool is_dull_pair(const TurnMove A, const int B)
 {
-    return ( B>=Ux1 && B<=Bx3 ) &&
-           ( (A/3==B/3) || ((C>=Ux1&&C<=Bx3) && A/3==C/3 && (3+A/3-B/3)%3==0) )
-    ;
+    if(!(B >= Ux1 && B <= Bx3)) return false;
+    return (A/3 == B/3) || (A/3 == B/3+3);
 }
 
-template<TwoPhaseSolver::enum_phase I>
+template<enum_phase I>
 Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
 {
     if constexpr (I == Ph1)
@@ -41,7 +40,7 @@ Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
     };
 }
 
-template<TwoPhaseSolver::enum_phase I>
+template<enum_phase I>
 size_t TwoPhaseSolver::distance(const Coord &c)
 {
     if constexpr (I == Ph1)
@@ -52,18 +51,17 @@ size_t TwoPhaseSolver::distance(const Coord &c)
                     (*TP.pTPEdge4Edge8)[c.edge4][c.edge8]);
 }
 
-template<TwoPhaseSolver::enum_phase PhX>
+template<enum_phase PhX>
 bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
 {
-    if(togo == 0) return distance<PhX>(c) == 0;
     if(togo < distance<PhX>(c)) return false;
+    if(togo == 0) return distance<PhX>(c) == 0;
    
     for(auto m: EM<PhX>)
     {
-        // assert(togo+1 < D);
-        if(is_dull_triple(m,sofar_[PhX][togo],sofar_[PhX][togo+1])) continue;
+        if(is_dull_pair(m,get_ph_sofar<PhX>(togo))) continue;
 
-        sofar_[PhX][togo-1] = m;
+        set_ph_sofar<PhX>(togo-1,m);
         bool ret = search_phase<PhX>(transform<PhX>(c,m), togo-1);
 
         // ret=true means we find a PhX solution within `togo` steps;
@@ -74,14 +72,14 @@ bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
     return false;
 }
 
-Coord TwoPhaseSolver::ph2_origin_(Coord c) const
+Coord TwoPhaseSolver::ph2_origin(Coord c) const
 {
     // CubieCube transform: Coord::CubieCube2Coord(Coord::Coord2CubieCube(c) * ms);
     // （ Table transform optimization is working for corner only ）
     int corner = c.corner, edge4, edge8;
     // auto cp = Coord::corner2cp(c.corner);
     auto ep = Coord::see2ep(c.slice,c.edge4,c.edge8);
-    for(auto &m : get_ph_solution_<Ph1>())
+    for(auto &m : get_ph_solution<Ph1>())
     {
         corner = (*TM.pTMCorner)[m][corner];
         ep = ep * ElementaryMove[m].ep;
@@ -91,21 +89,16 @@ Coord TwoPhaseSolver::ph2_origin_(Coord c) const
     return Coord { 0,0,0,corner,edge4,edge8 };
 }
 
-auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
+auto TwoPhaseSolver::solve(const Coord &c, int step)
     -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
 {
-    const size_t maxL = std::clamp(step,0,DS);      // largest length allowed
-    size_t solL = maxL + 1;                         // smallest length found
-    std::array<std::vector<TurnMove>,2> solution;   // solution
-
     // reset sofar buffer:
-    // only once is enough since `set_ph_rsolution(d)` knows exact solution length d
-    reset_ph_sofar_<Ph1>();
-    reset_ph_sofar_<Ph2>();
+    reset_ph_sofar<Ph1>();
+    reset_ph_sofar<Ph2>();
 
-    ///
     /// iterative deepening search
 
+    const size_t maxL = std::clamp(step,0,DS);
     for(auto d1 = distance<Ph1>(c); d1 <= maxL; d1++)
     {
         // start Ph1 search
@@ -113,43 +106,88 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
         if(!ret1) continue;
 
         // Ph1 solution found
-        set_ph_solution_<Ph1>(d1);
+        set_ph_solution<Ph1>(d1);
 
         // start Ph2 search
-        auto c2 = ph2_origin_(c);
-        size_t togo = (solL > rsolution_[Ph1].first) ? solL - rsolution_[Ph1].first : 0;
-        for(auto d2 = distance<Ph2>(c2); d2 < togo; d2++)
+        auto c2 = ph2_origin(c);
+        for(auto d2 = distance<Ph2>(c2); d2 <= maxL-d1; d2++)
         {
             bool ret2 = search_phase<Ph2>(c2,d2);
             if(!ret2) continue;
 
             // Ph2 solution found
-            set_ph_solution_<Ph2>(d2);
-
-            // save solution
-            solution[Ph1] = get_ph_solution_<Ph1>();
-            solution[Ph2] = get_ph_solution_<Ph2>();
-            solL = solution[1].size() + solution[0].size();
-           
-            if(!best) goto found;
-            if(d2==0) goto found; else break;
-
-            /*
-            [Note] To find the twophase-optimal, instead of early exit when a
-            solution is found, logically we should continue from the next sibling
-            of Ph2 root, instead of the first node of layer under Ph1 root.
-            However, we do not implement like this since it makes the search
-            algorithm complicated and inefficient.
-            */
+            set_ph_solution<Ph2>(d2);
+            return {true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>()};
         }
     }
+    return {false, {}, {}};
+}
 
-    if(solL > maxL)
-        return {false, {}, {}};
+auto TwoPhaseOptimSolver::solve(const Coord &c, size_t good)
+    -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
+{
+    good_ = good;
+    root_ = c;
 
-    // solution found
-    found:
-    return std::make_tuple(true, solution[0], solution[1]);
+    size_t bestL = DS + 1;
+
+    reset_ph_sofar<Ph1>();
+    for(auto togo = distance<Ph1>(c); togo < bestL; ++togo)
+    {
+        int l = start_search_ph1(c,togo,togo,bestL-1);
+        if(l >= 0) bestL = std::min(bestL,static_cast<size_t>(l));
+        if(bestL <= good_) break;
+    }
+    if(bestL > DS) return {false, {}, {}};
+    else return { true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>() };
+}
+
+int TwoPhaseOptimSolver::start_search_ph1(const Coord& c, size_t d, size_t d_orig, size_t maxL)
+{
+    if(d < distance<Ph1>(c)) return -1;
+    if(d == 0) {
+        set_ph_solution<Ph1>(d_orig);
+        auto c2 = ph2_origin(root_);
+        reset_ph_sofar<Ph2>();
+        for(auto togo = distance<Ph2>(c2); togo <= maxL; ++togo)
+        {
+            bool succ = start_search_ph2(c2,togo);
+            if(succ) {
+                set_ph_solution<Ph2>(togo);
+                return togo;
+            }
+        }
+        return -1;
+    }
+
+    int bestL = maxL + 1;
+    for(auto m: EM<Ph1>) 
+    {
+        if(is_dull_pair(m, get_ph_sofar<Ph1>(d))) continue;
+        
+        set_ph_sofar<Ph1>(d-1,m);
+        auto l = start_search_ph1(transform<Ph1>(c,m), d-1, d_orig, bestL-2);
+        if(l >= 0 && bestL > l+1) {
+            bestL = l+1;
+        }
+        if(bestL + d_orig - d <= good_) break; // current is good enough
+        if(d >= bestL) break; // no shorter solution
+    }
+    return bestL > static_cast<int>(maxL) ? -1 : bestL;
+}
+
+bool TwoPhaseOptimSolver::start_search_ph2(const Coord& c, size_t togo)
+{   if(togo < distance<Ph2>(c)) return false;
+    if(togo == 0) return distance<Ph2>(c) == 0;
+    for(auto m: EM<Ph2>) 
+    {
+        if(is_dull_pair(m, get_ph_sofar<Ph2>(togo))) continue;
+        
+        set_ph_sofar<Ph2>(togo-1,m);
+        bool ret = start_search_ph2(transform<Ph2>(c,m), togo-1);
+        if(ret) return true;
+    }
+    return false;
 }
 
 } // namespace cube::solver

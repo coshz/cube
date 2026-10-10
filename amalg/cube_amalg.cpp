@@ -2,8 +2,8 @@
  * File: cube_amalg.cpp
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
- * Version: v0.4.2
- * Date: 2026-09-26
+ * Version: v0.5.0
+ * Date: 2026-10-10
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
@@ -1481,53 +1481,68 @@ namespace cube::solver {
 using namespace cube::data;
 using namespace cube::pdb;
 
+/* The search phase */
+enum enum_phase { Ph1=0, Ph2=1 };
+
+struct solve_session
+{
+    const Coord root;
+    const size_t good_enough;
+    const size_t max_step;
+    // solve_session(const Coord &c, size_t ge) : root(c), good_enough(ge) {}
+};
+
 /*!
  * @brief The Kociemba's twophase algorithm
  */
 class TwoPhaseSolver
 {
 public:
-
     /*!
-     * @brief Attempt to solve `c` in `step` steps
+     * @brief Attempt to the first solution to `c` within `max_step` steps
      * @param c the Coord of cube
-     * @param step the maximum steps allowed for search
-     * @param best whether to search exhaustively for the shortest solution
+     * @param max_step the maximum steps allowed for search
      * @return (is_solved,sol1,sol2) - solN means solution in phase N
-     * @note
+     * @remark
      * We adopt two iterative deepening searches in series rather than nesting
      * them, as in the original Kociemba algorithm. This simplifies the
      * implementation, but sacrifices the ease of extending the algorithm to
-     * find the two-phase optimum. (Btw, the two-phase optimal solution is
-     * intrinsically not guaranteed to be theoretically optimal.)
+     * find the two-phase optimum.
      */
-    auto solve(const Coord &c, int step, bool best)
+    auto solve(const Coord &c, int max_step = DS)
         -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>;
 
 protected:
-    enum enum_phase { Ph1=0, Ph2=1 };
-
     /*!
      * @brief The search algorithm in PhX
-     * @param c the Coord of cube
-     * @param togo the maximum search depth
-     * @return `true` if a solution is found within depth `togo`
      *
-     * @details The search tree is rooted at coord `c` and expands via ElementaryMove,
+     * The search tree is rooted at coord `c` and expands via ElementaryMove,
      * i.e., the `m`-th child of node `c` is `c * ElementaryMove[m]`.
      * During DFS traversal, the current move is always cached in buffer `sofar_`
      * at index `togo-1`. If a solution node is reached, the buffer is flushed
      * into `rsolution_` and return true. Otherwise, it returns false after all
      * nodes up to depth `togo` have been explored.
-     * A node `x` is considered a solution if `distance<PHX>(x) == 0`.
+     * A node `x` is considered a solution if `distance<PhX>(x) == 0`.
+     *
+     * @param c     the Coord of cube
+     * @param togo  the exact search depth
+     * @return      `true` if a solution is found
      */
-    template<enum_phase PhX> bool search_phase(const Coord &c, size_t togo);
+    template<enum_phase PhX>
+    bool search_phase(const Coord &c, size_t togo);
 
-    /* move-table based coord transform */
-    template<enum_phase PhX> static Coord transform(const Coord &c, const TurnMove &m);
+    /**
+     * @brief move-table based coord transform
+     * @attention In the current implementation, the Ph2 components of resultant
+     * are left uncomputed in Ph1. Therefore, please DO NOT use this function to
+     * obtain the starting coord for Ph2. Use @ref `ph2_origin` instead.
+     */
+    template<enum_phase PhX>
+    static Coord transform(const Coord &c, const TurnMove &m);
 
     /* prunning-talbe based lower bound distance in phase 1/2 */
-    template<enum_phase PhX> static size_t distance(const Coord &c);
+    template<enum_phase PhX>
+    static size_t distance(const Coord &c);
 
     /* max search depth for phase 1/2 (conclusion from literatures) */
     static constexpr int D0 = 12, D1 = 18, DS = D0+D1;
@@ -1541,15 +1556,23 @@ protected:
     template<enum_phase PhX>
     static constexpr auto& EM = std::get<PhX>(std::tie(EM0,EM1));
 
-private:
+protected:
 
     /* reset solution buffer */
     template<enum_phase PhX>
-    void reset_ph_sofar_()  { sofar_[PhX].fill(-1); }
+    void reset_ph_sofar() { sofar_[PhX].fill(-1); }
+
+    /* cache the move of current step */
+    template<enum_phase PhX>
+    void set_ph_sofar(int step, int move) { sofar_[PhX][step] = move; }
+
+    /* */
+    template<enum_phase PhX>
+    int get_ph_sofar(int step) { return sofar_[PhX][step]; }
 
     /* flush solution buffer to rsolution ( 0 <= L <= DS ) */
     template<enum_phase PhX>
-    void set_ph_solution_(size_t L)
+    void set_ph_solution(size_t L)
     {
         rsolution_[PhX].first = L;
         std::copy(sofar_[PhX].begin(), sofar_[PhX].begin()+L, rsolution_[PhX].second.begin());
@@ -1557,7 +1580,7 @@ private:
 
     /* get solution of phase 1/2 by reversing rsolution */
     template<enum_phase PhX>
-    auto get_ph_solution_() const -> std::vector<TurnMove>
+    auto get_ph_solution() const -> std::vector<TurnMove>
     {
         size_t n = rsolution_[PhX].first;
         if(n == 0) return {};
@@ -1568,11 +1591,44 @@ private:
         return sol;
     }
 
-    /* the origin of phase 2, evaluated from phase 1 solution */
-    Coord ph2_origin_(Coord c) const;
+    /* the Ph2 origin; obtainted from replaying Ph1 solution onto root */
+    Coord ph2_origin(Coord c) const;
 
+private:
     std::array<std::array<int,DS+2>,2>                  sofar_;      // solution buffer
     std::array<std::pair<size_t,std::array<int,DS>>,2>  rsolution_;  // reverse of solution
+};
+
+/*!
+ * @brief The Kociemba's two-phase solver that searches for the optimum
+ * @note The two-phase optimum is inherently not guaranteed to coincide with
+ *       the theoretical optimum.
+ */
+class TwoPhaseOptimSolver: public TwoPhaseSolver
+{
+public:
+    /*!
+     * @brief Two phase solver that finds the shortest solution
+     * @param c     the Coord of cube
+     * @param good  early-exit threshold. This search stops as soon as a solution
+     *              of length <= `good` is found. If the returned length is
+     *              > `good`, the two-phase optimum is guaranteed.
+     * @return (is_solved,sol1,sol2) - solX is the PhX solution. For a legal cube
+     *         coord, the `is_solved` is always true.
+     */
+    auto solve(const Coord &c, size_t good = 0)
+        -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>;
+
+    /* Attemp to find a solution at most `maxL` steps where the Ph1 solution to
+       `c` is of exact `d` steps; Return the legnth of solution */
+    int start_search_ph1(const Coord& c, size_t d, size_t d_orig, size_t maxL);
+
+    /* Attemp to find a Ph2 solution in exact `togo` steps */
+    bool start_search_ph2(const Coord& c, size_t togo);
+
+private:
+    Coord root_;
+    size_t good_;
 };
 
 } // namespace cube::solver
@@ -1582,19 +1638,18 @@ namespace cube::solver {
 #define TM cube::pdb::get_TM()
 #define TP cube::pdb::get_TP()
 
-/* for optimization
- * the continuation of TurnMoves A,B,C are dull (could be reduced) in cases like:
- *  - A=Ux1,B=Ux2,C     (A and its prev B are "homogeneous")
- *  - A=Ux1,B=Dx1,C=Ux1 (A and B are "disjoint" && A and C are "homogeneous")
+/* important optimization
+ * the continuation of TurnMoves A and its prev B could be reduced in cases:
+ *  - A=Ux1,B=Ux2     (A and its prev B are "homogeneous")
+ *  - A=Dx1,B=Ux1     (A > B && A and B are "disjoint")
  */
-inline bool is_dull_triple(const TurnMove A, const int B, const int C)
+inline bool is_dull_pair(const TurnMove A, const int B)
 {
-    return ( B>=Ux1 && B<=Bx3 ) &&
-           ( (A/3==B/3) || ((C>=Ux1&&C<=Bx3) && A/3==C/3 && (3+A/3-B/3)%3==0) )
-    ;
+    if(!(B >= Ux1 && B <= Bx3)) return false;
+    return (A/3 == B/3) || (A/3 == B/3+3);
 }
 
-template<TwoPhaseSolver::enum_phase I>
+template<enum_phase I>
 Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
 {
     if constexpr (I == Ph1)
@@ -1609,7 +1664,7 @@ Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
     };
 }
 
-template<TwoPhaseSolver::enum_phase I>
+template<enum_phase I>
 size_t TwoPhaseSolver::distance(const Coord &c)
 {
     if constexpr (I == Ph1)
@@ -1620,18 +1675,17 @@ size_t TwoPhaseSolver::distance(const Coord &c)
                     (*TP.pTPEdge4Edge8)[c.edge4][c.edge8]);
 }
 
-template<TwoPhaseSolver::enum_phase PhX>
+template<enum_phase PhX>
 bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
 {
-    if(togo == 0) return distance<PhX>(c) == 0;
     if(togo < distance<PhX>(c)) return false;
+    if(togo == 0) return distance<PhX>(c) == 0;
 
     for(auto m: EM<PhX>)
     {
-        // assert(togo+1 < D);
-        if(is_dull_triple(m,sofar_[PhX][togo],sofar_[PhX][togo+1])) continue;
+        if(is_dull_pair(m,get_ph_sofar<PhX>(togo))) continue;
 
-        sofar_[PhX][togo-1] = m;
+        set_ph_sofar<PhX>(togo-1,m);
         bool ret = search_phase<PhX>(transform<PhX>(c,m), togo-1);
 
         // ret=true means we find a PhX solution within `togo` steps;
@@ -1642,14 +1696,14 @@ bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
     return false;
 }
 
-Coord TwoPhaseSolver::ph2_origin_(Coord c) const
+Coord TwoPhaseSolver::ph2_origin(Coord c) const
 {
     // CubieCube transform: Coord::CubieCube2Coord(Coord::Coord2CubieCube(c) * ms);
     // （ Table transform optimization is working for corner only ）
     int corner = c.corner, edge4, edge8;
     // auto cp = Coord::corner2cp(c.corner);
     auto ep = Coord::see2ep(c.slice,c.edge4,c.edge8);
-    for(auto &m : get_ph_solution_<Ph1>())
+    for(auto &m : get_ph_solution<Ph1>())
     {
         corner = (*TM.pTMCorner)[m][corner];
         ep = ep * ElementaryMove[m].ep;
@@ -1659,21 +1713,16 @@ Coord TwoPhaseSolver::ph2_origin_(Coord c) const
     return Coord { 0,0,0,corner,edge4,edge8 };
 }
 
-auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
+auto TwoPhaseSolver::solve(const Coord &c, int step)
     -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
 {
-    const size_t maxL = std::clamp(step,0,DS);      // largest length allowed
-    size_t solL = maxL + 1;                         // smallest length found
-    std::array<std::vector<TurnMove>,2> solution;   // solution
-
     // reset sofar buffer:
-    // only once is enough since `set_ph_rsolution(d)` knows exact solution length d
-    reset_ph_sofar_<Ph1>();
-    reset_ph_sofar_<Ph2>();
+    reset_ph_sofar<Ph1>();
+    reset_ph_sofar<Ph2>();
 
-    ///
     /// iterative deepening search
 
+    const size_t maxL = std::clamp(step,0,DS);
     for(auto d1 = distance<Ph1>(c); d1 <= maxL; d1++)
     {
         // start Ph1 search
@@ -1681,43 +1730,88 @@ auto TwoPhaseSolver::solve(const Coord &c, int step, bool best)
         if(!ret1) continue;
 
         // Ph1 solution found
-        set_ph_solution_<Ph1>(d1);
+        set_ph_solution<Ph1>(d1);
 
         // start Ph2 search
-        auto c2 = ph2_origin_(c);
-        size_t togo = (solL > rsolution_[Ph1].first) ? solL - rsolution_[Ph1].first : 0;
-        for(auto d2 = distance<Ph2>(c2); d2 < togo; d2++)
+        auto c2 = ph2_origin(c);
+        for(auto d2 = distance<Ph2>(c2); d2 <= maxL-d1; d2++)
         {
             bool ret2 = search_phase<Ph2>(c2,d2);
             if(!ret2) continue;
 
             // Ph2 solution found
-            set_ph_solution_<Ph2>(d2);
-
-            // save solution
-            solution[Ph1] = get_ph_solution_<Ph1>();
-            solution[Ph2] = get_ph_solution_<Ph2>();
-            solL = solution[1].size() + solution[0].size();
-
-            if(!best) goto found;
-            if(d2==0) goto found; else break;
-
-            /*
-            [Note] To find the twophase-optimal, instead of early exit when a
-            solution is found, logically we should continue from the next sibling
-            of Ph2 root, instead of the first node of layer under Ph1 root.
-            However, we do not implement like this since it makes the search
-            algorithm complicated and inefficient.
-            */
+            set_ph_solution<Ph2>(d2);
+            return {true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>()};
         }
     }
+    return {false, {}, {}};
+}
 
-    if(solL > maxL)
-        return {false, {}, {}};
+auto TwoPhaseOptimSolver::solve(const Coord &c, size_t good)
+    -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
+{
+    good_ = good;
+    root_ = c;
 
-    // solution found
-    found:
-    return std::make_tuple(true, solution[0], solution[1]);
+    size_t bestL = DS + 1;
+
+    reset_ph_sofar<Ph1>();
+    for(auto togo = distance<Ph1>(c); togo < bestL; ++togo)
+    {
+        int l = start_search_ph1(c,togo,togo,bestL-1);
+        if(l >= 0) bestL = std::min(bestL,static_cast<size_t>(l));
+        if(bestL <= good_) break;
+    }
+    if(bestL > DS) return {false, {}, {}};
+    else return { true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>() };
+}
+
+int TwoPhaseOptimSolver::start_search_ph1(const Coord& c, size_t d, size_t d_orig, size_t maxL)
+{
+    if(d < distance<Ph1>(c)) return -1;
+    if(d == 0) {
+        set_ph_solution<Ph1>(d_orig);
+        auto c2 = ph2_origin(root_);
+        reset_ph_sofar<Ph2>();
+        for(auto togo = distance<Ph2>(c2); togo <= maxL; ++togo)
+        {
+            bool succ = start_search_ph2(c2,togo);
+            if(succ) {
+                set_ph_solution<Ph2>(togo);
+                return togo;
+            }
+        }
+        return -1;
+    }
+
+    int bestL = maxL + 1;
+    for(auto m: EM<Ph1>)
+    {
+        if(is_dull_pair(m, get_ph_sofar<Ph1>(d))) continue;
+
+        set_ph_sofar<Ph1>(d-1,m);
+        auto l = start_search_ph1(transform<Ph1>(c,m), d-1, d_orig, bestL-2);
+        if(l >= 0 && bestL > l+1) {
+            bestL = l+1;
+        }
+        if(bestL + d_orig - d <= good_) break; // current is good enough
+        if(d >= bestL) break; // no shorter solution
+    }
+    return bestL > static_cast<int>(maxL) ? -1 : bestL;
+}
+
+bool TwoPhaseOptimSolver::start_search_ph2(const Coord& c, size_t togo)
+{   if(togo < distance<Ph2>(c)) return false;
+    if(togo == 0) return distance<Ph2>(c) == 0;
+    for(auto m: EM<Ph2>)
+    {
+        if(is_dull_pair(m, get_ph_sofar<Ph2>(togo))) continue;
+
+        set_ph_sofar<Ph2>(togo-1,m);
+        bool ret = start_search_ph2(transform<Ph2>(c,m), togo-1);
+        if(ret) return true;
+    }
+    return false;
 }
 
 } // namespace cube::solver
@@ -1945,7 +2039,7 @@ bool is_valid_maneuver(std::string_view s)
 #  define CUBE_NO_EXPORT
 #else
 #  ifndef CUBE_EXPORT
-#    ifdef cube_EXPORTS
+#    ifdef cube_shared_EXPORTS
         /* We are building this library */
 #      define CUBE_EXPORT __attribute__((visibility("default")))
 #    else
@@ -2019,7 +2113,8 @@ struct Solution {
     SolveResult status;
     std::string maneuver;
 
-    bool is_success() const noexcept {
+    bool is_success() const noexcept
+    {
         return status == SolveResult::Success;
     }
 };
@@ -2031,12 +2126,15 @@ CUBE_EXPORT bool is_solvable(std::string_view color_cube);
 
 /*!
  * @brief Solves the Rubik's cube from source state to target state.
+ * @param src,tgt   the source and target color configuration
+ * @param good      early-exit threshold. This search stops as soon as a solution
+ *                  of length <= `good` is found. If the returned length is
+ *                  > `good`, the optimum is guaranteed.
  */
 [[nodiscard]] CUBE_EXPORT Solution solve(
     std::string_view src,
     std::string_view tgt = cubeId,
-    int step = 30,
-    bool best = true
+    int good = 22
 );
 
 /*!
@@ -2257,9 +2355,11 @@ void preload_tables() { pdb::preload_tables(); }
 bool is_valid_config(std::string_view cube) { return ColorState::is_valid_config(cube); }
 bool is_valid_maneuver(std::string_view maneuver) { return internal::is_valid_maneuver(maneuver); }
 
-cube::solver::TwoPhaseSolver TPS;
+cube::solver::TwoPhaseOptimSolver TPS;
+// cube::solver::TwoPhaseSolver TPS;
 
-Solution solve(std::string_view src, std::string_view tgt, int step, bool best) {
+Solution solve(std::string_view src, std::string_view tgt, int good)
+{
     if (src != cubeId && !is_valid_config(src)) return {SolveResult::InvalidSrc, ""};
     if (tgt != cubeId && !is_valid_config(tgt)) return {SolveResult::InvalidTgt, ""};
 
@@ -2273,7 +2373,7 @@ Solution solve(std::string_view src, std::string_view tgt, int step, bool best) 
     // unsolvable cube
     if (!cc.isSolvable()) return {SolveResult::Unsolvable, ""};
 
-    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), step, best);
+    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), good < 0 ? 0 : good);
 
     // solution is not found since the search depth is too small
     if (!found) return {SolveResult::NotFound, ""};
@@ -2327,17 +2427,11 @@ std::string show_permutation(std::string_view ms_or_cube, PermFormat format) {
 } // namespace cube// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 coshz
 
-#define CUBE_VERSION_FULL  v0.4.2
+#define CUBE_VERSION_FULL  v0.5.0
 #define CUBE_VERSION_MAJOR 0
-#define CUBE_VERSION_MINOR 4
-#define CUBE_VERSION_PATCH 2
+#define CUBE_VERSION_MINOR 5
+#define CUBE_VERSION_PATCH 0
 #define CUBE_VERSION_BUILD
-
-#if defined(__GNUC__) || defined(__clang__)
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT __attribute__((used))
-#else
-    #define CUBE_EXPORT_FORCE CUBE_EXPORT
-#endif
 
 #ifdef __cplusplus
     #define Default(x) = x
@@ -2461,8 +2555,9 @@ CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
  * @param buf       the buffer to solution (space-seperated moves)
  * @param src       source color configuration, `NULL` means `id`
  * @param tgt       target color configuration, `NULL` means `id`
- * @param step      the max steps to search (30 is recommended;)
- * @param best      try its best to find the short (but slower) solution
+ * @param good      early-exit threshold. This search stops as soon as a solution
+ *                  of length <= `good` is found. If the returned length is
+ *                  > `good`, the optimum is guaranteed.
  * @return
  *  see enum ``SolveResult``, ``solve_result_to_string``.
  */
@@ -2470,8 +2565,7 @@ CUBE_EXPORT SolveResult solve(
     char*       buf,
     const char* src         Default(CUBE_ID),
     const char* tgt         Default(CUBE_ID),
-    int         step        Default(30),
-    bool        best        Default(true)
+    int         good        Default(22)
 );
 
 /* check the solvability of color configuration */
@@ -2529,12 +2623,12 @@ const char* solve_result_to_string(int sr)
 }
 
 SolveResult solve(
-    char* buf, const char *src, const char* tgt, int step, bool best)
+    char* buf, const char *src, const char* tgt, int good)
 {
     if(!buf) return SolveResultUnknownErr;
     auto s_src = src == NULL ? cube::cubeId : std::string_view(src);
     auto s_tgt = tgt == NULL ? cube::cubeId : std::string_view(tgt);
-    auto res = cube::solve(s_src, s_tgt, step, best);
+    auto res = cube::solve(s_src, s_tgt, good);
     if(res.is_success()) {
         const auto& s = res.maneuver;
         std::memcpy(buf,s.c_str(),s.size()+1);

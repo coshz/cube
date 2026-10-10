@@ -131,8 +131,9 @@ CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
  * @param buf       the buffer to solution (space-seperated moves)
  * @param src       source color configuration, `NULL` means `id`
  * @param tgt       target color configuration, `NULL` means `id`
- * @param step      the max steps to search (30 is recommended;)
- * @param best      try its best to find the short (but slower) solution             
+ * @param good      early-exit threshold. This search stops as soon as a solution
+ *                  of length <= `good` is found. If the returned length is 
+ *                  > `good`, the optimum is guaranteed.        
  * @return 
  *  see enum ``SolveResult``, ``solve_result_to_string``.        
  */
@@ -140,8 +141,7 @@ CUBE_EXPORT SolveResult solve(
     char*       buf, 
     const char* src         Default(CUBE_ID),
     const char* tgt         Default(CUBE_ID),
-    int         step        Default(30),
-    bool        best        Default(true)
+    int         good        Default(22)
 );
 
 /* check the solvability of color configuration */
