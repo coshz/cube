@@ -1,6 +1,6 @@
-import { createCubeAPI } from "../dist/index.mjs";
+import { createCubeApi } from "../dist/index.mjs";
 
-const api = await createCubeAPI();
+const api = await createCubeApi();
 const ms = "U F U' L2 R L' D2 B";
 var fc = api.facecube(ms);
 console.log(fc);

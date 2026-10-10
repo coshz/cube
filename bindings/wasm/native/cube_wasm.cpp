@@ -1,56 +1,36 @@
-#include "cube/cube.h"
+#include "cube/cube.hh"
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <string>
 
-using std::string;
 using namespace emscripten;
 
-val wasm_solve(
-    const string &src, const string &tgt, int step, bool best
+val wasm_solve( 
+    std::string src, std::string tgt, int good
 ) {
-    char buf[CUBE_BS] = {0};
-    const char *p_src = src.empty() ? nullptr : src.c_str();
-    const char *p_tgt = tgt.empty() ? nullptr : tgt.c_str();
-    SolveResult sr = solve(buf, p_src, p_tgt, step, best);
+    auto sr = cube::solve(src, tgt, good);
     val obj = val::object();
-    if(sr == SolveResultSuccess) {
+    if(sr.is_success()) {
         obj.set("ok", true);
-        obj.set("solution", string(buf));
+        obj.set("solution", sr.maneuver);
     } else {
         obj.set("ok", false);
-        obj.set("error", string(solve_result_to_string(sr)));
+        obj.set("error", std::string(to_string(sr.status)));
     }
     return obj;
 }
 
-string wasm_facecube(
-    const string &maneuver, const string &cube
-) {
-    char buf[CUBE_BS] = {0};
-    const char *p_cube = cube.empty() ? CUBE_ID : cube.c_str();
-    facecube(buf, maneuver.c_str(), p_cube);
-    return string(buf);
-}
-
-string wasm_permutation(
-    const string &maneuver, int fmt
-) {
-    char buf[CUBE_BS] = {0};
-    permutation(buf, maneuver.c_str(), fmt);
-    return string(buf);
-}
-
-bool wasm_solvable(
-    const string &src
-) {
-    return solvable(src.c_str());
-}
-
 EMSCRIPTEN_BINDINGS(cube_module) {
-    function("solvable", &wasm_solvable);
-    function("facecube", &wasm_facecube);
-    function("permutation", &wasm_permutation);
+    constant("cubeId", std::string(cube::cubeId));
     function("solve", &wasm_solve);
+    function("facecube", +[](std::string maneuver, std::string cube) {
+        return cube::apply_maneuver(maneuver, cube);
+    });
+    function("permutation", +[](std::string ms_or_cube, int fmt) {
+        return cube::show_permutation(ms_or_cube, static_cast<cube::PermFormat>(fmt));
+    });
+    function("solvable", +[](std::string src) {
+        return cube::is_solvable(src);
+    });
 }

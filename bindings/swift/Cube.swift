@@ -14,25 +14,29 @@ extension SolveResult: LocalizedError, CustomStringConvertible {
     }
 }
 
-/// MARK: - Core APIs
+// MARK: - Core APIs
 
-/// Solves the Rubik's cube from a source configuration to a target configuration.
+/// Solves the Rubik's cube
 ///
+/// Uses Kociemba's two-phase algorithm. The search stops as soon as any solution 
+/// of length at most `good` is found, trading optimality for speed. 
+/// If the returned maneuver is *longer* than `good`, no shorter solution exists
+/// and the result is the two-phase optimum. 
+/// 
 /// - Parameters:
-///   - src: The source color configuration string (nil for `cubeIdentity`);
-///   - tgt: The target color configuration string (nil for `cubeIdentity`);
-///   - steps: The maximum search depth (default: `30`);
-///   - best: Whether to search for the shortest solution (default: `false`);
-/// - Returns: A space-separated maneuver sequence solving the cube;
-/// - Throws: A ``SolveResult`` error.
+///   - src: The source color configuration string
+///   - tgt: The target color configuration string (nil for `cubeIdentity`)
+///   - good: Acceptable solution length. Pass `0` to disable early-exit (default:`22`)
+/// - Returns: A space-separated maneuver, eg. `"R U' F D' L2 B"`
+/// - Throws: A ``SolveResult`` if the src/tgt configuration is invalid or the
+///           cube is unsolvable
 public func solve(
     src: String,
     tgt: String? = nil,
-    steps: Int32 = 30,
-    best: Bool = false
+    good: Int32 = 22
 ) throws -> String {
     var buffer = [CChar](repeating: 0, count: Int(CUBE_BS))
-    let result = c_solve(&buffer,src,tgt,steps,best)
+    let result = c_solve(&buffer,src,tgt,good)
     guard result == .success else {
         throw result
     }
@@ -47,11 +51,11 @@ public func solvable(cube: String) -> Bool {
     return c_solvable(cube)
 }
 
-/// Transforms a cube's color configuration by applying a sequence of moves.
+/// Applies a maneuver to a cube and returns the resulting color configuration
 ///
 /// - Parameters:
-///   - cube: The initial color configuration string;
-///   - maneuver: The sequence of moves to execute;12
+///   - maneuver: The sequence of moves to apply, eg. `"U R' F D L2 B"`
+///   - cube: The initial color configuration. Defaults to the solved cube.
 /// - Returns: The resulting color configuration.
 ///
 public func facecube(maneuver: String, cube: String = String(CUBE_ID)) -> String {
@@ -60,16 +64,17 @@ public func facecube(maneuver: String, cube: String = String(CUBE_ID)) -> String
     return String(cString:buffer)
 }
 
-/// Computes the permutation for a given maneuver or cube
+/// Computes the permutation representation of a given maneuver or cube
 ///
-/// - Parameter ms_or_cube: the color cube or maneuver (move sequence);
-/// - Returns: 
-///     0 => 54-face;   eg. "U1U2U3...B9"
-///     1 => 20-cubie;  eg. "ABCDEFGH00000000opqrstuvwxyz000000000000"
-///     2 => cycles:    eg. "(ufl,urf,ubr)(uf,ul,ur)(+u)(−d)"
-///
-public func permutation(ms_or_cube: String, fmt: Int32 = 2) -> String {
+/// - Parameters:
+///   - msOrCube: A color cube or a maneuver;
+///   - fmt: Output format. One of:
+///       - `0`: 54-face;   eg. "U1U2U3...B9"
+///       - `1`: 20-cubie;  eg. "ABCDEFGH00000000opqrstuvwxyz000000000000"
+///       - `2`: cycles:    eg. "(ufl,urf,ubr)(uf,ul,ur)(+u)(−d)"
+/// - Returns: The permutation encoded as a string in the requested format
+public func permutation(msOrCube: String, fmt: Int32 = 2) -> String {
     var buffer = [CChar](repeating: 0, count: Int(CUBE_BS))
-    c_permutation(&buffer, ms_or_cube, fmt)
+    c_permutation(&buffer, msOrCube, fmt)
     return String(cString:buffer)
 }

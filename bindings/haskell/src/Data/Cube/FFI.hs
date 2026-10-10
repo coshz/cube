@@ -8,8 +8,7 @@ foreign import ccall "solve"
         :: CString  -- buffer
         -> CString  -- src color
         -> CString  -- tgt color
-        -> CInt     -- step
-        -> CBool    -- best
+        -> CInt     -- good enough
         -> IO CInt
 
 foreign import ccall "solvable"

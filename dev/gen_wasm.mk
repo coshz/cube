@@ -17,7 +17,7 @@ WASM_SOURCES := $(WASM_DIR)/native/cube_wasm.cpp $(CPP_SOURCES)
 ifeq ($(BUILD_TYPE),Debug)
     WASM_OPT_FLAGS := -O0
 else
-    WASM_OPT_FLAGS := -O2 -DNDEBUG
+    WASM_OPT_FLAGS := -O3 -DNDEBUG
 endif
 
 EM_COMPILE_FLAGS := -r -std=c++17 -I$(CUBE_BUILD_INCLUDE_DIR) $(WASM_OPT_FLAGS)

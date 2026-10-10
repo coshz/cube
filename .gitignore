@@ -8,3 +8,4 @@ dist-*
 /doc
 .clangd
 .cache/
+*.code-workspace

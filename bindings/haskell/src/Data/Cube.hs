@@ -51,6 +51,7 @@ module Data.Cube
 , showTurns
 , parseTurns
   -- * Solving Interface (C FFI)
+, rawSolve
 , solve
 , unsafeSolve
 , solveFrom

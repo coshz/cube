@@ -34,11 +34,11 @@ npm install @coshz/jscube
 ## 🚀 Quick Start
 
 ```typescript
-import { createCubeAPI, CubeID } from '@coshz/jscube';
+import { createCubeApi } from '@coshz/jscube';
 
 async function main() {
   // 1. Initialize API instance
-  const cube = await createCubeAPI();
+  const cube = await createCubeApi();
 
   // 2. Check state validity
   const scrambled = cube.facecube("U F U' L2 R L' D2 B")
@@ -46,11 +46,11 @@ async function main() {
 
   // 3. Solve the cube
   try {
-    const solution = cube.solve(scrambled, {target: CubeID});
+    const solution = cube.solve(scrambled, {target:cube.cubeId,goodEnough:20});
     console.log("Solution: ", solution);
     // Verify solution
     const endState = cube.facecube(solution, scrambled);
-    console.log("Is solved:", endState === CubeID); // true
+    console.log("Is solved:", endState === cube.cubeId); // true
   } catch (err) {
     console.error("Solving failed:", (err as Error).message);
     return;
@@ -64,33 +64,50 @@ await main();
 ## 📖 API Reference
 
 ```typescript
-import { createCubeAPI, CubeID, type CubeAPI, type SolveOptions, type SolveResult } from '@coshz/jscube';
+import { createCubeApi, type CubeApi, type SolveOptions, type SolveResult, PermFormat } from '@coshz/jscube';
 
 // Initialize the API instance
-const api: CubeAPI = await createCubeAPI();
+const api: CubeApi = await createCubeApi();
 ```
 
 ### Methods
 
 | Method | Description |
 | :--- | :--- |
-| `solve(src?, options?)` | Solves the cube state. Returns solution string or throws an error. |
-| `trySolve(src?, options?)` | Safe solver. Returns `{ ok: true, solution }` or `{ ok: false, error }`. |
+| `solve(src?, options?)` | Solves the cube state. Returns a solution string or throws an error. |
+| `trySolve(src?, options?)` | Safe solver. Returns a `SolveResult` object. |
 | `solvable(src)` | Returns `true` if the 54-character state string is physically solvable. |
 | `facecube(maneuver, cube?)` | Applies move sequence (e.g., `"R U R' U'"`) and returns the new state. |
-| `permutation(mc, fmt?)` | Returns the permutation array/string for a move sequence or a cube. |
+| `permutation(ms_or_cube, fmt?)` | Returns the permutation array/string for a move sequence or a cube. |
 
-### Types
+### Constants & Types
 
 ```typescript
-interface SolveOptions {
-  target?: string;    // Target state (default: CubeID)
-  maxSteps?: number;  // Max search depth (default: 30)
-  best?: boolean;     // Search for optimal solution (default: true)
+interface CubeApi {
+  readonly cubeId: string;
+  solvable: (src: string) => boolean;
+  facecube: (maneuver: string, cube?: string) => string;
+  permutation: (maneuver: string, fmt?: PermFormat) => string;
+  trySolve: (src: string, options?: SolveOptions) => SolveResult; // no exception
+  solve: (src: string, options?: SolveOptions) => string; // with exception
 }
 
+interface SolveOptions {
+  target?: string;      // Target state (default: CubeID)
+  goodEnough?: number;  // Acceptable solution length (default: 22)
+}
+
+type SolveResult =
+  | { ok: true; solution: string }
+  | { ok: false; error: string }
+;
+
+// Permutation output format (default: PermFormat.Cycle)
+const PermFormat = { Face: 0, Cubie: 1, Cycle: 2 } as const;
+type PermFormat = typeof PermFormat[keyof typeof PermFormat];
+
 // Solved state constant (54 chars)
-// CubeID = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
+// cubeId = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 ```
 ---
 

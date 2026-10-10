@@ -13,9 +13,9 @@ class CustomBuildExt(build_ext):
         compiler_type = self.compiler.compiler_type 
         for ext in self.extensions: 
             if compiler_type == 'msvc': 
-                ext.extra_compile_args = ['/std:c++17', '/O2']
+                ext.extra_compile_args = ['/std:c++17', '/O3', '/DNDEBUG']
             else:
-                ext.extra_compile_args = ['-std=c++17', '-O2', '-fPIC']
+                ext.extra_compile_args = ['-std=c++17', '-O3', '-DNDEBUG', '-fPIC']
         super().build_extensions()
 
 

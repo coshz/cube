@@ -1,19 +1,24 @@
 from ._ffi import _libcube as lib
 from ._exceptions import SolveResult, SolveError
 import ctypes 
+from enum import IntEnum
 
-__all__ = [ 'solve', 'facecube', 'permutation', 'solvable', 'CUBE_ID' ]
+__all__ = [ 'solve', 'facecube', 'permutation', 'solvable', 'CUBE_ID', 'PermFormat' ]
 
 CUBE_ID = lib.CUBE_ID
 
-def solve(src: str, tgt: str = CUBE_ID, step: int = 30, best: bool = False) -> str:
+class PermFormat(IntEnum):
+    Face    = 0
+    Cubie   = 1
+    Cycle   = 2
+
+def solve(src: str, tgt: str = CUBE_ID, good: int = 22) -> str:
     """ Solve the cube.
 
     Args:
         src     : the source color configuration;
         tgt     : the target color configuration; (None => cid)
-        step    : the maximum allowed steps;
-        best    : find the shorter (but slower) solution
+        good    : the acceptable steps;
     
     Return:
         the sequence of moves
@@ -25,7 +30,7 @@ def solve(src: str, tgt: str = CUBE_ID, step: int = 30, best: bool = False) -> s
     src_bytes = src.encode('utf-8')
     tgt_bytes = tgt.encode('utf-8')
     buffer = ctypes.create_string_buffer(lib.CUBE_BS)
-    code = lib.solve(buffer,src_bytes,tgt_bytes,step,best)
+    code = lib.solve(buffer,src_bytes,tgt_bytes,good)
     if code != SolveResult.SUCCESS: 
         raise SolveError(code)
     return buffer.value.decode('utf-8')
@@ -39,7 +44,7 @@ def facecube(manuuver: str, cube: str = CUBE_ID) -> str:
     return buffer.value.decode('utf-8')
 
 
-def permutation(ms_or_cube: str, fmt: int = 2) -> str: 
+def permutation(ms_or_cube: str, fmt: PermFormat = PermFormat.Cycle) -> str: 
     mc = ms_or_cube.encode('utf-8')
     buffer = ctypes.create_string_buffer(lib.CUBE_BS)
     lib.permutation(buffer,mc,fmt)

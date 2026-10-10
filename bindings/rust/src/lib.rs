@@ -148,8 +148,7 @@ pub fn permutation(ms_or_cube: impl AsRef<str>, fmt: i32) -> String {
 pub struct CubeSolver {
     src: Option<Cube>,
     tgt: Option<Cube>,
-    step: i32,
-    best: bool,
+    good: i32
 }
 
 impl CubeSolver {
@@ -158,8 +157,7 @@ impl CubeSolver {
         Self {
             src: None,
             tgt: None,
-            step: 30,
-            best: true,
+            good: 22
         }
     }
 
@@ -175,15 +173,9 @@ impl CubeSolver {
         self
     }
 
-    /// Sets the maximum search depth limit in steps (default: `30`).
-    pub fn max_steps(mut self, step: i32) -> Self {
-        self.step = step;
-        self
-    }
-
-    /// Toggles optimal solution search mode (default: `true`).
-    pub fn best(mut self, best: bool) -> Self {
-        self.best = best;
+    /// Sets the acceptable steps (default: `22`).
+    pub fn good_enough(mut self, good: i32) -> Self {
+        self.good = good;
         self
     }
 
@@ -202,8 +194,7 @@ impl CubeSolver {
                 buffer.as_mut_ptr() as *mut c_char,
                 src_ptr,
                 tgt_ptr,
-                self.step,
-                self.best,
+                self.good
             )
         };
 

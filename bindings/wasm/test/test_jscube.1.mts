@@ -1,6 +1,6 @@
-import { createCubeAPI, CubeID } from '@coshz/jscube';
+import { createCubeApi } from '@coshz/jscube';
 
-const cube = await createCubeAPI();
+const cube = await createCubeApi();
 
 const fake_cube = "DUUBULDBRBLURRFFLDFLDFBBDFFDURRDRUURDFLLLRBRLBBRFFFLUD";
 console.log(cube.solvable(fake_cube));

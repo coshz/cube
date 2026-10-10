@@ -1,7 +1,7 @@
-import { createAPI, SolveResult, CubeID } from "./api.mjs";
-import type { CubeAPI } from "./api.mjs";
+import { createApiFromModule, SolveResult, SolveOptions, PermFormat } from "./api.mjs";
+import type { CubeApi } from "./api.mjs";
 
-const moduleLoader = async ():Promise<any> => {
+const loadWasmModule = async ():Promise<any> => {
     const isNode =  
         typeof process === "object" && 
         typeof process.versions === "object" && 
@@ -12,11 +12,11 @@ const moduleLoader = async ():Promise<any> => {
     return import(path);
 };
 
-const createCubeAPI = async () => {
-    const module = await moduleLoader();
-    const factory = module.default;
-    return createAPI(factory);
+const createCubeApi = async () => {
+    const wasmModule = await loadWasmModule();
+    const initWasm = wasmModule.default;
+    return createApiFromModule(initWasm);
 }
 
-export type { CubeAPI };
-export { createCubeAPI, SolveResult, CubeID };
+export type { CubeApi };
+export { createCubeApi, SolveResult, SolveOptions, PermFormat };

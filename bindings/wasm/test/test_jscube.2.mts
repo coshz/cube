@@ -1,9 +1,9 @@
 import assert from 'node:assert';
 import { test } from 'node:test';
-import { createCubeAPI, CubeID } from '@coshz/jscube';
+import { createCubeApi } from '@coshz/jscube';
 
 test('cube solver functionality', async () => {
-    const cube = await createCubeAPI();
+    const cube = await createCubeApi();
 
     const fake_cube = "DUUBULDBRBLURRFFLDFLDFBBDFFDURRDRUURDFLLLRBRLBBRFFFLUD";
     assert.strictEqual(cube.solvable(fake_cube), false);
@@ -15,6 +15,6 @@ test('cube solver functionality', async () => {
         assert.fail(res.error);
     } else {
         const endState = cube.facecube(res.solution, scramble);
-        assert.strictEqual(endState, CubeID);
+        assert.strictEqual(endState, cube.cubeId);
     }
 });

@@ -10,7 +10,7 @@ scrambled = pycube.facecube("U F U' L2 R L' D2 B")
 if pycube.solvable(scrambled):
     try:
         # Find solution sequence
-        solution = pycube.solve(scrambled, step=30, best=True)
+        solution = pycube.solve(scrambled)
         print(f"Solution: {solution}")
 
         # Apply solution to verify end state

@@ -30,7 +30,7 @@ scrambled = pycube.facecube("U F U' L2 R L' D2 B")
 if pycube.solvable(scrambled):
     try:
         # Find solution sequence
-        solution = pycube.solve(scrambled, step=30, best=True)
+        solution = pycube.solve(scrambled,good=22)
         print(f"Solution: {solution}")
 
         # Apply solution to verify end state
@@ -45,24 +45,25 @@ if pycube.solvable(scrambled):
 
 ```python
 import pycube
-from pycube import SolveError, CUBE_ID
+from pycube import SolveError, CUBE_ID, PermFormat
 ```
 
 ### Functions
 
 | Function | Description |
 | :--- | :--- |
-| `solve(src, tgt=CUBE_ID, step=30, best=False)` | Solves the cube state string `src`. Returns solution string or raises `SolveError`. |
-| `facecube(maneuver, cube=CUBE_ID)` | Applies move sequence (e.g., `"U F U' L2"`) to a cube state and returns the new state. |
+| `solve(src,tgt=CUBE_ID,good=22)` | Solve cube state `src`; stops as soon as a solution <= `good` moves is found. Returns solution string or raises `SolveError`. |
+| `facecube(maneuver,cube=CUBE_ID)` | Applies move sequence (e.g., `"U F U' L2"`) to a cube state and returns the new state. |
 | `solvable(cube)` | Returns `True` if the 54-character state string is physically solvable. |
-| `permutation(ms, fmt=2)` | Returns a permutation representation for a move sequence or state. |
+| `permutation(ms_or_cube,fmt=PermFormat.Cycle)` | Returns a permutation representation for a move sequence or state. |
 
 ### Constants & Exceptions
 
 | Name | Type | Description |
 | :--- | :--- | :--- |
-| `CUBE_ID` | `str` | Constant representing the standard solved state (`"UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"`). |
-| `SolveError` | `Exception` | Raised when the state is invalid, unsolvable, or exceeds search step limits. |
+| `CUBE_ID` | `str` | Constant representing the standard solved state `UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB`. |
+| `PermFormat` | `IntEnum` | Permutation output format. Members: `Face`,`Cubie`,`Cycle`. Defaults to `Cycle`. |
+| `SolveError` | `Exception` | Raised when the state is invalid or unsolvable. |
 
 ## 📄 License
 

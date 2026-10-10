@@ -29,8 +29,7 @@ extern "C" {
         buf: *mut c_char,
         src: *const c_char,
         tgt: *const c_char,
-        step: c_int,
-        best: bool,
+        step: c_int
     ) -> SolveResult;
 
     /// Checks if a given color cube represents a valid, solvable cube

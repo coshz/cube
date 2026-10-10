@@ -11,7 +11,7 @@ Tags:
 
 Functions:
   - Name: solve
-    SwiftName: "c_solve(_:_:_:_:_:)"
+    SwiftName: "c_solve(_:_:_:_:)"
   - Name: solvable
     SwiftName: "c_solvable(_:)"
   - Name: facecube

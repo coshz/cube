@@ -37,7 +37,7 @@ def _load_library() -> CubeCDLL:
 
 _libcube = _load_library() 
 
-_libcube.solve.argtypes = [c_char_p, c_char_p,  c_char_p, c_int32, c_bool]
+_libcube.solve.argtypes = [c_char_p, c_char_p,  c_char_p, c_int32]
 _libcube.solve.restype = c_int32
 
 _libcube.facecube.argtypes = [c_char_p, c_char_p, c_char_p]

@@ -1,7 +1,6 @@
 interface SolveOptions {
     target?: string; 
-    maxSteps?: number; 
-    best?: boolean;
+    goodEnough?: number;
 }
 
 type SolveResult =
@@ -9,39 +8,43 @@ type SolveResult =
     | { ok: false; error: string }
 ;
 
-interface CubeAPI {
+const PermFormat = { Face: 0, Cubie: 1, Cycle: 2 } as const;
+type PermFormat = typeof PermFormat[keyof typeof PermFormat];
+
+interface CubeApi {
+    readonly cubeId: string;
     solvable: (src: string) => boolean;
     facecube: (maneuver: string, cube?: string) => string;
-    permutation: (maneuver: string) => string;
+    permutation: (maneuver: string, fmt?: PermFormat) => string;
     trySolve: (src: string, options?: SolveOptions) => SolveResult; // no exception
     solve: (src: string, options?: SolveOptions) => string; // with exception
 }
 
-const CubeID = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
-
-async function createAPI(
+async function createApiFromModule(
     initModule: () => any | Promise<any>
-): Promise<CubeAPI> {
+): Promise<CubeApi> {
     const module_ = await initModule();
+
+    const cubeId: string = module_.cubeId;
 
     function solvable(src:string):boolean {
         return module_.solvable(src);
     }
 
-    function facecube(maneuver:string, cube:string = CubeID) {
+    function facecube(maneuver:string, cube: string = cubeId) {
         return module_.facecube(maneuver, cube);
     }
     
-    function permutation(ms_or_cube:string, fmt: number = 2) {
-        return module_.permutation(ms_or_cube, fmt);
+    function permutation(ms_or_cube:string, fmt?: PermFormat) {
+        return module_.permutation(ms_or_cube, fmt ?? PermFormat.Cycle);
     }
 
-    function trySolve(src:string = CubeID, options?: SolveOptions): SolveResult {
-        const { target = CubeID, maxSteps = 30, best = true } = options ? options : {};
-        return module_.solve(src, target, maxSteps, best);
+    function trySolve(src:string, options?: SolveOptions): SolveResult {
+        const { target = cubeId, goodEnough: goodEnough = 22 } = options ? options : {};
+        return module_.solve(src, target, goodEnough);
     }
 
-    function solve(src:string = CubeID, options?: SolveOptions): string {
+    function solve(src:string, options?: SolveOptions): string {
         const result = trySolve(src, options);
         if (result.ok) {
             return result.solution;
@@ -51,6 +54,7 @@ async function createAPI(
     }
 
     return {
+        cubeId,
         solvable,
         facecube,
         permutation,
@@ -59,5 +63,5 @@ async function createAPI(
     };
 }
 
-export { createAPI, SolveResult, CubeID, SolveOptions };
-export type { CubeAPI };
+export { createApiFromModule, SolveResult, SolveOptions, PermFormat };
+export type { CubeApi };
