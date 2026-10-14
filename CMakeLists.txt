@@ -20,7 +20,7 @@ configure_version(CUBE
 )
 
 project(cube 
-    VERSION ${CUBE_VERSION_SEMVER} 
+    VERSION ${CUBE_VERSION} 
     LANGUAGES CXX
 )
 
@@ -50,6 +50,7 @@ set(CUBE_PACK_DIR "${PROJECT_BINARY_DIR}/dist" CACHE STRING "Cube packaging dire
 option(BUILD_STATIC_LIBS "Build cube static library" ON)
 option(BUILD_SWIFT_MODULE "Build Apple Cube.framework and Swift module map" ON)
 option(ENABLE_TEST "Enable testing" OFF)
+option(ENABLE_BENCHMARK "Enable benchmark" OFF)
 
 # ------------------------------------------------------------------------------
 # Generated headers
@@ -122,6 +123,16 @@ if(ENABLE_TEST)
     add_subdirectory(test)
 endif()
 
+if(ENABLE_BENCHMARK)
+    add_subdirectory(bench)
+
+   add_custom_target(benchmark
+        COMMAND $<TARGET_FILE:bench>
+        DEPENDS $<TARGET_FILE:bench>
+        USES_TERMINAL
+    )
+endif()
+
 # ------------------------------------------------------------------------------
 # Cmake package
 # ------------------------------------------------------------------------------
@@ -186,6 +197,7 @@ message(STATUS "Options:")
 message(STATUS "  Bulid Static Libraries: ${BUILD_STATIC_LIBS}")
 message(STATUS "  Build Swift Module    : ${BUILD_SWIFT_MODULE}")
 message(STATUS "  Enable Testing        : ${ENABLE_TEST}")
+message(STATUS "  Enable Benchmark      : ${ENABLE_BENCHMARK}")
 message(STATUS "")
 message(STATUS "Build Configuration:")
 message(STATUS "  C++ Standard          : ${CMAKE_CXX_STANDARD}")
@@ -196,6 +208,9 @@ message(STATUS "  Package Directory     : ${CUBE_PACK_DIR}")
 message(STATUS "")
 message(STATUS "Available Targets:")
 message(STATUS "  all (default)         : Build the project")
+if(ENABLE_BENCHMARK)
+message(STATUS "  benchmark             : Generate benchmark report")
+endif()
 message(STATUS "  install               : Install built artifacts to CMAKE_INSTALL_PREFIX")
 message(STATUS "  package               : Package sdk")
 message(STATUS "")

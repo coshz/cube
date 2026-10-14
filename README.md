@@ -40,7 +40,7 @@ icube solve "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 ```
 <details>
   <summary>Click to view CLI screenshot</summary>
-  <img src="asset/icube-demo.png" alt="shotsnap-1">
+  <img src="asset/snapshots/icube-demo.png" alt="shotsnap-1">
 </details>
 
 ### 2. C/C++ SDK Usage
@@ -95,9 +95,10 @@ cmake --build build --target install
 ```text
 .
 ├── amalg/            # Amalgamated C++ source (single-file distribution)
-├── asset             # Project static resources
+├── asset             # Project resources (snapshots, benchmark reports)
 ├── app/              # Source code for command-line tool `icube`
 ├── bindings/         # Language bindings
+├── bench/            # Source code for benchmark 
 ├── cmake/            # CMake templates and modules
 ├── dev/              # Development scripts
 ├── include/          # Public headers

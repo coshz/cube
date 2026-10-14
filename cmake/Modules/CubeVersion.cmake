@@ -4,26 +4,20 @@ include_guard(GLOBAL)
 # configure_version
 #=============================================================================
 #
-# @brief Parses Semantic Versioning (SemVer) information and exports the
-#        parsed version variables to the parent scope with a specified prefix.
+# @brief Parses Semantic Versioning (Major.Minor.Patch[-PreRelease+BuildMeta])
+#        and exports version variables with a specified prefix.
 #
 # @param NAME_PREFIX [Required] Positional argument. Variable name prefix
-#                    (e.g., CUBE, CUBE_PYTHON).
-# @param FILE        [Optional] Keyword argument. Path to the version file.
-# @param STRING      [Optional] Keyword argument. Version string provided directly.
+# @param FILE        [Optional] Keyword argument. Path to the version file
+# @param STRING      [Optional] Keyword argument. Version string provided directly
 #
 # @note Exactly one of FILE or STRING must be provided. If both are passed,
 #       STRING takes precedence.
 #
-# @details
-# Assuming NAME_PREFIX is set to "CUBE", the following variables will be
-# exported to the parent scope (PARENT_SCOPE):
-#   - CUBE_VERSION_FULL   : Raw input version string (e.g., "v1.2.3-rc1")
-#   - CUBE_VERSION_SEMVER : Standard X.Y.Z SemVer string (e.g., "1.2.3")
-#   - CUBE_VERSION_MAJOR  : Major version number (e.g., "1")
-#   - CUBE_VERSION_MINOR  : Minor version number (e.g., "2")
-#   - CUBE_VERSION_PATCH  : Patch version number (e.g., "3")
-#   - CUBE_VERSION_BUILD  : Build metadata / suffix (e.g., "rc1"; empty if none)
+# Exports (with given prefix `NAME_PREFIX`):
+#   _VERSION_MAJOR / _MINOR, _PATCH : Integer literals
+#   _VERSION        : Normal version "X.Y.Z"
+#   _VERSION_FULL   : Raw input version with leading "v" stripped
 #
 # @example
 #   # Example 1: Read version from a file
@@ -51,27 +45,21 @@ function(configure_version NAME_PREFIX)
         message(FATAL_ERROR "invalid argument: one of FILE or STRING must be provided")
     endif()
     
-    # parse version: Major.Minor.Patch[-BuildMeta]
-    string(REGEX REPLACE "^v" "" CLEAN_VERSION "${RAW_VERSION}")
-    string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" SEMVER "${CLEAN_VERSION}")
-
-    if(NOT SEMVER)
-        message(FATAL_ERROR "Invalid version format in ${VERSION_FILE}: ${RAW_VERSION}")
+    string(REGEX REPLACE "^[vV]" "" ver_cleaned "${RAW_VERSION}")
+    if(NOT ver_cleaned MATCHES "^(([0-9]+)\\.([0-9]+)\\.([0-9]+))(-([A-Za-z0-9.-]+))?(\\+([A-Za-z0-9.-]+))?$")
+        message(FATAL_ERROR "Invalid version string: ${RAW_VERSION}")
     endif()
 
-    string(REPLACE "." ";" VERSION_LIST "${SEMVER}")
-    list(GET VERSION_LIST 0 MAJOR)
-    list(GET VERSION_LIST 1 MINOR)
-    list(GET VERSION_LIST 2 PATCH)
-
-    string(REGEX MATCH "-([A-Za-z0-9]+)$" _ "${CLEAN_VERSION}")
-    set(BUILD_META "${CMAKE_MATCH_1}")
-
-    set(${NAME_PREFIX}_VERSION_FULL     ${RAW_VERSION}  PARENT_SCOPE)
-    set(${NAME_PREFIX}_VERSION_SEMVER   ${SEMVER}       PARENT_SCOPE)
-    set(${NAME_PREFIX}_VERSION_MAJOR    ${MAJOR}        PARENT_SCOPE)
-    set(${NAME_PREFIX}_VERSION_MINOR    ${MINOR}        PARENT_SCOPE)
-    set(${NAME_PREFIX}_VERSION_PATCH    ${PATCH}        PARENT_SCOPE)
-    set(${NAME_PREFIX}_VERSION_BUILD    ${BUILD_META}   PARENT_SCOPE)
-    set(${NAME_PREFIX}_VERSION          ${SEMVER}       PARENT_SCOPE)
+    set(ver_core        "${CMAKE_MATCH_1}")
+    set(ver_major       "${CMAKE_MATCH_2}")
+    set(ver_minor       "${CMAKE_MATCH_3}")
+    set(ver_patch       "${CMAKE_MATCH_4}")
+    set(ver_prerelease  "${CMAKE_MATCH_6}")
+    set(ver_buildmeta   "${CMAKE_MATCH_8}")
+    
+    set(${NAME_PREFIX}_VERSION_MAJOR    ${ver_major}    PARENT_SCOPE)
+    set(${NAME_PREFIX}_VERSION_MINOR    ${ver_minor}    PARENT_SCOPE)
+    set(${NAME_PREFIX}_VERSION_PATCH    ${ver_patch}    PARENT_SCOPE)
+    set(${NAME_PREFIX}_VERSION          ${ver_core}     PARENT_SCOPE)
+    set(${NAME_PREFIX}_VERSION_FULL     ${ver_cleaned}  PARENT_SCOPE)
 endfunction()

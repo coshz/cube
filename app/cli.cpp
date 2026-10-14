@@ -10,21 +10,15 @@
 
 using namespace std::string_literals;
 
-#define CUBE_STRINGIFY_IMPL(x) #x
-#define CUBE_STRINGIFY(x) CUBE_STRINGIFY_IMPL(x)
-
-#define CUBE_VERSION_STRING \
-    CUBE_STRINGIFY(CUBE_VERSION_FULL)
-
 #define CUBE_WELCOME_MESSAGE \
-    "Welcome to icube (" CUBE_VERSION_STRING ")!\n" \
+    "Welcome to icube (" CUBE_VERSION ")!\n" \
     "(* `:h` for help, `:q` for quit *)\n"
 
 #define CUBE_ABOUT_MESSAGE \
     "Author: coshz <fsinhx@gmail.com>\n" \
     "License: MIT\n" \
     "Homepage: https://github.com/coshz/cube\n" \
-    "Build: " CUBE_VERSION_STRING "\n"
+    "Build: " CUBE_VERSION_FULL "\n"
 
 struct REPL
 {
@@ -238,7 +232,7 @@ int main(int argc, char *argv[])
             std::cout << REPL::cli_help(true);
             return 0;
         } else if (arg == "-v" || arg == "--version") {
-            std::cout <<  CUBE_VERSION_STRING << std::endl;
+            std::cout <<  CUBE_VERSION << std::endl;
             return 0;
         } else if (arg == "-a" || arg == "--about") {
             std::cout <<  CUBE_ABOUT_MESSAGE;

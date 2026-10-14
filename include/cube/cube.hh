@@ -4,6 +4,7 @@
 #pragma once
 
 #include "cube/cube_export.h"
+#include <cube/version.h>
 
 #include <cstdint>
 #include <string>
