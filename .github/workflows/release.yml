@@ -4,10 +4,12 @@ on:
   push:
     tags:
       - 'v*'
-    pull_request:
-      branches:
-        - 'main'
-    workflow_dispatch:
+    branches:
+      - 'fix/ci-debug'
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
 
 jobs:
   build-and-package:
@@ -17,17 +19,17 @@ jobs:
       fail-fast: false  
       matrix:
         include:
-          - os: ubuntu-latest
-            arch: x86_64
-            cmake_flags: ""
-          - os: macos-latest
-            arch: x86_64
-            cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=x86_64"
-            generator: "-G Ninja"
-          - os: macos-latest
-            arch: arm64
-            cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=arm64"
-            generator: "-G Ninja"
+          # - os: ubuntu-latest
+          #   arch: x86_64
+          #   cmake_flags: ""
+          # - os: macos-latest
+          #   arch: x86_64
+          #   cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=x86_64"
+          #   generator: "-G Ninja"
+          # - os: macos-latest
+          #   arch: arm64
+          #   cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=arm64"
+          #   generator: "-G Ninja"
           - os: windows-latest
             arch: x64
             cmake_flags: ""
