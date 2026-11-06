@@ -22,6 +22,10 @@ set(cube_install_targets cube_headers cube_shared)
 # Generate exported header
 
 set(cube_export_macro "cube_EXPORTS")
+set_target_properties(cube_shared PROPERTIES
+    DEFINE_SYMBOL "${cube_export_macro}" # read by `generate_export_header`
+)
+
 include(GenerateExportHeader)
 generate_export_header(cube_shared
     BASE_NAME CUBE
@@ -72,7 +76,6 @@ target_link_libraries(cube_objs PUBLIC cube_headers)
 # ------------------------------------------------------------------------------
 target_compile_definitions(cube_objs PRIVATE ${cube_export_macro})
 
-
 # ------------------------------------------------------------------------------
 # Main C++ library (shared & static)
 # ------------------------------------------------------------------------------
@@ -86,7 +89,6 @@ set_target_properties(cube_shared PROPERTIES
     OUTPUT_NAME     cube
     VERSION         ${PROJECT_VERSION}
     SOVERSION       ${PROJECT_VERSION_MAJOR}
-    DEFINE_SYMBOL   "${cube_export_macro}"
 )
 
 if(BUILD_STATIC_LIBS)
@@ -103,6 +105,17 @@ if(BUILD_STATIC_LIBS)
     target_link_libraries(cube_static PUBLIC cube_headers)
 
     list(APPEND cube_install_targets cube_static)
+endif()
+
+if(MSVC)
+    target_compile_options(cube_objs PRIVATE
+        /Zc:enumEncoding
+    )
+    if(BUILD_STATIC_LIBS)
+        target_compile_options(cube_static PRIVATE
+            /Zc:enumEncoding
+        )
+    endif()
 endif()
 
 # ------------------------------------------------------------------------------
