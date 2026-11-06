@@ -17,4 +17,10 @@ void set_table_dir(std::filesystem::path dir);
  */
 auto get_table_dir() -> std::filesystem::path;
 
+/* getter of `use_symmetry` */
+bool use_symmetry();
+
+/* setter of `use_symmetry` ; only the first call takes effect */
+void use_symmetry(bool v);
+
 } // namespace cube::config

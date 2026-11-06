@@ -2,8 +2,8 @@
  * File: cube_amalg.cpp
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
- * Version: v0.5.0
- * Date: 2026-10-10
+ * Version: v0.5.1
+ * Date: 2026-11-06
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
@@ -19,18 +19,22 @@
 #include <stdexcept>
 #include <initializer_list>
 #include <cassert>
+#include <type_traits>
 #include <cstdint>
 #include <string_view>
 #include <set>
+#include <memory>
 #include <filesystem>
-#include <type_traits>
+#include <cstdio>
 #include <limits>
+#include <queue>
+#include <exception>
 #include <fstream>
 #include <ios>
+#include <iostream>
 #include <tuple>
 #include <cstdlib>
-#include <chrono>
-#include <optional>
+#include <mutex>
 #include <string>
 #include <cstring>
 #include <regex>
@@ -43,9 +47,9 @@ namespace cube::math {
 using std::size_t;
 
 /*!
- * \brief the cycle decompositon of permutation
+ * @brief the cycle decompositon of permutation
 
- * \return pair of
+ * @return pair of
     - first: vector of fixed points
     - second: vector of cycles in order of length descending
  */
@@ -228,7 +232,7 @@ constexpr bool isValidPermutation(const ArrayLike& xs)
     if(xs.size() != N) return false;
     std::array<bool,N> visited{};
     for(auto i = 0; i < N; ++i) {
-        size_t val = static_cast<size_t>(xs[i]);
+        size_t val = xs[i];
         if(xs[i] < 0 || xs[i] >= N) return false;
         if(visited[val]) return false;
         visited[val] = true;
@@ -237,7 +241,7 @@ constexpr bool isValidPermutation(const ArrayLike& xs)
 }
 
 /*!
- * \brief Pull / Gather permute: out[i] = src[ X[i] ]
+ * @brief Pull / Gather permute: out[i] = src[ X[i] ]
  * @note src and X must have the same dimension and X must be a permutation
  */
 template<typename Array, typename Perm>
@@ -249,7 +253,7 @@ constexpr Array backpermute(const Array& src, const Perm& P)
 }
 
 /*!
- * \brief Push / Scatter permute: out[ X[i] ] = src[i]
+ * @brief Push / Scatter permute: out[ X[i] ] = src[i]
  * @note src and X must have the same dimension and X must be a permutation
  */
 template<typename Array, typename Perm>
@@ -262,7 +266,6 @@ constexpr Array forepermute(const Array& src, const Perm& P)
 
 } // namespace cube::math
 namespace cube::data {
-
 /*
          U1 U2 U3
          U4 U5 U6
@@ -405,16 +408,15 @@ using std::size_t;
 using namespace cube::math;
 
 /*!
- * \brief Represents an permutation on the symmetric group S_n.
+ * @brief Represents an permutation on the symmetric group S_n.
  *
- * \tparam N the size of the symmetric group
- * \tparam T the type of elements; T should be integral
+ * @tparam N the size of the symmetric group
+ * @tparam T the type of elements; T should be integral
  */
 template<size_t N,typename T=int>
 struct Perm
 {
     using value_type = T;
-
     static constexpr size_t size() { return N; }
 
     /* default: construct a Perm identity */
@@ -425,7 +427,7 @@ struct Perm
 
     /* construct from an array; throw exception if NOT a permutation */
     constexpr Perm(const std::array<T,N>& xs) noexcept
-    :X{xs}
+        :X{xs}
     {
         assert(isValidPermutation<N>(xs) && "array must be a valid permutation");
     }
@@ -441,9 +443,9 @@ struct Perm
     }
 
     /*!
-     * \brief the right action on ArrayLike
+     * @brief the right action on ArrayLike
      *
-     * \details Satisfies the right-action associativity axiom:
+     * @details Satisfies the right-action associativity axiom:
      *              (src * P) * Q = src * (P * Q)
      *
      *   - Vector Action: src * P   := P.backpermute(src)
@@ -455,29 +457,13 @@ struct Perm
         return backpermute(src,this->X);
     }
 
-    friend constexpr Perm operator*(const Perm &P, const Perm& Q) noexcept
-    {
-        return Q.act_right(P);
-    }
+    friend constexpr bool operator==(const Perm &lhs, const Perm& rhs) noexcept { return lhs.X == rhs.X; }
+    friend constexpr Perm operator*(const Perm &P, const Perm& Q) noexcept      { return Q.act_right(P); }
 
-    constexpr Perm& operator*=(const Perm& rhs) noexcept
-    {
-        return *this = *this * rhs;
-    }
-
-    friend constexpr bool operator==(const Perm &lhs, const Perm& rhs) noexcept
-    {
-        return lhs.X == rhs.X;
-    }
-
-    /* the inverse of Perm */
-    constexpr Perm operator~() const
-    {
-        return { forepermute(Perm::id.X, this->X) };
-    }
-
-    constexpr T& operator[](size_t idx)             { return X[idx]; }
-    constexpr const T& operator[](size_t idx) const { return X[idx]; }
+    constexpr Perm&     operator*=(const Perm& rhs) noexcept    { return *this = *this * rhs; }
+    constexpr Perm      operator~() const noexcept              { return { forepermute(Perm::id.X, this->X) }; }
+    constexpr T&        operator[](size_t idx) noexcept         { return X[idx]; }
+    constexpr const T&  operator[](size_t idx) const noexcept   { return X[idx]; }
 
     /* the parity of permuation: even => true, odd => false */
     bool parity() const
@@ -495,11 +481,9 @@ struct Perm
     constexpr size_t rank() const { return rankOf(X); }
 
     /* create Perm from rank */
-    static constexpr Perm<N,T> fromRank(size_t i)
-    { return { cube::math::fromRank<T,N>(i) }; }
+    static constexpr Perm<N,T> fromRank(size_t i) { return { cube::math::fromRank<T,N>(i) }; }
 
     static const Perm id; // identity
-
     std::array<T,N> X{};
 };
 
@@ -507,11 +491,11 @@ template<size_t N,typename T>
 inline constexpr Perm<N,T> Perm<N,T>::id{};
 
 /*!
- * \brief Represents an array on the cyclic group C_n (Z/nZ).
+ * @brief Represents an array on the cyclic group C_n (Z/nZ).
  *
- * \tparam N the order of C_n
- * \tparam L the length of array
- * \tparam T the integral type for elements
+ * @tparam N the order of C_n
+ * @tparam L the length of array
+ * @tparam T the integral type for elements
  */
 template<size_t N, size_t L, typename T=int>
 struct CArray
@@ -525,7 +509,7 @@ struct CArray
 
     /* construct from an array; all elements are reduced modulo N to {0,1,...,N-1} */
     constexpr CArray(const std::array<T,L> &arr) noexcept
-    :xs{arr}
+        :xs{arr}
     {
         auto n = static_cast<T>(N);
         for(size_t i = 0; i < L; i++) { xs[i] = (xs[i] % n + n) % n; }
@@ -542,26 +526,19 @@ struct CArray
     constexpr T& operator[](size_t idx) noexcept             { return xs[idx]; }
     constexpr const T& operator[](size_t idx) const noexcept { return xs[idx]; }
 
-    friend constexpr bool operator==(const CArray& lhs, const CArray& rhs) noexcept
-    {
-        return lhs.xs == rhs.xs;
-    }
-
     constexpr CArray& operator+=(const CArray& rhs)
     {
         for(size_t i = 0; i < L; i++) xs[i] = (xs[i] + rhs.xs[i]) % N;
         return *this;
     }
 
-    /*!
-     * \brief the operator on CArray
+    friend constexpr bool operator==(const CArray& lhs, const CArray& rhs) noexcept { return lhs.xs == rhs.xs; }
 
-     * \remark result[i] = lhs[i] + rhs[i] (mod N)
+    /*!
+     * @brief the operator on CArray
+     * @remark result[i] = lhs[i] + rhs[i] (mod N)
      */
-    friend constexpr CArray operator+(CArray lhs, const CArray& rhs)
-    {
-        return lhs += rhs;
-    }
+    friend constexpr CArray operator+(CArray lhs, const CArray& rhs) noexcept { return lhs += rhs; }
 
     /* the inverse */
     constexpr CArray operator~() const noexcept
@@ -581,7 +558,6 @@ struct CArray
     }
 
     static const CArray id; // identity
-
     std::array<T,L> xs {};
 };
 
@@ -601,11 +577,13 @@ constexpr CArray<N,L,T>& operator*=(CArray<N,L,T> &xs, const Perm<L,T> &P)
 }
 
 template<typename T, size_t N, size_t... Ns>
-struct ArrayHelper {
+struct ArrayHelper
+{
     using type = std::array<typename ArrayHelper<T,Ns...>::type,N>;
 };
 template<typename T, size_t N>
-struct ArrayHelper<T,N> {
+struct ArrayHelper<T,N>
+{
     using type = std::array<T,N>;
 };
 template<typename T, size_t... Ns>
@@ -615,12 +593,54 @@ struct NArray
     static constexpr size_t size = (Ns * ...);
     static constexpr size_t dim = sizeof...(Ns);
     static constexpr std::array<size_t,dim> shape { Ns... };
-    typename ArrayHelper<T,Ns...>::type data;
-    auto & operator[](size_t i) {
-        return data[i];
+    typename ArrayHelper<T,Ns...>::type storage;
+
+    auto& operator[](size_t i) noexcept             { return storage[i]; }
+    const auto& operator[](size_t i) const noexcept { return storage[i]; }
+
+    template<typename U, std::enable_if_t<std::is_integral_v<U>,int> = 0>
+    auto& operator[](const std::array<U,dim>& indices) noexcept
+    {
+        return std::apply(
+            [this](auto... args) -> decltype(auto) { return (*this)(args...); },
+            indices
+        );
     }
-    const auto & operator[](size_t i) const {
-        return data[i];
+    template<typename U, std::enable_if_t<std::is_integral_v<U>,int> = 0>
+    const auto& operator[](const std::array<U,dim>& indices) const noexcept
+    { return const_cast<NArray*>(this)->operator[](indices); }
+
+    template<typename... Is, std::enable_if_t<sizeof...(Is)==dim, int> = 0>
+    decltype(auto) operator()(Is... is) noexcept
+    { return at<0>(storage, {size_t(is)...}); }
+
+    template<typename... Is, std::enable_if_t<sizeof...(Is)==dim, int> = 0>
+    decltype(auto) operator()(Is... is) const noexcept
+    { return at<0>(storage, {size_t(is)...}); }
+
+    template<typename F> void for_each(F&& f)       { for_each_rec(storage, f); }
+    template<typename F> void for_each(F&& f) const { for_each_rec(storage, f); }
+
+    void fill(const T &val) { for_each([&val](T& e){ e = val; }); }
+private:
+    template<size_t I, typename Arr>
+    static decltype(auto) at(Arr&& arr, const std::array<size_t,dim>& indices)
+    {
+        if constexpr (I+1==dim) return arr[indices[I]];
+        else                    return at<I+1>(arr[indices[I]], indices);
+    }
+
+    template<typename Arr, typename F>
+    static void for_each_rec(Arr&& arr, F&& f)
+    {
+        for(auto& e: arr)
+        {
+            if constexpr (std::is_same_v<std::remove_reference_t<decltype(e)>,T>) {
+                f(e);
+            } else {
+                for_each_rec(e,f);
+            }
+        }
     }
 };
 
@@ -725,7 +745,7 @@ struct CubieCube
     static const CubieCube id;
 };
 
-inline constexpr CornerPerm operator*(const CornerPerm &cp, const CubieCube &cc) { return cp * cc.cp;}
+inline constexpr CornerPerm operator*(const CornerPerm &cp, const CubieCube &cc) { return cp * cc.cp; }
 inline constexpr CornerOri  operator*(const CornerOri &co,  const CubieCube &cc) { return co * cc.cp + cc.co; }
 inline constexpr EdgePerm   operator*(const EdgePerm &ep,   const CubieCube &cc) { return ep * cc.ep; }
 inline constexpr EdgeOri    operator*(const EdgeOri &eo,    const CubieCube &cc) { return eo * cc.ep + cc.eo; }
@@ -740,8 +760,8 @@ inline constexpr FacePerm      eFP = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1
 
 /* identity of FaceCube, CubieCube */
 
-inline const FaceCube   FaceCube::id = FaceCube{eFP};
-inline const CubieCube  CubieCube::id = CubieCube{eCP,eCO,eEP,eEO};
+inline constexpr FaceCube   FaceCube::id = FaceCube{eFP};
+inline constexpr CubieCube  CubieCube::id = CubieCube{eCP,eCO,eEP,eEO};
 
 /* CubieCube representations of 18 elementary moves: used for pdb::Coord & pdb::Table */
 
@@ -767,6 +787,11 @@ inline constexpr FaceCube pB = {{11,14,17,3,4,5,6,7,8,9,10,35,12,13,34,15,16,33,
 inline constexpr std::array<FaceCube,18>
     ElementaryPerm = { pU,pU*pU,pU*pU*pU,pR,pR*pR,pR*pR*pR,pF,pF*pF,pF*pF*pF,pD,pD*pD,pD*pD*pD,pL,pL*pL,pL*pL*pL,pB,pB*pB,pB*pB*pB };
 
+inline constexpr std::array<TurnMove,N_MOVE> turn_entries = { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
+inline constexpr std::array<TurnMove,N_MOVE> turn_inv_entries = { Ux3,Ux2,Ux1,Rx3,Rx2,Rx1,Fx3,Fx2,Fx1,Dx3,Dx2,Dx1,Lx3,Lx2,Lx1,Bx3,Bx2,Bx1 };
+
+inline constexpr TurnMove operator~(TurnMove m) { return turn_inv_entries[m]; }
+
 inline FaceCube operator*(const FaceCube &c, const std::vector<TurnMove> &ms)
 {
     FaceCube fc = c;
@@ -790,7 +815,6 @@ inline ColorState operator*(const ColorState &c, const std::vector<TurnMove> &ms
 }
 
 } // namespace cube
-
 namespace cube {
 
 using namespace cube::data;
@@ -925,12 +949,22 @@ FaceCube CubieCube::toFaceCube() const
 namespace cube::pdb {
 
 /*!
- * @brief The coordinate space of cube
+ * @brief The coordinate space of cube.
+ *
  * @details
- * The coordinate space Coord, the product space of six components
- * (Twist,Flip,Slice,Corner,Edge4,Edge8), is designed for two-phase algorithm;
- * see MoveTable (in @ref table.hh "table.hh") for the move transforms on Coord.
- * @implements
+ *  Coord, the product space of (Twist,Flip,Slice,Corner,Edge4,Edge8), is used
+ * for tables generation. See CoordTables (in @ref table_coord.hh).
+ *  The coordinates of:
+ *  1. Ph1
+ *      - twist: the orientation number of 8 corner cubies
+ *      - flip: the orientation number of 12 edge cubies
+ *      - slice: the location number of 4 UD-slice edge cubies (FR,FL,BL,BR)
+ *  2. Ph2
+ *      - corner: the location number of 8 corner cubies
+ *      - edge4: the location number of 4 slice edge cubies
+ *      - edge8: the location number of 8 non- UD-slice edge cubies
+ *
+ * @remarks
  * Alought the three components (slice2ep,edge42ep,edge82ep) of \(s,e4,e8) -> ep
  * aren't well-defined functions, the following is guaranteed:
  *  - \(m, s)-> ep2slice( slice2ep(  s ) * m ) are well-defined
@@ -989,6 +1023,32 @@ constexpr bool operator==(const Coord &c1, const Coord &c2)
 
 inline constexpr Coord Coord::id = { 0,0,0,0,0,0 };
 
+/* type of TurnMove-based transformation tables  */
+
+template<size_t coord_size>
+using MoveTableLayout = NArray<uint16_t,N_MOVE,coord_size>;
+
+using MoveTwist = MoveTableLayout<N_TWIST>;
+using MoveFlip  = MoveTableLayout<N_FLIP>;
+using MoveSlice = MoveTableLayout<N_SLICE>;
+using MoveEdge4 = MoveTableLayout<N_EDGE4>;
+using MoveEdge8 = MoveTableLayout<N_EDGE8>;
+using MoveCorner= MoveTableLayout<N_CORNER>;
+
+/**
+ * @defgroup TurnMove-transformation generators
+ * @{
+ */
+
+inline int transform_twist(TurnMove m, int twist)   { return Coord::co2twist(Coord::twist2co(twist) * ElementaryMove[m]); }
+inline int transform_flip(TurnMove m, int flip)     { return Coord::eo2flip(Coord::flip2eo(flip) * ElementaryMove[m]); }
+inline int transform_slice(TurnMove m, int slice)   { return Coord::ep2slice(Coord::slice2ep(slice) * ElementaryMove[m]); }
+inline int transform_corner(TurnMove m, int corner) { return Coord::cp2corner(Coord::corner2cp(corner) * ElementaryMove[m]); }
+inline int transform_edge4(TurnMove m, int edge4)   { return Coord::ep2edge4(Coord::edge42ep(edge4) * ElementaryMove[m]); }
+inline int transform_edge8(TurnMove m, int edge8)   { return Coord::ep2edge8(Coord::edge82ep(edge8) * ElementaryMove[m]); }
+
+/** @} */
+
 } // namespace cube::pdb
 namespace cube::pdb {
 
@@ -1003,7 +1063,7 @@ inline bool isSliceEdge(size_t idx)
 
 int Coord::co2twist(const CornerOri &co)
 {
-    return static_cast<int>(fromDigits<3>(takeByRange<1,7>(co.xs)));
+    return int(fromDigits<3>(takeByRange<1,7>(co.xs)));
 }
 
 CornerOri Coord::twist2co(int i)
@@ -1018,7 +1078,7 @@ CornerOri Coord::twist2co(int i)
 
 int Coord::eo2flip(const EdgeOri &eo)
 {
-    return static_cast<int>(fromDigits<2>(takeByRange<1,11>(eo.xs)));
+    return int(fromDigits<2>(takeByRange<1,11>(eo.xs)));
 }
 
 EdgeOri Coord::flip2eo(int i)
@@ -1040,7 +1100,6 @@ int Coord::ep2slice(const EdgePerm &ep)
     for(int i = 0, j = 0; i < N; i++) {
         if(isSliceEdge(ep[i])) x[j++] = i;
     }
-
     for(int i = 0; i < 4; i++) slice += binomial(N-1-x[i],4-i);
     return slice;
 }
@@ -1052,7 +1111,7 @@ int Coord::ep2edge4(const EdgePerm &ep)
         while(!isSliceEdge(ep[j])) j++;
         edge4_perm[i] = ep[j] - 8;
     }
-    return static_cast<int>(edge4_perm.rank());
+    return int(edge4_perm.rank());
 }
 
 int Coord::ep2edge8(const EdgePerm &ep)
@@ -1062,12 +1121,12 @@ int Coord::ep2edge8(const EdgePerm &ep)
         while(isSliceEdge(ep[j]) || ep[j] == (EdgePerm::value_type) ~0UL) j++;
         edge8_perm[i] = ep[j] - 0;
     }
-    return static_cast<int>(edge8_perm.rank());
+    return int(edge8_perm.rank());
 }
 
 int Coord::cp2corner(const CornerPerm &cp)
 {
-    return static_cast<int>(cp.rank());
+    return int(cp.rank());
 }
 
 CornerPerm Coord::corner2cp(int i)
@@ -1080,8 +1139,8 @@ EdgePerm Coord::slice2ep(int i)
     auto si = lexicalOrderToIndices<12,4>(i);
     EdgePerm ep;
     // placing slice edges order-independently in responding indices
-    for(size_t i = 0, j = 0; i < 12; i++){
-        ep[i] = (i == si[j]) ? 8 + j++ : (EdgePerm::value_type) ~0UL;
+    for(size_t i = 0, j = 0, k = 0; i < 12; i++) {
+        ep[i] = (j < 4 && i == si[j]) ? 8 + j++ : k++;
     }
     return ep;
 }
@@ -1090,9 +1149,8 @@ EdgePerm Coord::edge42ep(int i)
 {
     EdgePerm ep;
     auto e4 = Perm<4,EdgePerm::value_type>::fromRank(i);
-    // placing slice edges order-dependently in normalized indices
-    for(size_t i = 0; i < 12; i++){
-        ep[i] = (i < 8) ? (EdgePerm::value_type) ~0UL : e4[i-8] + 8;
+    for(size_t i = 0; i < 12; i++) {
+        ep[i] = (i < 8) ? i : e4[i-8] + 8;
     }
     return ep;
 }
@@ -1101,9 +1159,8 @@ EdgePerm Coord::edge82ep(int i)
 {
     EdgePerm ep;
     auto e8 = Perm<8,EdgePerm::value_type>::fromRank(i);
-    // placing non-slice edges order-dependently in normalized indices
-    for(size_t i = 0; i < 12; i++){
-        ep[i] = (i < 8) ? e8[i] + 0 : (EdgePerm::value_type) ~0UL;
+    for(size_t i = 0; i < 12; i++) {
+        ep[i] = (i < 8) ? e8[i] + 0 : i;
     }
     return ep;
 }
@@ -1112,10 +1169,10 @@ EdgePerm Coord::see2ep(int slice, int edge4, int edge8)
 {
     auto e4 = Perm<4,EdgePerm::value_type>::fromRank(edge4);
     auto e8 = Perm<8,EdgePerm::value_type>::fromRank(edge8);
-    auto slice_indices = lexicalOrderToIndices<12,4>(slice);
+    auto s = lexicalOrderToIndices<12,4>(slice);
     EdgePerm ep;
     for(size_t i = 0, j = 0, x = 0, y = 0; i < 12; i++) {
-        ep[i] = (i == slice_indices[j] && ++j) ? e4[x++]+8: e8[y++]+0;
+        ep[i] = (j >=4 || i != s[j]) ? e8[y++]+0 : (++j,e4[x++]+8);
     }
     return ep;
 }
@@ -1148,439 +1205,797 @@ namespace cube::config {
 /* set directory for move / prunning tables */
 void set_table_dir(std::filesystem::path dir);
 
-/* get directory for move / prunning tables */
+/*!
+ * @brief get directory for move / prunning tables
+ *
+ * Resolve order:
+ * - user-settings (set via @link set_table_dir)
+ * - environment variable (`CUBE_TABLE_DIR`)
+ * - system cache directory
+ * - working directory
+ */
 auto get_table_dir() -> std::filesystem::path;
+
+/* getter of `use_symmetry` */
+bool use_symmetry();
+
+/* setter of `use_symmetry` ; only the first call takes effect */
+void use_symmetry(bool v);
 
 } // namespace cube::config
 
-namespace cube::pdb {
+namespace cube::symmetry {
 
-using namespace cube::data;
-namespace fs = std::filesystem;
-
-typedef uint16_t    mt_value_t;
-typedef uint8_t     pt_value_t;
-
-/* dump / load Tables */
-template <typename Table> void save_to(const Table &table, fs::path path);
-template <typename Table> void load_from(Table &table, fs::path path);
-
-template<class T>
-class Singleton
-{
-public:
-    Singleton(const Singleton&) = delete;
-    Singleton(Singleton&&) = delete;
-    Singleton& operator=(const Singleton&) = delete;
-    Singleton& operator=(Singleton&&) = delete;
-
-    static T& instance() {
-        static T obj {};
-        return obj;
-    }
-protected:
-    Singleton() = default;
-    ~Singleton() = default;
-};
-
-/*!
- * @brief The table to cache move transforms on Coord
- * @details
- * The move transform mt: Move * Coord -> Coord is a Move-action on Coord;
- * besides, the six components of Move-set Coord are still Move-sets.
- * Therefore, mt can be decomposited into the product of six components
- * mt_i: Move * Coord_i -> Coord_i; that dramatically reduces the count of
- * table items.
- * @note edge4/edge8 move tables work in phase 2 only.
- */
-template<typename T=mt_value_t>
-struct TableMove
-{
-    static_assert(std::is_integral<T>::value);
-    static_assert(std::numeric_limits<T>::digits >= 16);
-
-    using value_t = T;
-    TableMove(fs::path dir = {});
-    TableMove(const TableMove &) = delete;
-    ~TableMove();
-    TableMove& operator=(const TableMove &) = delete;
-
-    template<typename Table, typename F1, typename F2>
-    std::enable_if_t<Table::shape[0] == N_MOVE, void>
-    buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, fs::path filename);
-
-    /* check if tables exist in the table directory */
-    static bool is_ready(fs::path);
-
-    /* directory to save tables */
-    const fs::path tdir;
-
-    NArray<T,N_MOVE,N_TWIST>   *pTMTwist;
-    NArray<T,N_MOVE,N_FLIP>    *pTMFlip;
-    NArray<T,N_MOVE,N_SLICE>   *pTMSlice;
-    NArray<T,N_MOVE,N_CORNER>  *pTMCorner;
-    NArray<T,N_MOVE,N_EDGE4>   *pTMEdge4;
-    NArray<T,N_MOVE,N_EDGE8>   *pTMEdge8;
-};
-
-///
-/// The distance on Rubik's group G
-/// dist, the minimal length of maneuvers to transform from p to q.
-/// dist: G -> G -> Nat,
-///   dist(p,q) = dist(p*q^-1,1);
-///   dist(p) = dist(p,1) = min { n: p = m1*m2*...*mn, mi in ElementaryMove },
-///
-
-/*!
- * @brief The table to cache the distance on Coord
- * @details
- * The (fake) distances, pt_i: coord_i -> Nat, store the minimal count of
- * moves from id to cube such that the i-th coord is coord_i;
- * the following properties are useful (m is in ElementaryMove):
- *  1. dist(c) >= coord_i(c);
- *  2. pt_i(c*m) - pt_i(c) is in {-1,0,1};
- */
-template<typename T=pt_value_t>
-struct TablePrunning
-{
-    using value_type = T;
-    TablePrunning(fs::path dir = {});
-    TablePrunning(const TablePrunning &) = delete;
-    ~TablePrunning();
-    TablePrunning operator=(const TablePrunning &) = delete;
-
-    template<typename Table, typename MT1, typename MT2>
-    std::enable_if_t<Table::shape[0] == MT1::shape[1] && Table::shape[1] == MT2::shape[1]>
-    buildPrunningTable(Table &t, const MT1 &mt1, const MT2 &mt2, fs::path filename);
-
-    /* check if tables exist in the table directory */
-    static bool is_ready(fs::path);
-
-    /* directory to save tables */
-    const fs::path tdir;
-
-    NArray<T,N_SLICE,N_FLIP>   *pTPSliceFlip;
-    NArray<T,N_SLICE,N_TWIST>  *pTPSliceTwist;
-    NArray<T,N_EDGE4,N_EDGE8>  *pTPEdge4Edge8;
-    NArray<T,N_EDGE4,N_CORNER> *pTPEdge4Corner;
-};
-
-template<typename T=mt_value_t>
-using SingletonTM = Singleton<TableMove<T>>;
-
-template<typename T=pt_value_t>
-using SingletonTP = Singleton<TablePrunning<T>>;
-
-/* shortcut to TableMove instance */
-inline const auto &get_TM() { return SingletonTM<>::instance(); }
-
-/* shortcut to TablePrunning instance */
-inline const auto &get_TP() { return SingletonTP<>::instance(); }
-
-/* check if tables exist in the table directory */
-inline bool tables_ready(fs::path dir = {})
-{
-    return TableMove<>::is_ready(dir) && TablePrunning<>::is_ready(dir);
-}
-
-/* load tables explicitly  */
-inline void preload_tables()
-{
-    (void) get_TM();
-    (void) get_TP();
-}
-
-/* symmetry table
-d(s^-1*x*s,1) = d(x,1), s in S.
-*/
-
-} // namespace cube::pdb
-
-#if defined(VERBOSE) && VERBOSE
-#define VPRINT(...) printf(__VA_ARGS__)
-#else
-#define VPRINT(...)
-#endif
-
-namespace cube::pdb {
-using namespace cube::data;
-
-auto table_dir_or_default(fs::path dir) -> fs::path
-{
-    return dir.empty() ? cube::config::get_table_dir() : dir;
-}
-
-template <typename Table>
-void save_to(const Table &table, fs::path path)
-{
-    std::ofstream f(path, std::ios::binary);
-    if(f.is_open()) {
-        f.write(reinterpret_cast<const char*>(&table.data), sizeof(table.data));
-        f.close();
-    }
-}
-
-template <typename Table>
-void load_from(Table &table, fs::path path)
-{
-    VPRINT("loading table from %s...", path.c_str());
-    std::ifstream f(path,std::ios::binary);
-    f.read(reinterpret_cast<char*>(&table.data), sizeof(table.data));
-    f.close();
-    VPRINT("done.\n");
-}
-
-template<typename T>
-template<typename Table, typename F1, typename F2>
-std::enable_if_t<Table::shape[0] == N_MOVE>
-TableMove<T>::buildMoveTable(Table &t, F1&& coord2i, F2&& i2coord, fs::path filename)
-{
-    VPRINT("creating move table %s of shape (%zu,%zu)... ",
-           filename.c_str(), t.shape[0], t.shape[1]);
-    for(size_t i = 0; i < t.shape[0]; i++) for(size_t j = 0; j < t.shape[1]; j++) {
-        t[i][j] = coord2i(i2coord(j) * ElementaryMove[i]);
-    }
-    if(filename != "") save_to(t, tdir/filename);
-    VPRINT("done.\n");
-}
-
-template<typename T>
-TableMove<T>::TableMove(fs::path dir)
-:tdir{table_dir_or_default(dir)}
-{
-    VPRINT("INIT MOVE TABLES -- \n");
-    pTMTwist     = new NArray<T,N_MOVE,N_TWIST>;
-    pTMFlip      = new NArray<T,N_MOVE,N_FLIP>;
-    pTMSlice     = new NArray<T,N_MOVE,N_SLICE>;
-    pTMCorner    = new NArray<T,N_MOVE,N_CORNER>;
-    pTMEdge4     = new NArray<T,N_MOVE,N_EDGE4>;
-    pTMEdge8     = new NArray<T,N_MOVE,N_EDGE8>;
-
-    if(!is_ready(tdir)) {
-        if(!fs::exists(tdir)) fs::create_directories(tdir);
-        buildMoveTable(*pTMTwist, Coord::co2twist, Coord::twist2co, "tm_twist.dat");
-        buildMoveTable(*pTMFlip, Coord::eo2flip, Coord::flip2eo, "tm_flip.dat");
-        buildMoveTable(*pTMSlice, Coord::ep2slice, Coord::slice2ep, "tm_slice.dat");
-        buildMoveTable(*pTMCorner, Coord::cp2corner, Coord::corner2cp, "tm_corner.dat");
-        buildMoveTable(*pTMEdge4, Coord::ep2edge4, Coord::edge42ep, "tm_edge4.dat");
-        buildMoveTable(*pTMEdge8, Coord::ep2edge8, Coord::edge82ep, "tm_edge8.dat");
-    } else {
-        load_from(*pTMTwist, tdir/"tm_twist.dat");
-        load_from(*pTMFlip, tdir/"tm_flip.dat");
-        load_from(*pTMSlice, tdir/"tm_slice.dat");
-        load_from(*pTMCorner, tdir/"tm_corner.dat");
-        load_from(*pTMEdge4, tdir/"tm_edge4.dat");
-        load_from(*pTMEdge8, tdir/"tm_edge8.dat");
-    }
-    VPRINT("-- DONE.\n");
-}
-
-template<typename T>
-TableMove<T>::~TableMove()
-{
-    delete pTMTwist;
-    delete pTMFlip;
-    delete pTMSlice;
-    delete pTMCorner;
-    delete pTMEdge4;
-    delete pTMEdge8;
-}
-
-template<typename T>
-bool TableMove<T>::is_ready(fs::path tdir)
-{
-    tdir = table_dir_or_default(tdir);
-    return fs::exists(tdir/"tm_twist.dat") &&
-           fs::exists(tdir/"tm_flip.dat") &&
-           fs::exists(tdir/"tm_slice.dat") &&
-           fs::exists(tdir/"tm_corner.dat") &&
-           fs::exists(tdir/"tm_edge4.dat") &&
-           fs::exists(tdir/"tm_edge8.dat");
-}
-
-template<typename T>
-template<typename Table, typename MT1, typename MT2>
-std::enable_if_t<Table::shape[0] == MT1::shape[1] && Table::shape[1] == MT2::shape[1]>
-TablePrunning<T>::buildPrunningTable(
-    Table &t, const MT1 &mt1, const MT2 &mt2, fs::path filename)
-{
-    VPRINT("creating prunning table %s of shape (%zu,%zu):\n",
-           filename.c_str(), mt1.shape[1], mt2.shape[1]);
-    std::fill_n(&t.data[0][0], t.size, (typename Table::value_type) ~0UL);
-    t[0][0] = 0;
-
-    typename Table::value_type depth = 0;
-    size_t count = 1;
-    VPRINT("\tdepth %2d: %10zu / %-10zu.\n", depth, count, t.size);
-    while(count < t.size)
-    {
-        for(size_t i = 0; i < t.shape[0]; i++) for(size_t j = 0; j < t.shape[1]; j++)
-        if(t[i][j] == depth) {
-            for(auto k = 0; k < N_MOVE; k++) {
-                auto ii = mt1[k][i], jj = mt2[k][j];
-                if(t[ii][jj] == (typename Table::value_type)~0UL) { t[ii][jj] = depth + 1; count++; }
-            }
-        }
-        depth++;
-        VPRINT("\tdepth %2d: %10zu / %-10zu.\n", depth, count, t.size);
-    }
-    if(filename != "") save_to(t, tdir/filename);
-    VPRINT("done.\n");
-}
-
-template<typename T>
-TablePrunning<T>::TablePrunning(fs::path dir)
-:tdir{table_dir_or_default(dir)}
-{
-    VPRINT("INIT PRUNNING TABLES -- \n");
-    pTPSliceFlip     = new NArray<T,N_SLICE,N_FLIP>;
-    pTPSliceTwist    = new NArray<T,N_SLICE,N_TWIST>;
-    pTPEdge4Edge8    = new NArray<T,N_EDGE4,N_EDGE8>;
-    pTPEdge4Corner   = new NArray<T,N_EDGE4,N_CORNER>;
-
-    if(!is_ready(tdir)) {
-        const auto &TM = get_TM();
-        buildPrunningTable(*pTPSliceTwist, *TM.pTMSlice, *TM.pTMTwist, "tp_slicetwist.dat");
-        buildPrunningTable(*pTPSliceFlip, *TM.pTMSlice, *TM.pTMFlip, "tp_sliceflip.dat");
-        buildPrunningTable(*pTPEdge4Corner, *TM.pTMEdge4, *TM.pTMCorner, "tp_edge4corner.dat");
-        buildPrunningTable(*pTPEdge4Edge8, *TM.pTMEdge4, *TM.pTMEdge8, "tp_edge4edge8.dat");
-    } else {
-        load_from(*pTPSliceTwist, tdir/"tp_slicetwist.dat");
-        load_from(*pTPSliceFlip, tdir/"tp_sliceflip.dat");
-        load_from(*pTPEdge4Corner,tdir/"tp_edge4corner.dat");
-        load_from(*pTPEdge4Edge8, tdir/"tp_edge4edge8.dat");
-    }
-    VPRINT("-- DONE.\n");
-}
-
-template<typename T>
-TablePrunning<T>::~TablePrunning()
-{
-    delete pTPSliceFlip;
-    delete pTPSliceTwist;
-    delete pTPEdge4Edge8;
-    delete pTPEdge4Corner;
-}
-
-template<typename T>
-bool TablePrunning<T>::is_ready(fs::path tdir)
-{
-    tdir = table_dir_or_default(tdir);
-    return fs::exists(tdir/"tp_slicetwist.dat") &&
-           fs::exists(tdir/"tp_sliceflip.dat") &&
-           fs::exists(tdir/"tp_edge4corner.dat") &&
-           fs::exists(tdir/"tp_edge4edge8.dat");
-}
-
-template struct TableMove<>;
-template struct TablePrunning<>;
-
-} // namespace pdb
-
-namespace cube::solver {
-using namespace cube::data;
+using cube::CubieCube;
 using namespace cube::pdb;
 
-/* The search phase */
-enum enum_phase { Ph1=0, Ph2=1 };
+inline constexpr CubieCube S_U4 = {{3,0,1,2,7,4,5,6},{0,0,0,0,0,0,0,0},{3,0,1,2,7,4,5,6,11,8,9,10},{0,0,0,0,0,0,0,0,1,1,1,1}};
+inline constexpr CubieCube S_RL = {{1,0,3,2,5,4,7,6},{0,0,0,0,0,0,0,0},{2,1,0,3,6,5,4,7,9,8,11,10},{0,0,0,0,0,0,0,0,0,0,0,0}};
+inline constexpr CubieCube S_F2 = {{5,4,7,6,1,0,3,2},{0,0,0,0,0,0,0,0},{6,5,4,7,2,1,0,3,9,8,11,10},{0,0,0,0,0,0,0,0,0,0,0,0}};
 
-struct solve_session
+enum Sym: uint8_t
 {
-    const Coord root;
-    const size_t good_enough;
-    const size_t max_step;
-    // solve_session(const Coord &c, size_t ge) : root(c), good_enough(ge) {}
+    Id, U1, U2, U3,
+    RL, RL_U1, RL_U2, RL_U3,
+    FF, FF_U1, FF_U2, FF_U3,
+    FF_RL, FF_RL_U1, FF_RL_U2, FF_RL_U3
+};
+
+constexpr bool is_mirror(Sym s) { return (RL <= s && s <= RL_U3) || (FF_RL <= s && s <= FF_RL_U3); }
+
+inline constexpr std::array<Sym,N_SYM_D4h> sym_entries      = { Id,U1,U2,U3,RL,RL_U1,RL_U2,RL_U3,FF,FF_U1,FF_U2,FF_U3,FF_RL,FF_RL_U1,FF_RL_U2,FF_RL_U3 };
+inline constexpr std::array<Sym,N_SYM_D4h> sym_inv_entries  = { Id,U3,U2,U1,RL,RL_U1,RL_U2,RL_U3,FF,FF_U1,FF_U2,FF_U3,FF_RL,FF_RL_U3,FF_RL_U2,FF_RL_U1 };
+
+constexpr Sym operator~(Sym s) { return sym_inv_entries[s]; }
+
+inline constexpr std::array<CubieCube,N_SYM_D4h> SymmetricMove = {
+    CubieCube::id, S_U4, S_U4*S_U4, S_U4*S_U4*S_U4,
+    S_RL, S_RL*S_U4, S_RL*S_U4*S_U4, S_RL*S_U4*S_U4*S_U4,
+    S_F2, S_F2*S_U4, S_F2*S_U4*S_U4, S_F2*S_U4*S_U4*S_U4,
+    S_F2*S_RL, S_F2*S_RL*S_U4, S_F2*S_RL*S_U4*S_U4, S_F2*S_RL*S_U4*S_U4*S_U4
+};
+
+/* type of Sym-based conjugate tables */
+
+typedef uint16_t                    corner_t;
+typedef std::array<uint16_t,2>      flipslice_t;
+typedef struct{uint16_t eq; Sym s;} corner_eq_t;
+typedef struct{uint16_t eq; Sym s;} flipslice_eq_t;
+
+template<size_t coord_size>
+using ConjTableLayout = NArray<uint16_t,N_SYM_D4h,coord_size>;
+
+using TwistConj     = ConjTableLayout<N_TWIST>;
+using SliceConj     = NArray<uint16_t,N_SYM_D4h,N_SLICE>;
+using Edge4Conj     = NArray<uint16_t,N_SYM_D4h,N_EDGE4>;
+using Edge8Conj     = NArray<uint16_t,N_SYM_D4h,N_EDGE8>;
+using CornerConj    = NArray<uint16_t,N_SYM_D4h,N_CORNER>;
+using FlipSliceConj = NArray<flipslice_t,N_SYM_D4h,N_FLIP,N_SLICE>;
+
+/**
+ * @brief SymReduction, the symmetry reduction to Coord
+ *
+ * @details
+ * Quotient space EqY := Y / Sym, defined by equivalent relation
+ *  y1 ~ y2 := ∃ s ∈ Sym, y1 = s' * y2 * s (s' is the inverse of s)
+ *
+ * It contains:
+ *  - Morphisms:
+ *      [-] :: Y -> EqY, [a] := { y ∈ Y : y ~ a }
+ *      rep :: EqY -> Y, rep(z) := min { y ∈ Y : [y] = z }
+ *      emb :: Y -> (EqY,Sym), emb(y) := ( [y], min stab(y) )
+ *      stab :: Y -> P(Sym), stab(y) := { s ∈ Sym : y = s' * rep(y) * s }
+ *
+ *  - Normalized transition on (X,EqY):
+ *      T :: Move -> (X,EqY) -> (X,EqY)
+ *           \(m,(x,c)) -> (x,c) * m := canon( (x,rep(c)) * m ),
+ *      here, canon :: (X,Y) -> (X,EqY)
+ *                      \(x,y) -> (s * x * s', b) where (b,s) = emb(y)
+ */
+struct SymReduction
+{
+    /* type of auxiliary tables for equivalence classes  */
+
+    using CornerDom     = NArray<corner_eq_t,N_CORNER>;
+    using EqCornerDom   = NArray<corner_t,EQ_CORNER>;
+    using FlipSliceDom  = NArray<flipslice_eq_t,N_FLIP,N_SLICE>;
+    using EqFlipSliceDom= NArray<flipslice_t,EQ_FLIPSLICE>;
+
+    typedef uint16_t SymMask;
+    using CornerStab    = NArray<SymMask,EQ_CORNER>;
+    using FlipSliceStab = NArray<SymMask,EQ_FLIPSLICE>;
+public:
+    /* table-based TurnMove-transform builder */
+
+    static auto make_trans_edge8_corner(
+        const CornerDom& emb, const EqCornerDom& rep, const Edge8Conj& conj,
+        const MoveEdge8& tran_edge8, const MoveCorner& tran_corner
+    ) {
+        return [&](TurnMove m, const std::pair<uint16_t,uint16_t>& ec) -> std::pair<uint16_t,uint16_t> {
+            auto [edge8, c_corner] = ec;
+            auto corner = rep(c_corner);
+            auto [eq, s] = emb(tran_corner(m,corner));
+            return { conj(~s,tran_edge8(m,edge8)), eq };
+        };
+    }
+
+    static auto make_trans_twist_flipslice(
+        const FlipSliceDom& emb, const EqFlipSliceDom& rep, const TwistConj& conj,
+        const MoveTwist& tran_twist, const MoveFlip& tran_flip, const MoveSlice& tran_slice
+    ) {
+        return [&](TurnMove m, const std::pair<uint16_t,uint16_t>& tfs) -> std::pair<uint16_t,uint16_t> {
+            auto [twist, c_flipslice] = tfs;
+            auto [flip, slice] = rep(c_flipslice);
+            auto [eq, s] = emb(tran_flip(m,flip),tran_slice(m,slice));
+            return { conj(~s,tran_twist(m,twist)), eq };
+        };
+    }
+
+    /* tables builder */
+
+    static void build_emb_corner(CornerDom&, const CornerConj&);
+    static void build_rep_corner(EqCornerDom&, const CornerDom&);
+    static void build_emb_flipslice(FlipSliceDom&, const FlipSliceConj&);
+    static void build_rep_flipslice(EqFlipSliceDom&, const FlipSliceDom&);
+    static void build_stab_corner(CornerStab&, const EqCornerDom&, const CornerConj&);
+    static void build_stab_flipslice(FlipSliceStab&, const EqFlipSliceDom&, const FlipSliceConj&);
+};
+
+/** @defgroup Sym-conjugation generators @{ */
+
+/*!
+ * @brief conjugate S' * C * S
+ *  A projection from C to X comutes with Move if:
+ *      proj_X (c * m ) = proj_X (c) * m, for all c in C, m in Move
+ */
+
+inline int conjugate_slice(Sym s, int slice)    { return Coord::ep2slice(SymmetricMove[~s].ep * Coord::slice2ep(slice) * SymmetricMove[s].ep); }
+inline int conjugate_edge4(Sym s, int edge4)    { return Coord::ep2edge4(SymmetricMove[~s].ep * Coord::edge42ep(edge4) * SymmetricMove[s].ep); }
+inline int conjugate_edge8(Sym s, int edge8)    { return Coord::ep2edge8(SymmetricMove[~s].ep * Coord::edge82ep(edge8) * SymmetricMove[s].ep); }
+inline int conjugate_corner(Sym s, int corner)  { return Coord::cp2corner(SymmetricMove[~s].cp * Coord::corner2cp(corner) * SymmetricMove[s].cp); }
+inline int conjugate_twist(Sym s, int twist)
+{
+    auto co = Coord::twist2co(twist) * SymmetricMove[s];
+    return Coord::co2twist(is_mirror(s) ? ~co : co);
+}
+inline flipslice_t conjugate_flipslice(Sym s, const flipslice_t& fs)
+{
+    auto c = CubieCube { {},{},Coord::slice2ep(fs[1]),Coord::flip2eo(fs[0]) };
+    c = SymmetricMove[~s] * c * SymmetricMove[s];
+    return { uint16_t(Coord::eo2flip(c.eo)), uint16_t(Coord::ep2slice(c.ep)) };
+}
+
+/** @} */
+
+} // namespace cube::symmetry
+namespace cube::pdb::table {
+
+using namespace cube::data;
+using namespace cube::symmetry;
+
+#if CUBE_ENABLE_TRACE
+#   define VTRACE(...) fprintf(stderr,__VA_ARGS__)
+#else
+#   define VTRACE(...) do{}while(0)
+#endif
+
+/*!
+ * @brief The table to cache transform of ElementaryMove on Coord
+ */
+template<size_t coord_size>
+struct MoveTableBase: MoveTableLayout<coord_size>
+{
+    static constexpr size_t size = coord_size;
+
+    /*! @param tran_fn :: Turn -> X -> X */
+    template<typename F> void build(F&& tran_fn)
+    {
+        for(size_t x = 0; x < coord_size; ++x)
+            for(auto m: turn_entries)
+                (*this)(m,x) = tran_fn(m,x);
+    }
 };
 
 /*!
- * @brief The Kociemba's twophase algorithm
+ * @brief The table to cache transform of ElementaryMove on Coord
  */
-class TwoPhaseSolver
+template<size_t coord_size>
+struct ConjTableBase: ConjTableLayout<coord_size>
 {
+    static constexpr size_t size = coord_size;
+
+    /*! @param conj_fn ::  Sym -> X -> X */
+    template<typename F> void build(F&& conj_fn)
+    {
+        for(size_t x = 0; x < coord_size; ++x)
+            for(auto s: sym_entries)
+                (*this)[s][x] = conj_fn(s,x);
+    }
+};
+
+/*!
+ * @brief The table to cache the distance on (Coord1,...)
+ * @details
+ * The (fake) distance, pt_i: Coord_i -> Nat, store the minimal count of moves
+ * from id to cube such that the i-th coordinate is coord_i.
+ * The following properties are useful (m is in ElementaryMove):
+ *  1. pt(c) = max_i{ pt_i(c) }
+ *  2. pt_i(c*m) - pt_i(c) is in {-1,0,1}
+ */
+template<size_t... Ns>
+struct PrunTableBase: NArray<uint8_t,Ns...>
+{
+    using index_type = std::array<size_t,PrunTableBase::dim>;
+
+    template<typename...MTs>
+    void build_disjU(MTs&&... tables)
+    {
+        static_assert(sizeof...(tables) == PrunTableBase::dim);
+        auto ts = std::tie(tables...);
+        auto next = [ts](TurnMove m, const index_type&c) -> index_type {
+            index_type c_next;
+            size_t idx = 0;
+            std::apply([&](auto&&... tbl){
+                ( (c_next[idx] = tbl[m][c[idx]], ++idx),... );
+            },ts);
+            return c_next;
+        };
+        auto orbit = [](const index_type& c, auto&& visit) { visit(c); };
+        build(next,orbit);
+    }
+
+    template<typename TranX, typename ConjX,
+             typename TranY, typename EmbY, typename RepY, typename StabY>
+    void build_XxEqY(TranX&& Tx, ConjX&& conj, TranY&& Ty, EmbY&& emb, RepY&& rep, StabY&& stab)
+    {
+        static_assert(sizeof...(Ns) == 2 && "only dim=2 is implemented");
+        auto next = [&](TurnMove m, const index_type& c) -> index_type {
+            auto [x, eqY] = c;
+            auto y = rep(eqY);
+            auto [eq, s] = emb[Ty(m,y)];
+            return { conj(~s,Tx(m,x)), eq };
+        };
+        auto orbit = [&](const index_type& c, auto&& visit) {
+            const auto [x,eqY] = c;
+            for(auto s: sym_entries)
+            {
+                if(stab(eqY) & (1u << s)) visit(index_type{conj(s,x),eqY});
+            }
+        };
+        build(next,orbit);
+    }
+
+    template<typename NextFn, typename OrbitFn>
+    void build(NextFn&& next_fn, OrbitFn&& orbit_fn)
+    {
+        constexpr auto unvisited = std::numeric_limits<uint8_t>::max();
+        this->fill(unvisited);
+        std::queue<index_type> q;
+        size_t discovered = 0, depth = 0;
+
+        auto visit_fn = [&](const index_type& c) {
+            auto& entry = (*this)[c];
+            if(entry == unvisited) { entry = depth; ++discovered; }
+        };
+
+        index_type starting {};
+        orbit_fn(starting,visit_fn);
+        q.push(starting);
+        while(!q.empty())
+        {
+            VTRACE("[depth %3zu] visited: %9zu / %-9zu\n",
+                depth, discovered, PrunTableBase::size
+            );
+            ++depth;
+            const auto n_depth = q.size();
+            for(auto _ = 0; _ < n_depth; ++_)
+            {
+                auto c = q.front(); q.pop();
+                for(auto m: turn_entries) {
+                    const auto c_next = next_fn(m,c);
+                    if((*this)[c_next] == unvisited) {
+                        orbit_fn(c_next,visit_fn);
+                        q.push(c_next);
+                    }
+                }
+            }
+        }
+    }
+};
+} // namespace cube::pdb::table
+#define TABLE_MAGIC 8677391316305539925
+#define TABLE_VERSION 1
+
+namespace cube::pdb::table {
+
+namespace fs = std::filesystem;
+
+template<typename> inline constexpr bool always_false_v = false;
+
+enum class MoveKind { Twist, Flip, Slice, Edge4, Edge8, Corner, Count };
+enum class ConjKind { TwistConj, SliceConj, Edge4Conj, Edge8Conj, CornerConj, FlipSliceConj, Count };
+enum class EqKind   { RepCorner, RepFlipSlice, EmbCorner, EmbFlipSlice, Count };
+enum class StabKind { CornerStab, FlipSliceStab, Count };
+enum class PrunKind { SliceFlip, SliceTwist, Edge4Edge8, Edge4Corner, Edge8EqCorner, TwistEqFlipSlice, Count };
+
+template<auto K> struct table_meta;
+template<auto K> using table_t = typename table_meta<K>::type;
+template<auto K> constexpr std::string_view tag_v = table_meta<K>::value;
+
+#define Unwrap(...) __VA_ARGS__
+#define spec_table_meta(Kind,Type,Tag) \
+    template<> struct table_meta<Kind> \
+    {                                  \
+        using type = Unwrap Type;      \
+        static constexpr std::string_view value = Tag; \
+    };
+
+spec_table_meta(MoveKind::Twist,        (MoveTableBase<N_TWIST>),       "TmTwist")
+spec_table_meta(MoveKind::Flip,         (MoveTableBase<N_FLIP>),        "TmFlip")
+spec_table_meta(MoveKind::Slice,        (MoveTableBase<N_SLICE>),       "TmSlice")
+spec_table_meta(MoveKind::Edge4,        (MoveTableBase<N_EDGE4>),       "TmEdge4")
+spec_table_meta(MoveKind::Edge8,        (MoveTableBase<N_EDGE8>),       "TmEdge8")
+spec_table_meta(MoveKind::Corner,       (MoveTableBase<N_CORNER>),      "TmCorner")
+spec_table_meta(ConjKind::TwistConj,    (ConjTableBase<N_TWIST>),       "TcTwist")
+spec_table_meta(ConjKind::SliceConj,    (ConjTableBase<N_SLICE>),       "TcSlice")
+spec_table_meta(ConjKind::Edge4Conj,    (ConjTableBase<N_EDGE4>),       "TcEdge4")
+spec_table_meta(ConjKind::Edge8Conj,    (ConjTableBase<N_EDGE8>),       "TcEdge8")
+spec_table_meta(ConjKind::CornerConj,   (ConjTableBase<N_CORNER>),      "TcCorner")
+spec_table_meta(ConjKind::FlipSliceConj,(FlipSliceConj),                "TcFlipSlice")
+spec_table_meta(EqKind::RepCorner,      (SymReduction::EqCornerDom),    "TeRepCorner")
+spec_table_meta(EqKind::RepFlipSlice,   (SymReduction::EqFlipSliceDom), "TeRepFlipSlice")
+spec_table_meta(EqKind::EmbCorner,      (SymReduction::CornerDom),      "TeEmbCorner")
+spec_table_meta(EqKind::EmbFlipSlice,   (SymReduction::FlipSliceDom),   "TeEmbFlipSlice")
+spec_table_meta(StabKind::CornerStab,   (SymReduction::CornerStab),     "TsCorner")
+spec_table_meta(StabKind::FlipSliceStab,(SymReduction::FlipSliceStab),  "TsFlipSlice")
+spec_table_meta(PrunKind::SliceFlip,        (PrunTableBase<N_SLICE,N_FLIP>),        "TpSliceFlip")
+spec_table_meta(PrunKind::SliceTwist,       (PrunTableBase<N_SLICE,N_TWIST>),       "TpSliceTwist")
+spec_table_meta(PrunKind::Edge4Edge8,       (PrunTableBase<N_EDGE4,N_EDGE8>),       "TpEdge4Edge8")
+spec_table_meta(PrunKind::Edge4Corner,      (PrunTableBase<N_EDGE4,N_CORNER>),      "TpEdge4Corner")
+spec_table_meta(PrunKind::Edge8EqCorner,    (PrunTableBase<N_EDGE8,EQ_CORNER>),     "TpEdge8EqCorner")
+spec_table_meta(PrunKind::TwistEqFlipSlice, (PrunTableBase<N_TWIST,EQ_FLIPSLICE>),  "TpTwistEqFlipSlice")
+
+#undef Unwrap
+#undef spec_table_meta
+
+template<size_t... Is> auto make_mk_tuple(std::index_sequence<Is...>) -> std::tuple<std::unique_ptr<table_t<static_cast<MoveKind>(Is)>>...>;
+template<size_t... Is> auto make_ck_tuple(std::index_sequence<Is...>) -> std::tuple<std::unique_ptr<table_t<static_cast<ConjKind>(Is)>>...>;
+template<size_t... Is> auto make_ek_tuple(std::index_sequence<Is...>) -> std::tuple<std::unique_ptr<table_t<static_cast<EqKind>(Is)>>...>;
+template<size_t... Is> auto make_sk_tuple(std::index_sequence<Is...>) -> std::tuple<std::unique_ptr<table_t<static_cast<StabKind>(Is)>>...>;
+template<size_t... Is> auto make_pk_tuple(std::index_sequence<Is...>) -> std::tuple<std::unique_ptr<table_t<static_cast<PrunKind>(Is)>>...>;
+
+using MoveTables= decltype(make_mk_tuple(std::make_index_sequence<size_t(MoveKind::Count)>{}));
+using ConjTables= decltype(make_ck_tuple(std::make_index_sequence<size_t(ConjKind::Count)>{}));
+using EqTables  = decltype(make_ek_tuple(std::make_index_sequence<size_t(EqKind::Count)>{}));
+using StabTables= decltype(make_sk_tuple(std::make_index_sequence<size_t(StabKind::Count)>{}));
+using PrunTables= decltype(make_pk_tuple(std::make_index_sequence<size_t(PrunKind::Count)>{}));
+using Tables    = decltype(std::tuple_cat(
+    std::declval<MoveTables>(),
+    std::declval<ConjTables>(),
+    std::declval<EqTables>(),
+    std::declval<StabTables>(),
+    std::declval<PrunTables>()
+));
+
+template<auto K>
+constexpr size_t index_v = []() constexpr {
+    using T = decltype(K);
+    constexpr size_t C_Move = size_t(MoveKind::Count)
+                    ,C_Conj = size_t(ConjKind::Count)
+                    ,C_Eq   = size_t(EqKind::Count)
+                    ,C_Stab = size_t(StabKind::Count);
+    if constexpr (std::is_same_v<T, MoveKind>)  return size_t(K);
+    if constexpr (std::is_same_v<T, ConjKind>)  return size_t(K) + C_Move;
+    if constexpr (std::is_same_v<T, EqKind>)    return size_t(K) + C_Move + C_Conj;
+    if constexpr (std::is_same_v<T, StabKind>)  return size_t(K) + C_Move + C_Conj + C_Eq;
+    if constexpr (std::is_same_v<T, PrunKind>)  return size_t(K) + C_Move + C_Conj + C_Eq + C_Stab;
+}();
+
+class TablePool
+{
+    Tables tables_;
 public:
-    /*!
-     * @brief Attempt to the first solution to `c` within `max_step` steps
-     * @param c the Coord of cube
-     * @param max_step the maximum steps allowed for search
-     * @return (is_solved,sol1,sol2) - solN means solution in phase N
-     * @remark
-     * We adopt two iterative deepening searches in series rather than nesting
-     * them, as in the original Kociemba algorithm. This simplifies the
-     * implementation, but sacrifices the ease of extending the algorithm to
-     * find the two-phase optimum.
-     */
-    auto solve(const Coord &c, int max_step = DS)
-        -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>;
+    static const TablePool& instance() { return instance_mut(); }
 
-protected:
-    /*!
-     * @brief The search algorithm in PhX
-     *
-     * The search tree is rooted at coord `c` and expands via ElementaryMove,
-     * i.e., the `m`-th child of node `c` is `c * ElementaryMove[m]`.
-     * During DFS traversal, the current move is always cached in buffer `sofar_`
-     * at index `togo-1`. If a solution node is reached, the buffer is flushed
-     * into `rsolution_` and return true. Otherwise, it returns false after all
-     * nodes up to depth `togo` have been explored.
-     * A node `x` is considered a solution if `distance<PhX>(x) == 0`.
-     *
-     * @param c     the Coord of cube
-     * @param togo  the exact search depth
-     * @return      `true` if a solution is found
-     */
-    template<enum_phase PhX>
-    bool search_phase(const Coord &c, size_t togo);
+    template<auto K> const auto& get() const
+    {
+        const auto& slot = std::get<index_v<K>>(tables_);
+        if(!slot) {
+            VTRACE("fatal: table %s is not initialized\n", tag_v<K>.data());
+            std::terminate();
+        }
+        return *slot;
+    }
 
+    /** @param Builder :: (table_t<K>&) -> void */
+    template<auto K, typename Builder> const auto& ensure(Builder&& builder)
+    {
+        auto& slot = std::get<index_v<K>>(tables_);
+        if(!slot) {
+            slot = std::make_unique<table_t<K>>();
+            builder(*slot);
+        }
+        return *slot;
+    }
+
+    template<auto... K> void clean() { (std::get<index_v<K>>(tables_).reset(),...); }
+private:
+    friend class TableProvider;
+    static TablePool& instance_mut() { static TablePool pool; return pool; }
+};
+
+enum class LoadStatus { Ok, Missing, Incompatible, Corrupted, OsErr };
+template<auto K> struct table_with_header;
+
+class TableProvider
+{
+    fs::path tdir_;
+    TablePool& pool_;
+public:
+    template<bool use_symmetry>
+    static const TableProvider& make(fs::path dir = {})
+    {
+        static TableProvider tp (
+            dir.empty() ? cube::config::get_table_dir() : dir,
+            std::bool_constant<use_symmetry>()
+        );
+        return tp;
+    }
+
+    template<auto K> [[nodiscard]] const auto& get() const { return pool_.get<K>(); }
+private:
+    template<bool use_symmetry>
+    TableProvider(fs::path dir, std::bool_constant<use_symmetry>)
+        : tdir_{dir}
+        , pool_{TablePool::instance_mut()}
+    { load_or_build<use_symmetry>(); }
+
+    template<bool use_symmetry>
+    void load_or_build()
+    {
+        ensure_all<
+            MoveKind::Twist, MoveKind::Flip, MoveKind::Slice,
+            MoveKind::Edge4, MoveKind::Edge8, MoveKind::Corner
+        >();
+
+        if constexpr (!use_symmetry) {
+            ensure_all<
+                PrunKind::SliceFlip, PrunKind::SliceTwist,
+                PrunKind::Edge4Edge8, PrunKind::Edge4Corner
+            >();
+        } else {
+            ensure_all<
+                EqKind::EmbCorner, EqKind::EmbFlipSlice,
+                ConjKind::TwistConj, ConjKind::Edge8Conj,
+                PrunKind::TwistEqFlipSlice,
+                PrunKind::Edge4Edge8, PrunKind::Edge8EqCorner
+            >();
+
+            pool_.clean<
+                ConjKind::CornerConj, ConjKind::FlipSliceConj,
+                StabKind::CornerStab, StabKind::FlipSliceStab,
+                EqKind::RepCorner, EqKind::RepFlipSlice
+            >();
+        }
+    }
+
+    template<auto K>
+    static constexpr bool should_persist()
+    {
+        using T = std::remove_cv_t<decltype(K)>;
+        if constexpr (std::is_same_v<T, MoveKind> || std::is_same_v<T, PrunKind>) return true;
+        else if constexpr (std::is_same_v<T, EqKind>) return K == EqKind::EmbCorner || K == EqKind::EmbFlipSlice;
+        else if constexpr (std::is_same_v<T, ConjKind>) return K == ConjKind::TwistConj || K == ConjKind::Edge8Conj;
+        else return false;
+    }
+
+    template<auto K> const auto& ensure()
+    {
+        return pool_.ensure<K>([this](table_t<K>& t){
+            auto status = load_from<K>(t,tdir_);
+            if(status == LoadStatus::Ok) return;
+            if(!fs::exists(tdir_)) fs::create_directories(tdir_);
+            if constexpr (std::is_same_v<decltype(K), PrunKind>) { VTRACE("[pdb] building pruning table %s...\n", tag_v<K>.data()); }
+            build_table<K>(t);
+            if constexpr (std::is_same_v<decltype(K), PrunKind>) { VTRACE("[pdb] done.\n"); }
+            if constexpr (should_persist<K>()) save_to<K>(t,tdir_);
+        });
+    }
+
+    template<auto... Ks> void ensure_all() { (ensure<Ks>(), ...); }
+
+    /* build tables */
+
+    template<MoveKind K> void build_table(table_t<K>& t)
+    {
+        if constexpr (K == MoveKind::Twist)   { t.build(transform_twist); }
+        if constexpr (K == MoveKind::Flip)    { t.build(transform_flip); }
+        if constexpr (K == MoveKind::Slice)   { t.build(transform_slice); }
+        if constexpr (K == MoveKind::Edge4)   { t.build(transform_edge4); }
+        if constexpr (K == MoveKind::Edge8)   { t.build(transform_edge8); }
+        if constexpr (K == MoveKind::Corner)  { t.build(transform_corner); }
+    }
+
+    template<ConjKind K> void build_table(table_t<K>& t)
+    {
+        if constexpr (K == ConjKind::TwistConj)  { t.build(conjugate_twist); }
+        if constexpr (K == ConjKind::SliceConj)  { t.build(conjugate_slice); }
+        if constexpr (K == ConjKind::Edge4Conj)  { t.build(conjugate_edge4); }
+        if constexpr (K == ConjKind::Edge8Conj)  { t.build(conjugate_edge8); }
+        if constexpr (K == ConjKind::CornerConj) { t.build(conjugate_corner); }
+        if constexpr (K == ConjKind::FlipSliceConj) {
+            for(int flip = 0; flip < N_FLIP; ++flip) {
+                for(int slice = 0; slice < N_SLICE; ++slice) {
+                    for(auto s: sym_entries)
+                        t[s][flip][slice] = conjugate_flipslice(s, {uint16_t(flip),uint16_t(slice)});
+                }
+            }
+        }
+    }
+
+    template<StabKind K> void build_table(table_t<K>& t)
+    {
+        if constexpr(K == StabKind::CornerStab) {
+            SymReduction::build_stab_corner(t,
+                ensure<EqKind::RepCorner>(), ensure<ConjKind::CornerConj>()
+            );
+        }
+        if constexpr(K == StabKind::FlipSliceStab) {
+            SymReduction::build_stab_flipslice(t,
+                ensure<EqKind::RepFlipSlice>(), ensure<ConjKind::FlipSliceConj>()
+            );
+        }
+    }
+
+    template<EqKind K> void build_table(table_t<K>& t)
+    {
+        if constexpr (K == EqKind::EmbCorner)   { SymReduction::build_emb_corner(t, ensure<ConjKind::CornerConj>()); }
+        if constexpr (K == EqKind::RepCorner)   { SymReduction::build_rep_corner(t, ensure<EqKind::EmbCorner>()); }
+        if constexpr (K == EqKind::EmbFlipSlice){ SymReduction::build_emb_flipslice(t, ensure<ConjKind::FlipSliceConj>()); }
+        if constexpr (K == EqKind::RepFlipSlice){ SymReduction::build_rep_flipslice(t, ensure<EqKind::EmbFlipSlice>()); }
+    }
+
+    template<PrunKind K> void build_table(table_t<K>& t)
+    {
+        if constexpr (K == PrunKind::SliceTwist)    { t.build_disjU(ensure<MoveKind::Slice>(), ensure<MoveKind::Twist>()); return; }
+        if constexpr (K == PrunKind::SliceFlip)     { t.build_disjU(ensure<MoveKind::Slice>(), ensure<MoveKind::Flip>()); return ; }
+        if constexpr (K == PrunKind::Edge4Corner)   { t.build_disjU(ensure<MoveKind::Edge4>(), ensure<MoveKind::Corner>()); return; }
+        if constexpr (K == PrunKind::Edge4Edge8)    { t.build_disjU(ensure<MoveKind::Edge4>(), ensure<MoveKind::Edge8>()); return; }
+
+        if constexpr (K == PrunKind::Edge8EqCorner) {
+            t.build_XxEqY(
+                ensure<MoveKind::Edge8>(), ensure<ConjKind::Edge8Conj>(),
+                ensure<MoveKind::Corner>(), ensure<EqKind::EmbCorner>(), ensure<EqKind::RepCorner>(), ensure<StabKind::CornerStab>()
+            );
+        }
+
+        if constexpr (K == PrunKind::TwistEqFlipSlice) {
+            const auto& tran_flip = ensure<MoveKind::Flip>();
+            const auto& tran_slice = ensure<MoveKind::Slice>();
+            auto tran_flipslice = [&tran_flip,&tran_slice](TurnMove m, const flipslice_t& fs) -> flipslice_t {
+                return { tran_flip(m,fs[0]), tran_slice(m,fs[1]) };
+            };
+            t.build_XxEqY(
+                ensure<MoveKind::Twist>(), ensure<ConjKind::TwistConj>(),
+                tran_flipslice,
+                ensure<EqKind::EmbFlipSlice>(), ensure<EqKind::RepFlipSlice>(), ensure<StabKind::FlipSliceStab>()
+            );
+        }
+    }
+
+    /* dump / load Tables */
+
+    template<auto K>
+    static bool save_to(const table_t<K>& table, const fs::path& dir)
+    {
+        static_assert(std::is_trivially_copyable_v<table_t<K>>);
+        std::ofstream f(dir / tag_v<K>, std::ios::binary);
+        if(!f) return false;
+        return table_with_header<K>::write(f, table);
+    }
+
+    template <auto K>
+    static auto load_from(table_t<K>& table, const fs::path& dir) -> LoadStatus
+    {
+        static_assert(std::is_trivially_copyable_v<table_t<K>>);
+        std::ifstream f(dir / tag_v<K>, std::ios::binary);
+        if(!f) return LoadStatus::Missing;
+        return table_with_header<K>::read(f, table);
+    }
+};
+
+template<auto K>
+struct table_with_header
+{
+    struct meta_info { uint64_t filetag, checksum; };
+
+    static constexpr auto encode_filetag(std::array<uint32_t,2> vk) -> uint64_t
+    {
+        const auto& [ver,kind] = vk;
+        return TABLE_MAGIC ^ ((uint64_t(ver) << 32) | uint64_t(kind));
+    }
+
+    [[maybe_unused]]
+    static auto decode_filetag(uint64_t tag) -> std::array<uint32_t,2>
+    {
+        const uint64_t vk = tag ^ TABLE_MAGIC;
+        return { uint32_t(vk >> 32), uint32_t(vk & 0xffffffff) };
+    }
+
+    static constexpr uint64_t filetag_v = encode_filetag({uint32_t(TABLE_VERSION),uint32_t(index_v<K>)});
+
+    static auto read(std::ifstream& is, table_t<K>& t) -> LoadStatus
+    {
+        meta_info header{};
+        if(!is.read(reinterpret_cast<char*>(&header), sizeof(header))) return LoadStatus::OsErr;
+        if(!(header.filetag == filetag_v)) return LoadStatus::Incompatible;
+        if(!is.read(reinterpret_cast<char*>(&t.storage), sizeof(t.storage))) return LoadStatus::OsErr;
+        if(fnv1a(&t.storage, sizeof(t.storage)) != header.checksum) return LoadStatus::Corrupted;
+        return LoadStatus::Ok;
+    }
+
+    static auto write(std::ofstream& os, const table_t<K>& t) -> bool
+    {
+        const auto header = meta_info{filetag_v, fnv1a(&t.storage, sizeof(t.storage))};
+        os.write(reinterpret_cast<const char*>(&header), sizeof(header));
+        os.write(reinterpret_cast<const char*>(&t.storage), sizeof(t.storage));
+        return bool(os);
+    }
+
+private:
+    static uint64_t fnv1a(const void* data, size_t n)
+    {
+        const auto* p = static_cast<const uint8_t*>(data);
+        uint64_t h = 1469598103934665603ull;
+        for(size_t i = 0; i < n; ++i) { h ^= p[i]; h *= 1099511628211ull; }
+        return h;
+    }
+};
+} // namespace cube::pdb::table
+namespace cube::pdb::ops {
+
+using namespace cube::data;
+using namespace cube::pdb::table;
+using cube::config::use_symmetry;
+
+/* The search phase */
+enum Phase { Ph1=0, Ph2=1 };
+
+struct CoordOps
+{
     /**
-     * @brief move-table based coord transform
+     * @brief move-table based coord transform for phase Ph1 & Ph2
      * @attention In the current implementation, the Ph2 components of resultant
      * are left uncomputed in Ph1. Therefore, please DO NOT use this function to
-     * obtain the starting coord for Ph2. Use @ref `ph2_origin` instead.
+     * obtain the origin of Ph2. Use @ref `ph2_origin` instead.
      */
-    template<enum_phase PhX>
-    static Coord transform(const Coord &c, const TurnMove &m);
+    template<Phase PhX>
+    static auto transform(const Coord&, TurnMove) -> Coord;
 
-    /* prunning-talbe based lower bound distance in phase 1/2 */
-    template<enum_phase PhX>
-    static size_t distance(const Coord &c);
+    /*!
+     * @brief pruning-talbe based lower bound distance for phase Ph1 & Ph2
+     */
+    template<Phase PhX>
+    static auto distance(const Coord&) -> uint8_t;
 
-    /* max search depth for phase 1/2 (conclusion from literatures) */
-    static constexpr int D0 = 12, D1 = 18, DS = D0+D1;
-    template<enum_phase PhX> static constexpr auto& D = std::get<PhX>(std::tie(D0,D1));
+    /* the origin of PhX, from CubieCube (in Ph1) OR from applying Ph1 solution `sol` to CubieCube (in Ph2) */
+    template<Phase PhX>
+    static auto origin(const CubieCube& cc, const std::vector<TurnMove>& sol = {}) -> Coord;
+};
 
-    /* elementary moves of two phases */
-    static constexpr std::array<TurnMove,18> EM0
-        = { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
-    static constexpr std::array<TurnMove,10> EM1
-        = { Ux1,Ux2,Ux3,Rx2,Fx2,Dx1,Dx2,Dx3,Lx2,Bx2 };
-    template<enum_phase PhX>
-    static constexpr auto& EM = std::get<PhX>(std::tie(EM0,EM1));
+template<Phase PhX>
+auto CoordOps::transform(const Coord& c, TurnMove m) -> Coord
+{
+    const TablePool& pool = TablePool::instance();
+    if constexpr (PhX == Ph1)
+        return {
+            pool.get<MoveKind::Twist>()(m,c.twist),
+            pool.get<MoveKind::Flip>()(m,c.flip),
+            pool.get<MoveKind::Slice>()(m,c.slice),
+            -1,-1,-1
+        };
+    else
+        return {
+            0,0,0,
+            pool.get<MoveKind::Corner>()(m,c.corner),
+            pool.get<MoveKind::Edge4>()(m,c.edge4),
+            pool.get<MoveKind::Edge8>()(m,c.edge8)
+        };
+}
 
-protected:
+template<Phase PhX>
+auto CoordOps::distance(const Coord& c) -> uint8_t
+{
+    const TablePool& pool = TablePool::instance();
+
+    if constexpr (PhX == Ph1) {
+        if (!use_symmetry()) {
+            return std::max(
+                pool.get<PrunKind::SliceTwist>()(c.slice,c.twist),
+                pool.get<PrunKind::SliceFlip>()(c.slice,c.flip)
+            );
+        } else {
+            const auto [eq, s] = pool.get<EqKind::EmbFlipSlice>()(c.flip,c.slice);
+            return pool.get<PrunKind::TwistEqFlipSlice>()(
+                pool.get<ConjKind::TwistConj>()(~s,c.twist),
+                eq
+            );
+        }
+    } else {
+        if (!use_symmetry()) {
+            return std::max(
+                pool.get<PrunKind::Edge4Corner>()(c.edge4,c.corner),
+                pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8)
+            );
+        } else {
+            const auto [eq, s] = pool.get<EqKind::EmbCorner>()(c.corner);
+            return std::max(
+                pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8),
+                pool.get<PrunKind::Edge8EqCorner>()(
+                    pool.get<ConjKind::Edge8Conj>()(~s,c.edge8),
+                    eq
+                )
+            );
+        }
+    }
+}
+
+template<Phase PhX>
+auto CoordOps::origin(const CubieCube& cc, const std::vector<TurnMove>& sol) -> Coord
+{
+    if constexpr (PhX == Ph1) return Coord::CubieCube2Coord(cc);
+    else {
+        const TablePool& pool = TablePool::instance();
+        Coord c = Coord::CubieCube2Coord(cc);
+        int corner = c.corner, edge4, edge8;
+        auto ep = cc.ep;
+        for(auto m: sol)
+        {
+            corner = pool.get<MoveKind::Corner>()(m,corner);
+            ep = ep * ElementaryMove[m].ep;
+        }
+        edge4 = Coord::ep2edge4(ep);
+        edge8 = Coord::ep2edge8(ep);
+        return { 0,0,0,corner,edge4,edge8 };
+    }
+}
+} // namespace cube::pdb::ops
+namespace cube::solver {
+
+using namespace cube::data;
+using namespace cube::pdb;
+using namespace cube::pdb::table;
+using cube::pdb::ops::Phase;
+
+class SearchContext
+{
+public:
+    SearchContext(const CubieCube& cc = CubieCube::id, size_t good = 22)
+        : root_(cc), tgtlen_(good)
+    {}
+
+    CubieCube   root() const    { return root_; }
+    size_t      tgtlen() const  { return tgtlen_; }
 
     /* reset solution buffer */
-    template<enum_phase PhX>
-    void reset_ph_sofar() { sofar_[PhX].fill(-1); }
+    template<Phase PhX>
+    void reset() { path_[PhX].fill(-1); }
 
-    /* cache the move of current step */
-    template<enum_phase PhX>
-    void set_ph_sofar(int step, int move) { sofar_[PhX][step] = move; }
-
-    /* */
-    template<enum_phase PhX>
-    int get_ph_sofar(int step) { return sofar_[PhX][step]; }
+    /* cache / fetch the move of given step */
+    template<Phase PhX> void record(int step, int move){ path_[PhX][step] = move; }
+    template<Phase PhX> int  recall(int step) const    { return path_[PhX][step]; }
 
     /* flush solution buffer to rsolution ( 0 <= L <= DS ) */
-    template<enum_phase PhX>
-    void set_ph_solution(size_t L)
+    template<Phase PhX>
+    void commit(size_t L)
     {
         rsolution_[PhX].first = L;
-        std::copy(sofar_[PhX].begin(), sofar_[PhX].begin()+L, rsolution_[PhX].second.begin());
+        std::copy(path_[PhX].begin(), path_[PhX].begin()+L, rsolution_[PhX].second.begin());
     }
 
     /* get solution of phase 1/2 by reversing rsolution */
-    template<enum_phase PhX>
-    auto get_ph_solution() const -> std::vector<TurnMove>
+    template<Phase PhX>
+    auto extract() const -> std::vector<TurnMove>
     {
         size_t n = rsolution_[PhX].first;
         if(n == 0) return {};
@@ -1591,52 +2006,56 @@ protected:
         return sol;
     }
 
-    /* the Ph2 origin; obtainted from replaying Ph1 solution onto root */
-    Coord ph2_origin(Coord c) const;
+    /* max search depth for phase 1/2 (conclusion from literatures) */
+    static constexpr int D0 = 12, D1 = 18, DS = D0+D1;
+    template<Phase PhX> static constexpr auto D = std::get<PhX>(std::tie(D0,D1));
+
+    /* elementary moves of two phases */
+    static constexpr std::array<TurnMove,18> EM0
+        = { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
+    static constexpr std::array<TurnMove,10> EM1
+        = { Ux1,Ux2,Ux3,Rx2,Fx2,Dx1,Dx2,Dx3,Lx2,Bx2 };
+    template<Phase PhX>
+    static constexpr auto& EM = std::get<PhX>(std::tie(EM0,EM1));
 
 private:
-    std::array<std::array<int,DS+2>,2>                  sofar_;      // solution buffer
-    std::array<std::pair<size_t,std::array<int,DS>>,2>  rsolution_;  // reverse of solution
+    CubieCube root_;
+    size_t tgtlen_;
+    std::array<std::array<int,DS+2>,2>                  path_;      // solution buffer
+    std::array<std::pair<size_t,std::array<int,DS>>,2>  rsolution_; // reverse of solution
 };
 
 /*!
- * @brief The Kociemba's two-phase solver that searches for the optimum
- * @note The two-phase optimum is inherently not guaranteed to coincide with
- *       the theoretical optimum.
+ * @brief The Kociemba's algorithm to search the first solution.
  */
-class TwoPhaseOptimSolver: public TwoPhaseSolver
+class KociembaSolver
 {
 public:
     /*!
      * @brief Two phase solver that finds the shortest solution
-     * @param c     the Coord of cube
+     * @param cc    the cube
      * @param good  early-exit threshold. This search stops as soon as a solution
      *              of length <= `good` is found. If the returned length is
      *              > `good`, the two-phase optimum is guaranteed.
      * @return (is_solved,sol1,sol2) - solX is the PhX solution. For a legal cube
      *         coord, the `is_solved` is always true.
      */
-    auto solve(const Coord &c, size_t good = 0)
+    static auto solve(const CubieCube &cc, size_t good)
         -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>;
-
+protected:
     /* Attemp to find a solution at most `maxL` steps where the Ph1 solution to
-       `c` is of exact `d` steps; Return the legnth of solution */
-    int start_search_ph1(const Coord& c, size_t d, size_t d_orig, size_t maxL);
+    `c` is of exact `d` steps; Return the legnth of solution */
+    static int start_search_ph1(SearchContext& ctx, const Coord& c, size_t d, size_t d_orig, size_t maxL);
 
     /* Attemp to find a Ph2 solution in exact `togo` steps */
-    bool start_search_ph2(const Coord& c, size_t togo);
-
-private:
-    Coord root_;
-    size_t good_;
+    static bool start_search_ph2(SearchContext& ctx, const Coord& c, size_t togo);
 };
 
 } // namespace cube::solver
 
 namespace cube::solver {
 
-#define TM cube::pdb::get_TM()
-#define TP cube::pdb::get_TP()
+using namespace cube::pdb::ops;
 
 /* important optimization
  * the continuation of TurnMoves A and its prev B could be reduced in cases:
@@ -1649,135 +2068,36 @@ inline bool is_dull_pair(const TurnMove A, const int B)
     return (A/3 == B/3) || (A/3 == B/3+3);
 }
 
-template<enum_phase I>
-Coord TwoPhaseSolver::transform(const Coord &c, const TurnMove &m)
-{
-    if constexpr (I == Ph1)
-    return Coord {
-        (*TM.pTMTwist)[m][c.twist], (*TM.pTMFlip)[m][c.flip], (*TM.pTMSlice)[m][c.slice],
-        -1,-1,-1 /* -1: not used */
-    };
-    else
-    return Coord {
-        0,0,0,
-        (*TM.pTMCorner)[m][c.corner], (*TM.pTMEdge4)[m][c.edge4], (*TM.pTMEdge8)[m][c.edge8]
-    };
-}
-
-template<enum_phase I>
-size_t TwoPhaseSolver::distance(const Coord &c)
-{
-    if constexpr (I == Ph1)
-    return std::max((*TP.pTPSliceTwist)[c.slice][c.twist],
-                    (*TP.pTPSliceFlip)[c.slice][c.flip]);
-    else
-    return std::max((*TP.pTPEdge4Corner)[c.edge4][c.corner],
-                    (*TP.pTPEdge4Edge8)[c.edge4][c.edge8]);
-}
-
-template<enum_phase PhX>
-bool TwoPhaseSolver::search_phase(const Coord &c, size_t togo)
-{
-    if(togo < distance<PhX>(c)) return false;
-    if(togo == 0) return distance<PhX>(c) == 0;
-
-    for(auto m: EM<PhX>)
-    {
-        if(is_dull_pair(m,get_ph_sofar<PhX>(togo))) continue;
-
-        set_ph_sofar<PhX>(togo-1,m);
-        bool ret = search_phase<PhX>(transform<PhX>(c,m), togo-1);
-
-        // ret=true means we find a PhX solution within `togo` steps;
-        // early exit is fine since there won't be a shorter PhX solution
-        // in iterative deepening search
-        if(ret) return true;
-    }
-    return false;
-}
-
-Coord TwoPhaseSolver::ph2_origin(Coord c) const
-{
-    // CubieCube transform: Coord::CubieCube2Coord(Coord::Coord2CubieCube(c) * ms);
-    // （ Table transform optimization is working for corner only ）
-    int corner = c.corner, edge4, edge8;
-    // auto cp = Coord::corner2cp(c.corner);
-    auto ep = Coord::see2ep(c.slice,c.edge4,c.edge8);
-    for(auto &m : get_ph_solution<Ph1>())
-    {
-        corner = (*TM.pTMCorner)[m][corner];
-        ep = ep * ElementaryMove[m].ep;
-    }
-    edge4 = Coord::ep2edge4(ep);
-    edge8 = Coord::ep2edge8(ep);
-    return Coord { 0,0,0,corner,edge4,edge8 };
-}
-
-auto TwoPhaseSolver::solve(const Coord &c, int step)
+auto KociembaSolver::solve(const CubieCube &cc, size_t good)
     -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
 {
-    // reset sofar buffer:
-    reset_ph_sofar<Ph1>();
-    reset_ph_sofar<Ph2>();
-
-    /// iterative deepening search
-
-    const size_t maxL = std::clamp(step,0,DS);
-    for(auto d1 = distance<Ph1>(c); d1 <= maxL; d1++)
+    size_t bestL = SearchContext::DS + 1;
+    auto ctx = SearchContext(cc,good);
+    ctx.reset<Ph1>();
+    auto c = CoordOps::origin<Ph1>(cc);
+    for(auto togo = CoordOps::distance<Ph1>(c); togo < bestL; ++togo)
     {
-        // start Ph1 search
-        bool ret1 = search_phase<Ph1>(c,d1);
-        if(!ret1) continue;
-
-        // Ph1 solution found
-        set_ph_solution<Ph1>(d1);
-
-        // start Ph2 search
-        auto c2 = ph2_origin(c);
-        for(auto d2 = distance<Ph2>(c2); d2 <= maxL-d1; d2++)
-        {
-            bool ret2 = search_phase<Ph2>(c2,d2);
-            if(!ret2) continue;
-
-            // Ph2 solution found
-            set_ph_solution<Ph2>(d2);
-            return {true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>()};
-        }
+        int l = start_search_ph1(ctx, c,togo,togo,bestL-1);
+        if(l >= 0) bestL = std::min(bestL,size_t(l));
+        if(bestL <= ctx.tgtlen()) break;
     }
-    return {false, {}, {}};
+    if(bestL > SearchContext::DS) return {false, {}, {}};
+    else return { true, ctx.extract<Ph1>(), ctx.extract<Ph2>() };
 }
 
-auto TwoPhaseOptimSolver::solve(const Coord &c, size_t good)
-    -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
+int KociembaSolver::start_search_ph1(
+    SearchContext& ctx, const Coord& c, size_t d, size_t d_orig, size_t maxL)
 {
-    good_ = good;
-    root_ = c;
-
-    size_t bestL = DS + 1;
-
-    reset_ph_sofar<Ph1>();
-    for(auto togo = distance<Ph1>(c); togo < bestL; ++togo)
-    {
-        int l = start_search_ph1(c,togo,togo,bestL-1);
-        if(l >= 0) bestL = std::min(bestL,static_cast<size_t>(l));
-        if(bestL <= good_) break;
-    }
-    if(bestL > DS) return {false, {}, {}};
-    else return { true, get_ph_solution<Ph1>(), get_ph_solution<Ph2>() };
-}
-
-int TwoPhaseOptimSolver::start_search_ph1(const Coord& c, size_t d, size_t d_orig, size_t maxL)
-{
-    if(d < distance<Ph1>(c)) return -1;
+    if(d < CoordOps::distance<Ph1>(c)) return -1;
     if(d == 0) {
-        set_ph_solution<Ph1>(d_orig);
-        auto c2 = ph2_origin(root_);
-        reset_ph_sofar<Ph2>();
-        for(auto togo = distance<Ph2>(c2); togo <= maxL; ++togo)
+        ctx.commit<Ph1>(d_orig);
+        ctx.reset<Ph2>();
+        auto c2 = CoordOps::origin<Ph2>(ctx.root(), ctx.extract<Ph1>());
+        for(auto togo = CoordOps::distance<Ph2>(c2); togo <= maxL; ++togo)
         {
-            bool succ = start_search_ph2(c2,togo);
+            bool succ = start_search_ph2(ctx,c2,togo);
             if(succ) {
-                set_ph_solution<Ph2>(togo);
+                ctx.commit<Ph2>(togo);
                 return togo;
             }
         }
@@ -1785,30 +2105,31 @@ int TwoPhaseOptimSolver::start_search_ph1(const Coord& c, size_t d, size_t d_ori
     }
 
     int bestL = maxL + 1;
-    for(auto m: EM<Ph1>)
+    for(auto m: SearchContext::EM<Ph1>)
     {
-        if(is_dull_pair(m, get_ph_sofar<Ph1>(d))) continue;
+        if(is_dull_pair(m, ctx.recall<Ph1>(d))) continue;
 
-        set_ph_sofar<Ph1>(d-1,m);
-        auto l = start_search_ph1(transform<Ph1>(c,m), d-1, d_orig, bestL-2);
+        ctx.record<Ph1>(d-1,m);
+        auto l = start_search_ph1(ctx, CoordOps::transform<Ph1>(c,m), d-1, d_orig, bestL-2);
         if(l >= 0 && bestL > l+1) {
             bestL = l+1;
         }
-        if(bestL + d_orig - d <= good_) break; // current is good enough
+        if(bestL + d_orig - d <= ctx.tgtlen()) break; // current is good enough
         if(d >= bestL) break; // no shorter solution
     }
-    return bestL > static_cast<int>(maxL) ? -1 : bestL;
+    return bestL > int(maxL) ? -1 : bestL;
 }
 
-bool TwoPhaseOptimSolver::start_search_ph2(const Coord& c, size_t togo)
-{   if(togo < distance<Ph2>(c)) return false;
-    if(togo == 0) return distance<Ph2>(c) == 0;
-    for(auto m: EM<Ph2>)
+bool KociembaSolver::start_search_ph2(
+    SearchContext& ctx, const Coord& c, size_t togo)
+{   if(togo < CoordOps::distance<Ph2>(c)) return false;
+    if(togo == 0) return CoordOps::distance<Ph2>(c) == 0;
+    for(auto m: SearchContext::EM<Ph2>)
     {
-        if(is_dull_pair(m, get_ph_sofar<Ph2>(togo))) continue;
+        if(is_dull_pair(m, ctx.recall<Ph2>(togo))) continue;
 
-        set_ph_sofar<Ph2>(togo-1,m);
-        bool ret = start_search_ph2(transform<Ph2>(c,m), togo-1);
+        ctx.record<Ph2>(togo-1,m);
+        bool ret = start_search_ph2(ctx, CoordOps::transform<Ph2>(c,m), togo-1);
         if(ret) return true;
     }
     return false;
@@ -1816,10 +2137,25 @@ bool TwoPhaseOptimSolver::start_search_ph2(const Coord& c, size_t togo)
 
 } // namespace cube::solver
 
-namespace cube::utils {
+namespace cube::config
+{
+namespace fs = std::filesystem;
+
+namespace {
+bool& use_symmetry_ref()
+{
+    static bool val_ = CUBE_USE_SYMMETRY;
+    return val_;
+}
+
+fs::path& get_custom_dir_storage()
+{
+    static fs::path custom_dir = {};
+    return custom_dir;
+}
 
 /* get the system cache directory */
-inline auto get_cache_dir() -> std::filesystem::path
+auto get_cache_dir() -> std::filesystem::path
 {
 #ifdef _WIN32
     const char* localAppData = std::getenv("LOCALAPPDATA");
@@ -1835,47 +2171,19 @@ inline auto get_cache_dir() -> std::filesystem::path
 #endif
     throw std::runtime_error("Unable to determine cache path");
 }
-
-/* measure the execution time, for benchmark */
-template<typename F, typename... Args>
-inline auto time_execution(F&& f, Args&&... args)
-{
-    using Rf = std::invoke_result_t<F, Args...>;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    auto duration_from_start = [start](){
-        auto end = std::chrono::high_resolution_clock::now();
-        return std::chrono::duration_cast<std::chrono::microseconds>(end-start);
-    };
-
-    if constexpr (std::is_void_v<Rf>) {
-        std::forward<F>(f)(std::forward<Args>(args)...);
-        return std::make_pair(
-            duration_from_start(),
-            std::nullopt
-        );
-    } else {
-        auto result = std::forward<F>(f)(std::forward<Args>(args)...);
-        return std::make_pair(
-            duration_from_start(),
-            std::make_optional(result)
-        );
-    }
 }
-} // namespace cube::utils
-namespace cube::config
-{
-namespace fs = std::filesystem;
 
-static fs::path& get_custom_dir_storage()
+bool use_symmetry() { return use_symmetry_ref(); }
+void use_symmetry(bool v)
 {
-    static fs::path custom_dir = "";
-    return custom_dir;
+    static std::once_flag once;
+    std::call_once(once, [v]() { use_symmetry_ref() = v; });
 }
 
 void set_table_dir(fs::path dir)
 {
-    get_custom_dir_storage() = dir;
+    static std::once_flag once;
+    std::call_once(once, [dir]() { get_custom_dir_storage() = dir; });
 }
 
 fs::path get_table_dir()
@@ -1891,14 +2199,13 @@ fs::path get_table_dir()
 
     try {
         // system cache dir
-        return utils::get_cache_dir() / "cube.coshz" / "tables";
+        return get_cache_dir() / "cube.coshz" / "tables";
     } catch (...) {
         return fs::absolute("tables");
     }
 }
 
 } // namespace cube::config
-
 namespace cube::internal
 {
 using namespace cube::data;
@@ -1907,9 +2214,9 @@ using namespace cube::data;
 std::string apply_maneuver(std::string_view s, const std::vector<TurnMove>& ms);
 
 /*!
- * \brief Convert maneuver string to sequence of TurnMove.
+ * @brief Convert maneuver string to sequence of TurnMove.
  *
- * \remark Examples:
+ * @remark Examples:
  *      - `"U F2 D F'"` => {Ux1,Fx2,Dx1,Fx3};
  *      - `"(UR){2} F"` => {Ux1,Rx1,Ux1,Rx1,Fx1};
  */
@@ -2028,7 +2335,101 @@ bool is_valid_maneuver(std::string_view s)
 }
 
 } // namespace cube::internal
-} // namespace cube// SPDX-License-Identifier: MIT
+} // namespace cube
+namespace cube::symmetry {
+
+void SymReduction::build_emb_corner(CornerDom& emb, const CornerConj& conj)
+{
+    static_assert(EQ_CORNER <= std::numeric_limits<uint16_t>::max());
+
+    constexpr auto unvisited = corner_eq_t { std::numeric_limits<uint16_t>::max(),Id };
+    emb.fill(unvisited);
+    for(int c = 0, eq = -1; c < N_CORNER; ++c)
+    {
+        if(emb[c].eq != unvisited.eq) continue;
+        emb[c] = { uint16_t(++eq), Id };
+        for(Sym s: sym_entries)
+        {
+            if(s == Id) continue;
+            auto &entry = emb[conj(s,c)];
+            if(entry.eq == unvisited.eq) entry = { uint16_t(eq), s };
+        }
+    }
+}
+
+void SymReduction::build_rep_corner(EqCornerDom& rep, const CornerDom& emb)
+{
+    const auto unvisited = std::numeric_limits<uint16_t>::max();
+    rep.fill(unvisited);
+    for(int corner = 0; corner < N_CORNER; ++corner)
+    {
+        auto eq = emb[corner].eq;
+        if(rep[eq] == unvisited) rep[eq] = corner;
+    }
+}
+
+void SymReduction::build_emb_flipslice(FlipSliceDom& emb, const FlipSliceConj& conj)
+{
+    static_assert(EQ_FLIPSLICE <= std::numeric_limits<uint16_t>::max());
+
+    constexpr auto unvisited = flipslice_eq_t { std::numeric_limits<uint16_t>::max(),Id };
+    emb.fill(unvisited);
+    for(int flip = 0, eq = -1; flip < N_FLIP; ++flip)
+        for(int slice = 0; slice < N_SLICE; ++slice)
+    {
+        if(emb(flip,slice).eq != unvisited.eq) continue;
+        emb(flip,slice) = { uint16_t(++eq), Id };
+        for(auto s: sym_entries)
+        {
+            if(s == Id) continue;
+            auto fs = conj(s,flip,slice);
+            auto &entry = emb(fs[0],fs[1]);
+            if(entry.eq == unvisited.eq) entry = { uint16_t(eq), s };
+        }
+    }
+}
+
+void SymReduction::build_rep_flipslice(EqFlipSliceDom& rep, const FlipSliceDom& emb)
+{
+    const auto unvisited = flipslice_t { std::numeric_limits<uint16_t>::max(),std::numeric_limits<uint16_t>::max() };
+    rep.fill(unvisited);
+    for(int flip = 0; flip < N_FLIP; ++flip)
+        for(int slice = 0; slice < N_SLICE; ++slice)
+        {
+            auto eq = emb(flip,slice).eq;
+            if(rep[eq] == unvisited) rep[eq] = { uint16_t(flip), uint16_t(slice) };
+        }
+}
+
+void SymReduction::build_stab_corner(CornerStab& stab, const EqCornerDom& rep, const CornerConj& conj)
+{
+    for (int eq = 0; eq < EQ_CORNER; ++eq)
+    {
+        SymMask mask = 0;
+        const auto c = rep[eq];
+        for (Sym s : sym_entries)
+        {
+            if (conj[s][c] == c) mask |= SymMask(1u << s);
+        }
+        stab[eq] = mask;
+    }
+}
+
+void SymReduction::build_stab_flipslice(FlipSliceStab& stab, const EqFlipSliceDom& rep, const FlipSliceConj& conj)
+{
+    for (int eq = 0; eq < EQ_FLIPSLICE; ++eq)
+    {
+        SymMask mask = 0;
+        const auto fs = rep[eq];
+        for (Sym s : sym_entries)
+        {
+            if (conj(s,fs[0],fs[1]) == fs) mask |= SymMask(1u << s);
+        }
+        stab[eq] = mask;
+    }
+}
+
+} // namespace cube::pdb::symmetry// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 coshz
 
 #ifndef CUBE_EXPORT_H
@@ -2073,6 +2474,41 @@ bool is_valid_maneuver(std::string_view s)
 #endif
 
 #endif /* CUBE_EXPORT_H */
+
+#define CUBE_VERSION        "0.5.1"
+#define CUBE_VERSION_FULL   "0.5.1"
+#define CUBE_VERSION_MAJOR  0
+#define CUBE_VERSION_MINOR  5
+#define CUBE_VERSION_PATCH  1
+
+/* CUBE_VERSION_CODE: a 16-bit integer encoding from (major, minor, patch) */
+
+#define CUBE_VER_BIT_MAJOR_ 5
+#define CUBE_VER_BIT_MINOR_ 7
+#define CUBE_VER_BIT_PATCH_ 4
+
+#define CUBE_VER_SFT_MAJOR_ (CUBE_VER_BIT_MINOR_ + CUBE_VER_BIT_PATCH_)
+#define CUBE_VER_SFT_MINOR_ CUBE_VER_BIT_PATCH_
+#define CUBE_VER_SFT_PATCH_ 0
+
+#define CUBE_VER_MSK_MAJOR_ ((1U << CUBE_VER_BIT_MAJOR_) - 1)
+#define CUBE_VER_MSK_MINOR_ ((1U << CUBE_VER_BIT_MINOR_) - 1)
+#define CUBE_VER_MSK_PATCH_ ((1U << CUBE_VER_BIT_PATCH_) - 1)
+
+#if 0 > CUBE_VERSION_MAJOR || CUBE_VERSION_MAJOR > CUBE_VER_MSK_MAJOR_
+#   error "CUBE_VERSION_MAJOR out of range [0..31]"
+#endif
+#if 0 > CUBE_VERSION_MINOR || CUBE_VERSION_MINOR > CUBE_VER_MSK_MINOR_
+#   error "CUBE_VERSION_MINOR out of range [0..127]"
+#endif
+#if 0 > CUBE_VERSION_PATCH || CUBE_VERSION_PATCH > CUBE_VER_MSK_PATCH_
+#   error "CUBE_VERSION_PATCH out of range [0..15]"
+#endif
+
+#define CUBE_VERSION_CODE (\
+    ((CUBE_VERSION_MAJOR & CUBE_VER_MSK_MAJOR_) << CUBE_VER_SFT_MAJOR_) | \
+    ((CUBE_VERSION_MINOR & CUBE_VER_MSK_MINOR_) << CUBE_VER_SFT_MINOR_) | \
+    ((CUBE_VERSION_PATCH & CUBE_VER_MSK_PATCH_) << CUBE_VER_SFT_PATCH_) )
 
 #ifndef __cplusplus
 #error "This is a C++ header; please use a C++ compiler OR include cube/cube.h instead"
@@ -2158,7 +2594,30 @@ CUBE_EXPORT bool is_solvable(std::string_view color_cube);
 } // namespace cube// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 coshz
 
+#ifndef CUBE_USE_SYMMETRY
+#   define CUBE_USE_SYMMETRY 1
+#endif
+
 namespace cube {
+
+/*!
+ * @brief Initialize the cube library by loading or building lookup tables.
+ * @param use_symmetry Select the table set:
+ *      - `false`: smaller (<10 MB), fast to build, slower solving;
+ *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
+ *      This is a memory/disk/build-time vs solve-speed trade-off.
+ * @param dir Directory for reading and writting table files.
+ *      Empty means the default directory (see @ref get_table_dir()).
+ *      Tables are loaded if present; otherwise they are built and written here.
+ * @note Only the first call takes effect; call it before the first @ref solve,
+ *      which invokes it with default arguments.
+ * @warning With `use_symmetry = true`, the first run may take minutes and write
+ *      ~260 MB of data to @p dir.
+ */
+CUBE_EXPORT void cube_init(
+    bool use_symmetry = CUBE_USE_SYMMETRY,
+    std::string_view dir = {}
+);
 
 /* set directory for move / prunning tables */
 CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
@@ -2167,10 +2626,7 @@ CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
 CUBE_EXPORT auto get_table_dir() -> std::filesystem::path;
 
 /* check if tables exist in the table directory */
-CUBE_EXPORT bool tables_ready();
-
-/* load tables explicitly  */
-CUBE_EXPORT void preload_tables();
+// CUBE_EXPORT bool tables_ready();
 
 /*!
  * @brief check the validity of color configuration of cube
@@ -2186,7 +2642,6 @@ CUBE_EXPORT bool is_valid_config(std::string_view cube);
 CUBE_EXPORT bool is_valid_maneuver(std::string_view maneuver);
 
 } // namespace cube
-
 namespace cube::show {
 
 using std::size_t;
@@ -2212,12 +2667,12 @@ enum class CubeFormat {
 };
 
 /*!
- * \brief convert a sequence to string
+ * @brief convert a sequence to string
  *
- * \tparam Container the type of sequence
- * \tparam Formatter the function to format each element
+ * @tparam Container the type of sequence
+ * @tparam Formatter the function to format each element
  *
- * \return the formatted string
+ * @return the formatted string
  */
 template<typename Array, typename Formatter>
 inline std::string seq2str_fmt(const Array &xs,
@@ -2237,7 +2692,7 @@ inline std::string seq2str_fmt(const Array &xs,
 }
 
 /*!
- * \brief seq2str with default formatter that promotes int8_t / uint8_t to int
+ * @brief seq2str with default formatter that promotes int8_t / uint8_t to int
  */
 template<typename Container>
 inline std::string seq2str(const Container &xs,
@@ -2248,7 +2703,7 @@ inline std::string seq2str(const Container &xs,
     auto default_formatter = [](const auto& val) {
         using T = std::decay_t<decltype(val)>;
         if constexpr (std::is_same_v<T,uint8_t> || std::is_same_v<T,int8_t>) {
-            return static_cast<int>(val);
+            return int(val);
         } else {
             return val;
         }
@@ -2288,9 +2743,9 @@ inline std::string to_string(const CubieCube& cc, CubeFormat fmt)
         return to_string(cc.toFaceCube(), false);
     case CubeFormat::Cubie:
         return seq2str_fmt(cc.cp, [](auto v) { return CornerSet[v]; }) +
-               seq2str_fmt(cc.co, [](auto v) { return static_cast<char>('0'+v); }) +
+               seq2str_fmt(cc.co, [](auto v) { return char('0'+v); }) +
                seq2str_fmt(cc.ep, [](auto v) { return EdgeSet[v]; }) +
-               seq2str_fmt(cc.eo, [](auto v) { return static_cast<char>('0'+v);});
+               seq2str_fmt(cc.eo, [](auto v) { return char('0'+v);});
     default: // Cycle
         const auto [fixed_corner,cycles_corner] = decomposite(cc.cp);
         const auto [fixed_edge, cycles_edge ]   = decomposite(cc.ep);
@@ -2341,22 +2796,29 @@ inline std::string to_string(const std::vector<TurnMove>& ms)
 }
 
 } // namespace cube::show
-
 namespace cube {
 using namespace cube::data;
+using namespace cube::pdb;
+using namespace cube::solver;
+
 namespace fs = std::filesystem;
 
 void set_table_dir(fs::path dir) { config::set_table_dir(dir); }
 auto get_table_dir() -> fs::path { return config::get_table_dir(); }
 
-bool tables_ready() { return pdb::tables_ready(); }
-void preload_tables() { pdb::preload_tables(); }
-
 bool is_valid_config(std::string_view cube) { return ColorState::is_valid_config(cube); }
 bool is_valid_maneuver(std::string_view maneuver) { return internal::is_valid_maneuver(maneuver); }
 
-cube::solver::TwoPhaseOptimSolver TPS;
-// cube::solver::TwoPhaseSolver TPS;
+void cube_init(bool use_symmetry, std::string_view dir)
+{
+    static std::once_flag once;
+    std::call_once(once, [=]() {
+        config::use_symmetry(use_symmetry);
+        if(!dir.empty()) config::set_table_dir(dir);
+        if(use_symmetry) table::TableProvider::make<true>();
+        else table::TableProvider::make<false>();
+    });
+}
 
 Solution solve(std::string_view src, std::string_view tgt, int good)
 {
@@ -2373,9 +2835,10 @@ Solution solve(std::string_view src, std::string_view tgt, int good)
     // unsolvable cube
     if (!cc.isSolvable()) return {SolveResult::Unsolvable, ""};
 
-    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), good < 0 ? 0 : good);
+    cube_init(CUBE_USE_SYMMETRY);
 
-    // solution is not found since the search depth is too small
+    const auto& [found, s1, s2] = KociembaSolver::solve(cc, good < 0 ? 0 : good);
+
     if (!found) return {SolveResult::NotFound, ""};
 
     std::vector<TurnMove> sol;
@@ -2421,17 +2884,11 @@ std::string show_permutation(std::string_view ms_or_cube, PermFormat format) {
     }
 
     auto cc = ColorState::fromString(cube_str).toCubieCube();
-    return show::to_string(cc, show::CubeFormat(static_cast<int>(format)));
+    return show::to_string(cc, show::CubeFormat(int(format)));
 }
 
 } // namespace cube// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 coshz
-
-#define CUBE_VERSION_FULL  v0.5.0
-#define CUBE_VERSION_MAJOR 0
-#define CUBE_VERSION_MINOR 5
-#define CUBE_VERSION_PATCH 0
-#define CUBE_VERSION_BUILD
 
 #ifdef __cplusplus
     #define Default(x) = x
@@ -2550,6 +3007,25 @@ extern "C" {
 CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
 
 /*!
+ * @brief Initialize the cube library by loading or building lookup tables.
+ * @param use_symmetry Select the table set:
+ *      - `false`: smaller (<10 MB), fast to build, slower solving;
+ *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
+ *      This is a memory/disk/build-time vs solve-speed trade-off.
+ * @param dir Directory for reading and writting table files.
+ *      NULL means the default directory (see @ref get_table_dir()).
+ *      Tables are loaded if present; otherwise they are built and written here.
+ * @note Only the first call takes effect; call it before the first @ref solve,
+ *      which invokes it with default arguments.
+ * @warning With `use_symmetry = true`, the first run may take minutes and write
+ *      ~260 MB of data to @p dir.
+ */
+CUBE_EXPORT void cube_init(
+    bool use_symmetry   Default(CUBE_USE_SYMMETRY),
+    const char* dir     Default(0)
+);
+
+/*!
  * @brief solve the Rubik's cube
  *
  * @param buf       the buffer to solution (space-seperated moves)
@@ -2616,6 +3092,11 @@ CUBE_EXPORT bool permutation(
 #endif
 
 extern "C" {
+
+void cube_init(bool use_symmetry, const char* dir)
+{
+    cube::cube_init(use_symmetry, dir ? std::string_view(dir) : std::string_view{});
+}
 
 const char* solve_result_to_string(int sr)
 {

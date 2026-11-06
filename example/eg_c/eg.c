@@ -10,7 +10,7 @@ int main()
   facecube(buf, "U F U' L2 R L' D2 B", CUBE_ID);
 
   // solve from buf to CUBE_ID
-  SolveResult sr = solve(sol, buf, CUBE_ID, 30, true);
+  SolveResult sr = solve(sol, buf, CUBE_ID, 30);
 
   if(sr == SolveResultSuccess) {
     puts(sol);

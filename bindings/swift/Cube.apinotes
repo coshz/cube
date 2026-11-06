@@ -10,6 +10,8 @@ Tags:
     EnumKind: CFEnum
 
 Functions:
+  - Name: cube_init
+    SwiftName: "c_cube_init(_:_:)"
   - Name: solve
     SwiftName: "c_solve(_:_:_:_:)"
   - Name: solvable

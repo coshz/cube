@@ -1,14 +1,13 @@
 #include "cube/cube.hh"
 #include "cube/advanced.hh"
+#include "kociemba.hh"
 #include "maneuver.hh"
 #include "data.hpp"
-#include "twophase.hh"
 #include "rubik.hh"
-#include "coord.hh"
 #include "config.hh"
-#include "table.hh"
 #include "show.hpp"
-
+#include "table_provider.hh"
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -18,19 +17,27 @@
 
 namespace cube {
 using namespace cube::data;
+using namespace cube::pdb;
+using namespace cube::solver;
+
 namespace fs = std::filesystem;
 
 void set_table_dir(fs::path dir) { config::set_table_dir(dir); }
 auto get_table_dir() -> fs::path { return config::get_table_dir(); }
 
-bool tables_ready() { return pdb::tables_ready(); }
-void preload_tables() { pdb::preload_tables(); }
-
 bool is_valid_config(std::string_view cube) { return ColorState::is_valid_config(cube); }
 bool is_valid_maneuver(std::string_view maneuver) { return internal::is_valid_maneuver(maneuver); }
 
-cube::solver::TwoPhaseOptimSolver TPS;
-// cube::solver::TwoPhaseSolver TPS;
+void cube_init(bool use_symmetry, std::string_view dir)
+{ 
+    static std::once_flag once;
+    std::call_once(once, [=]() {
+        config::use_symmetry(use_symmetry);
+        if(!dir.empty()) config::set_table_dir(dir);
+        if(use_symmetry) table::TableProvider::make<true>();
+        else table::TableProvider::make<false>();
+    });
+}
 
 Solution solve(std::string_view src, std::string_view tgt, int good) 
 {
@@ -47,9 +54,10 @@ Solution solve(std::string_view src, std::string_view tgt, int good)
     // unsolvable cube
     if (!cc.isSolvable()) return {SolveResult::Unsolvable, ""};
 
-    const auto& [found, s1, s2] = TPS.solve(pdb::Coord::CubieCube2Coord(cc), good < 0 ? 0 : good);
+    cube_init(CUBE_USE_SYMMETRY);
 
-    // solution is not found since the search depth is too small
+    const auto& [found, s1, s2] = KociembaSolver::solve(cc, good < 0 ? 0 : good);
+
     if (!found) return {SolveResult::NotFound, ""};
 
     std::vector<TurnMove> sol;
@@ -95,7 +103,7 @@ std::string show_permutation(std::string_view ms_or_cube, PermFormat format) {
     }
 
     auto cc = ColorState::fromString(cube_str).toCubieCube();
-    return show::to_string(cc, show::CubeFormat(static_cast<int>(format)));
+    return show::to_string(cc, show::CubeFormat(int(format)));
 }
 
 } // namespace cube

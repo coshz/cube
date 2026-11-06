@@ -1,16 +1,16 @@
-set(CPP_SOURCES
-    cube_impl.cpp
-    cube_impl_c.cpp
-    config.cpp
-    maneuver.cpp
+set(lib_sources
+    cube.cpp
+    cube_c_api.cpp
+    kociemba.cpp
     rubik.cpp
-    twophase.cpp
-    table.cpp
+    symmetry.cpp
     coord.cpp
+    maneuver.cpp
+    config.cpp
 )
 
 add_library(cube_headers INTERFACE)
-add_library(cube_objs OBJECT ${CPP_SOURCES})
+add_library(cube_objs OBJECT ${lib_sources})
 add_library(cube_shared SHARED)
 
 add_library(${PROJECT_NAME}::objs ALIAS cube_objs)
@@ -45,13 +45,17 @@ target_sources(cube_headers INTERFACE
         "${CUBE_BUILD_INCLUDE_DIR}/cube/advanced.hh"
 )
 
+target_compile_definitions(cube_headers INTERFACE
+    CUBE_USE_SYMMETRY=$<BOOL:${CUBE_USE_SYMMETRY}>
+    CUBE_ENABLE_TRACE=$<BOOL:${CUBE_ENABLE_TRACE}>
+)
+
 # ------------------------------------------------------------------------------
 # Internal object library
 # The C++ sources are compiled exactly once and their objects are reused by:
 #   - ${PROJECT_NAME}::core
 #   - ${PROJECT_NAME}::Framework
 # ------------------------------------------------------------------------------
-
 target_link_libraries(cube_objs PUBLIC cube_headers)
 
 # ------------------------------------------------------------------------------
@@ -67,6 +71,7 @@ target_link_libraries(cube_objs PUBLIC cube_headers)
 # external symbol errors in dependent targets (e.g., icube.exe).
 # ------------------------------------------------------------------------------
 target_compile_definitions(cube_objs PRIVATE ${cube_export_macro})
+
 
 # ------------------------------------------------------------------------------
 # Main C++ library (shared & static)
@@ -86,7 +91,7 @@ set_target_properties(cube_shared PROPERTIES
 
 if(BUILD_STATIC_LIBS)
     # build static library from source !!!
-    add_library(cube_static STATIC ${CPP_SOURCES})
+    add_library(cube_static STATIC ${lib_sources})
     add_library(${PROJECT_NAME}::static ALIAS cube_static)
    
     if(WIN32)

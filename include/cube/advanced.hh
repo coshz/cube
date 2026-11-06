@@ -3,12 +3,34 @@
 
 #pragma once 
 
-#include <cube/cube_export.h>
-
+#include "cube/cube_export.h"
 #include <filesystem>
 #include <string_view>
 
+#ifndef CUBE_USE_SYMMETRY
+#   define CUBE_USE_SYMMETRY 1
+#endif
+
 namespace cube {
+
+/*! 
+ * @brief Initialize the cube library by loading or building lookup tables.
+ * @param use_symmetry Select the table set:
+ *      - `false`: smaller (<10 MB), fast to build, slower solving;
+ *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
+ *      This is a memory/disk/build-time vs solve-speed trade-off.
+ * @param dir Directory for reading and writting table files. 
+ *      Empty means the default directory (see @ref get_table_dir()). 
+ *      Tables are loaded if present; otherwise they are built and written here. 
+ * @note Only the first call takes effect; call it before the first @ref solve,
+ *      which invokes it with default arguments.
+ * @warning With `use_symmetry = true`, the first run may take minutes and write
+ *      ~260 MB of data to @p dir.
+ */
+CUBE_EXPORT void cube_init(
+    bool use_symmetry = CUBE_USE_SYMMETRY, 
+    std::string_view dir = {}
+);
 
 /* set directory for move / prunning tables */
 CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
@@ -17,10 +39,7 @@ CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
 CUBE_EXPORT auto get_table_dir() -> std::filesystem::path;
 
 /* check if tables exist in the table directory */
-CUBE_EXPORT bool tables_ready();
-
-/* load tables explicitly  */
-CUBE_EXPORT void preload_tables();
+// CUBE_EXPORT bool tables_ready();
 
 /*!
  * @brief check the validity of color configuration of cube

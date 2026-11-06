@@ -1,6 +1,5 @@
 #pragma once
 #include "data.hpp"
-
 #include <string_view>
 #include <string>
 #include <vector>
@@ -13,9 +12,9 @@ using namespace cube::data;
 std::string apply_maneuver(std::string_view s, const std::vector<TurnMove>& ms);
 
 /*!
- * \brief Convert maneuver string to sequence of TurnMove.
+ * @brief Convert maneuver string to sequence of TurnMove.
  *
- * \remark Examples:
+ * @remark Examples:
  *      - `"U F2 D F'"` => {Ux1,Fx2,Dx1,Fx3};
  *      - `"(UR){2} F"` => {Ux1,Rx1,Ux1,Rx1,Fx1};
  */

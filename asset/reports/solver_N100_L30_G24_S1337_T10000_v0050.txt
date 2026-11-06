@@ -1,11 +1,11 @@
 ================================================================================
                   RUBIK'S CUBE SOLVER PERFORMANCE BENCHMARK                     
 ================================================================================
- • Library Version       : 0.5.1
+ • Library Version       : 0.5.0
  • Generated At          : 2026-10-14 16:55:17
  • Test Cases (N)        : 100
  • Scramble Len (L)      : 30
- • Goodma Threshold (G)  : 24
+ • Good Threshold (G)  : 24
  • Random Seed           : 1337
  • Timeout Threshold     : 10000 ms
 --------------------------------------------------------------------------------

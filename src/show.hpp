@@ -1,7 +1,6 @@
 #include "rubik.hh"
 #include "common.hpp"
 #include "data.hpp"
-
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -37,12 +36,12 @@ enum class CubeFormat {
 };
 
 /*!
- * \brief convert a sequence to string
+ * @brief convert a sequence to string
  *
- * \tparam Container the type of sequence
- * \tparam Formatter the function to format each element
+ * @tparam Container the type of sequence
+ * @tparam Formatter the function to format each element
  *
- * \return the formatted string
+ * @return the formatted string
  */
 template<typename Array, typename Formatter>
 inline std::string seq2str_fmt(const Array &xs,
@@ -62,7 +61,7 @@ inline std::string seq2str_fmt(const Array &xs,
 }
 
 /*!
- * \brief seq2str with default formatter that promotes int8_t / uint8_t to int
+ * @brief seq2str with default formatter that promotes int8_t / uint8_t to int
  */
 template<typename Container>
 inline std::string seq2str(const Container &xs,
@@ -73,7 +72,7 @@ inline std::string seq2str(const Container &xs,
     auto default_formatter = [](const auto& val) {
         using T = std::decay_t<decltype(val)>;
         if constexpr (std::is_same_v<T,uint8_t> || std::is_same_v<T,int8_t>) {
-            return static_cast<int>(val);
+            return int(val);
         } else {
             return val;
         }
@@ -113,9 +112,9 @@ inline std::string to_string(const CubieCube& cc, CubeFormat fmt)
         return to_string(cc.toFaceCube(), false);
     case CubeFormat::Cubie:
         return seq2str_fmt(cc.cp, [](auto v) { return CornerSet[v]; }) +
-               seq2str_fmt(cc.co, [](auto v) { return static_cast<char>('0'+v); }) +
+               seq2str_fmt(cc.co, [](auto v) { return char('0'+v); }) +
                seq2str_fmt(cc.ep, [](auto v) { return EdgeSet[v]; }) +
-               seq2str_fmt(cc.eo, [](auto v) { return static_cast<char>('0'+v);});
+               seq2str_fmt(cc.eo, [](auto v) { return char('0'+v);});
     default: // Cycle
         const auto [fixed_corner,cycles_corner] = decomposite(cc.cp);
         const auto [fixed_edge, cycles_edge ]   = decomposite(cc.ep);

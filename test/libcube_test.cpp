@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-
 bool check_solution(const char *cube, const char *solution)
 {
     char buffer[CUBE_BS];
@@ -17,7 +16,7 @@ TEST(SolveTest, BasicAssertions)
     const char *m = "URF";
     facecube(cube,m);
     EXPECT_STREQ(cube, "UURUUFLLFURBURBFRBFFRFFRDDDRRRDDBDDLFFDLLDLLBULLUBBUBB");
-    int rc = solve(buffer, cube, CUBE_ID, 30, 0);
+    int rc = solve(buffer, cube, CUBE_ID, 30);
     EXPECT_EQ(rc,0);
     EXPECT_TRUE(check_solution(cube, buffer));
 }

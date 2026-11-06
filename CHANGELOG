@@ -1,3 +1,7 @@
+v0.5.1
+- **Refactoring**: Apply cube symmetry to pruning tables to improve solver performance
+- **Polish**: Add performance benchmarks
+
 v0.5.0
 - **Refinement**: significant performance improvement
 - **Refactoring**: change the signature of `solve`
