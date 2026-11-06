@@ -50,8 +50,10 @@ R"(
   -H, --help-full           Show this help plus full help for commands
   -v, --version             Show version
   -a, --about               Show about info
+      --no-symmetry         Use non-symmetry tables (default: symmetry tables)
       --verbose             Print progress messages
-      --table-dir <dir>     Use a custom table directory
+      --dir                 Show the default table directory
+      --set-dir <dir>       Specify a custom table directory
 )";
     return usage + help(full);
 }
@@ -221,6 +223,7 @@ int main(int argc, char *argv[])
 
     std::string custom_dir = "";
     std::string inline_cmd = "";
+    bool use_symmetry = CUBE_USE_SYMMETRY;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -237,10 +240,15 @@ int main(int argc, char *argv[])
         } else if (arg == "-a" || arg == "--about") {
             std::cout <<  CUBE_ABOUT_MESSAGE;
             return 0;
+        } else if (arg == "--dir") {
+            std::cout << cube::get_table_dir().string() << std::endl;
+            return 0;
+        } else if (arg == "--set-dir") {
+            if (i + 1 < argc) { custom_dir = argv[++i]; }
+        } else if (arg == "--no-symmetry") {
+            use_symmetry = false;
         } else if (arg == "--verbose") {
             verbose = true;
-        } else if (arg == "--table-dir") {
-            if (i + 1 < argc) { custom_dir = argv[++i]; }
         } else {
             if (!inline_cmd.empty()) inline_cmd += " ";
             if (arg.find(' ') != std::string::npos) {
@@ -250,17 +258,16 @@ int main(int argc, char *argv[])
             }
         }
     }
-    if(!custom_dir.empty()) cube::set_table_dir(custom_dir);
     if(verbose) {
-        std::cout << "[Info] Using table directory: " << cube::get_table_dir().string() << std::endl;
-        if(!cube::tables_ready()) {
-            std::cout << "[Info] Tables not found, building..." << std::flush;
-        } else {
-            std::cout << "[Info] Tables found, loading..." << std::flush;
-        }
+        std::cout << "[Info] Loading / building tables (sym:" 
+                  << (use_symmetry ? "on" : "off")
+                  << ",dir:" << cube::get_table_dir().string() << ")..."
+                  << std::endl;
     }
-    cube::preload_tables();
-    if(verbose) std::cout << " Done!" << std::endl;
+    cube::cube_init(use_symmetry, custom_dir);
+    if(verbose) { 
+        std::cout << "[Info] All tables are built." << std::endl;
+    }
     if(!inline_cmd.empty()) {
         if(verbose) std::cout << "[Info] Running inline command: " << inline_cmd << std::endl;
         auto s = REPL::parse_args(inline_cmd);

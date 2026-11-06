@@ -1,6 +1,5 @@
 #include "rubik.hh"
 #include "data.hpp"
-
 #include <algorithm>
 #include <array>
 #include <set>

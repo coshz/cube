@@ -16,12 +16,12 @@ SCRIPT_HEADER := $(ROOT)/dev/scripts/update_header.py
 SOURCES := $(addprefix $(ROOT)/, \
 	src/rubik.cpp \
 	src/coord.cpp \
-	src/table.cpp \
-	src/twophase.cpp \
+	src/kociemba.cpp \
 	src/config.cpp \
 	src/maneuver.cpp \
-	src/cube_impl.cpp \
-	src/cube_impl_c.cpp \
+	src/symmetry.cpp \
+	src/cube.cpp \
+	src/cube_c_api.cpp \
 )
 
 INCLUDES := $(ROOT)/build/include

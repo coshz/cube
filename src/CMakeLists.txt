@@ -1,16 +1,16 @@
-set(CPP_SOURCES
-    cube_impl.cpp
-    cube_impl_c.cpp
-    config.cpp
-    maneuver.cpp
+set(lib_sources
+    cube.cpp
+    cube_c_api.cpp
+    kociemba.cpp
     rubik.cpp
-    twophase.cpp
-    table.cpp
+    symmetry.cpp
     coord.cpp
+    maneuver.cpp
+    config.cpp
 )
 
 add_library(cube_headers INTERFACE)
-add_library(cube_objs OBJECT ${CPP_SOURCES})
+add_library(cube_objs OBJECT ${lib_sources})
 add_library(cube_shared SHARED)
 
 add_library(${PROJECT_NAME}::objs ALIAS cube_objs)
@@ -22,6 +22,10 @@ set(cube_install_targets cube_headers cube_shared)
 # Generate exported header
 
 set(cube_export_macro "cube_EXPORTS")
+set_target_properties(cube_shared PROPERTIES
+    DEFINE_SYMBOL "${cube_export_macro}" # read by `generate_export_header`
+)
+
 include(GenerateExportHeader)
 generate_export_header(cube_shared
     BASE_NAME CUBE
@@ -45,13 +49,17 @@ target_sources(cube_headers INTERFACE
         "${CUBE_BUILD_INCLUDE_DIR}/cube/advanced.hh"
 )
 
+target_compile_definitions(cube_headers INTERFACE
+    CUBE_USE_SYMMETRY=$<BOOL:${CUBE_USE_SYMMETRY}>
+    CUBE_ENABLE_TRACE=$<BOOL:${CUBE_ENABLE_TRACE}>
+)
+
 # ------------------------------------------------------------------------------
 # Internal object library
 # The C++ sources are compiled exactly once and their objects are reused by:
 #   - ${PROJECT_NAME}::core
 #   - ${PROJECT_NAME}::Framework
 # ------------------------------------------------------------------------------
-
 target_link_libraries(cube_objs PUBLIC cube_headers)
 
 # ------------------------------------------------------------------------------
@@ -81,12 +89,11 @@ set_target_properties(cube_shared PROPERTIES
     OUTPUT_NAME     cube
     VERSION         ${PROJECT_VERSION}
     SOVERSION       ${PROJECT_VERSION_MAJOR}
-    DEFINE_SYMBOL   "${cube_export_macro}"
 )
 
 if(BUILD_STATIC_LIBS)
     # build static library from source !!!
-    add_library(cube_static STATIC ${CPP_SOURCES})
+    add_library(cube_static STATIC ${lib_sources})
     add_library(${PROJECT_NAME}::static ALIAS cube_static)
    
     if(WIN32)
@@ -98,6 +105,20 @@ if(BUILD_STATIC_LIBS)
     target_link_libraries(cube_static PUBLIC cube_headers)
 
     list(APPEND cube_install_targets cube_static)
+endif()
+
+# Fix MSVC compile error
+# fatal error LNK1179: invalid or corrupt file: duplicate COMDAT 
+# '??$build_table@$0A@@TableProvider@table@pdb@cube@@AEAAXAEAU?$NArray@G$0KNA@@data@3@@Z'
+if(MSVC)
+    target_compile_options(cube_objs 
+        PRIVATE /Zc:enumEncoding
+    )
+    if(BUILD_STATIC_LIBS)
+        target_compile_options(cube_static 
+            PRIVATE /Zc:enumEncoding
+        )
+    endif()
 endif()
 
 # ------------------------------------------------------------------------------

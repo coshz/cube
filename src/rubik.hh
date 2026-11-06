@@ -1,6 +1,5 @@
 #pragma once
 #include "data.hpp"
-
 #include <cstdint>
 #include <string_view>
 #include <array>
@@ -105,7 +104,7 @@ struct CubieCube
     static const CubieCube id;
 };
 
-inline constexpr CornerPerm operator*(const CornerPerm &cp, const CubieCube &cc) { return cp * cc.cp;}
+inline constexpr CornerPerm operator*(const CornerPerm &cp, const CubieCube &cc) { return cp * cc.cp; }
 inline constexpr CornerOri  operator*(const CornerOri &co,  const CubieCube &cc) { return co * cc.cp + cc.co; }
 inline constexpr EdgePerm   operator*(const EdgePerm &ep,   const CubieCube &cc) { return ep * cc.ep; }
 inline constexpr EdgeOri    operator*(const EdgeOri &eo,    const CubieCube &cc) { return eo * cc.ep + cc.eo; }
@@ -120,8 +119,8 @@ inline constexpr FacePerm      eFP = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1
 
 /* identity of FaceCube, CubieCube */
 
-inline const FaceCube   FaceCube::id = FaceCube{eFP};
-inline const CubieCube  CubieCube::id = CubieCube{eCP,eCO,eEP,eEO};
+inline constexpr FaceCube   FaceCube::id = FaceCube{eFP};
+inline constexpr CubieCube  CubieCube::id = CubieCube{eCP,eCO,eEP,eEO};
 
 /* CubieCube representations of 18 elementary moves: used for pdb::Coord & pdb::Table */
 
@@ -146,6 +145,11 @@ inline constexpr FaceCube pB = {{11,14,17,3,4,5,6,7,8,9,10,35,12,13,34,15,16,33,
 
 inline constexpr std::array<FaceCube,18>
     ElementaryPerm = { pU,pU*pU,pU*pU*pU,pR,pR*pR,pR*pR*pR,pF,pF*pF,pF*pF*pF,pD,pD*pD,pD*pD*pD,pL,pL*pL,pL*pL*pL,pB,pB*pB,pB*pB*pB };
+
+inline constexpr std::array<TurnMove,N_MOVE> turn_entries = { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
+inline constexpr std::array<TurnMove,N_MOVE> turn_inv_entries = { Ux3,Ux2,Ux1,Rx3,Rx2,Rx1,Fx3,Fx2,Fx1,Dx3,Dx2,Dx1,Lx3,Lx2,Lx1,Bx3,Bx2,Bx1 };
+
+inline constexpr TurnMove operator~(TurnMove m) { return turn_inv_entries[m]; }
 
 inline FaceCube operator*(const FaceCube &c, const std::vector<TurnMove> &ms)
 {

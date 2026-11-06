@@ -12,9 +12,9 @@ namespace cube::math {
 using std::size_t;
 
 /*!
- * \brief the cycle decompositon of permutation
+ * @brief the cycle decompositon of permutation
 
- * \return pair of
+ * @return pair of
     - first: vector of fixed points
     - second: vector of cycles in order of length descending
  */
@@ -197,7 +197,7 @@ constexpr bool isValidPermutation(const ArrayLike& xs)
     if(xs.size() != N) return false;
     std::array<bool,N> visited{};
     for(auto i = 0; i < N; ++i) {
-        size_t val = static_cast<size_t>(xs[i]);
+        size_t val = xs[i];
         if(xs[i] < 0 || xs[i] >= N) return false;
         if(visited[val]) return false;
         visited[val] = true;
@@ -206,7 +206,7 @@ constexpr bool isValidPermutation(const ArrayLike& xs)
 }
 
 /*!
- * \brief Pull / Gather permute: out[i] = src[ X[i] ]
+ * @brief Pull / Gather permute: out[i] = src[ X[i] ]
  * @note src and X must have the same dimension and X must be a permutation
  */
 template<typename Array, typename Perm>
@@ -218,7 +218,7 @@ constexpr Array backpermute(const Array& src, const Perm& P)
 }
 
 /*!
- * \brief Push / Scatter permute: out[ X[i] ] = src[i]
+ * @brief Push / Scatter permute: out[ X[i] ] = src[i]
  * @note src and X must have the same dimension and X must be a permutation
  */
 template<typename Array, typename Perm>

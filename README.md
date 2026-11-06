@@ -32,7 +32,7 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 ### 1. Interactive CLI (`icube`)
 
 ```bash
-# Launch interactive solver
+# Launch interactive solver (use `-h` / `-H` for help)
 icube
 
 # Or solve directly via state string
@@ -95,14 +95,15 @@ cmake --build build --target install
 ```text
 .
 ├── amalg/            # Amalgamated C++ source (single-file distribution)
-├── asset             # Project resources (snapshots, benchmark reports)
+├── asset/            # Project resources (snapshots, benchmark reports)
 ├── app/              # Source code for command-line tool `icube`
 ├── bindings/         # Language bindings
 ├── bench/            # Source code for benchmark 
 ├── cmake/            # CMake templates and modules
 ├── dev/              # Development scripts
+├── example/          # Examples of using libcube in Make / CMake project
 ├── include/          # Public headers
-├── src/              # Core Two-Phase Algorithm implementation
+├── src/              # The C++ implementation of Kociemba's algorithm
 └── test/             # Testing
 ```
 

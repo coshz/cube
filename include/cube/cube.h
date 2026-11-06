@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <cube/cube_export.h> // CUBE_EXPORT
-#include <cube/version.h>
+#include "cube/cube_export.h" // CUBE_EXPORT
+#include "cube/version.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -124,6 +124,25 @@ extern "C" {
 
 /* export: solve result to string */
 CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
+
+/*! 
+ * @brief Initialize the cube library by loading or building lookup tables.
+ * @param use_symmetry Select the table set:
+ *      - `false`: smaller (<10 MB), fast to build, slower solving;
+ *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
+ *      This is a memory/disk/build-time vs solve-speed trade-off.
+ * @param dir Directory for reading and writting table files. 
+ *      NULL means the default directory (see @ref get_table_dir()). 
+ *      Tables are loaded if present; otherwise they are built and written here. 
+ * @note Only the first call takes effect; call it before the first @ref solve,
+ *      which invokes it with default arguments.
+ * @warning With `use_symmetry = true`, the first run may take minutes and write
+ *      ~260 MB of data to @p dir.
+ */
+CUBE_EXPORT void cube_init(
+    bool use_symmetry   Default(CUBE_USE_SYMMETRY), 
+    const char* dir     Default(0)
+);
 
 /*! 
  * @brief solve the Rubik's cube

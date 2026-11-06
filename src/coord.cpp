@@ -3,6 +3,8 @@
 #include "common.hpp"
 #include "data.hpp"
 #include <algorithm>
+#include <array>
+#include <memory>
 
 namespace cube::pdb {
 
@@ -17,7 +19,7 @@ inline bool isSliceEdge(size_t idx)
 
 int Coord::co2twist(const CornerOri &co)
 {
-    return static_cast<int>(fromDigits<3>(takeByRange<1,7>(co.xs)));
+    return int(fromDigits<3>(takeByRange<1,7>(co.xs)));
 }
 
 CornerOri Coord::twist2co(int i)
@@ -32,7 +34,7 @@ CornerOri Coord::twist2co(int i)
 
 int Coord::eo2flip(const EdgeOri &eo)
 {
-    return static_cast<int>(fromDigits<2>(takeByRange<1,11>(eo.xs)));
+    return int(fromDigits<2>(takeByRange<1,11>(eo.xs)));
 }
 
 EdgeOri Coord::flip2eo(int i)
@@ -54,7 +56,6 @@ int Coord::ep2slice(const EdgePerm &ep)
     for(int i = 0, j = 0; i < N; i++) {
         if(isSliceEdge(ep[i])) x[j++] = i;
     }
-
     for(int i = 0; i < 4; i++) slice += binomial(N-1-x[i],4-i);
     return slice;
 }
@@ -66,7 +67,7 @@ int Coord::ep2edge4(const EdgePerm &ep)
         while(!isSliceEdge(ep[j])) j++;
         edge4_perm[i] = ep[j] - 8;
     }
-    return static_cast<int>(edge4_perm.rank());
+    return int(edge4_perm.rank());
 }
 
 int Coord::ep2edge8(const EdgePerm &ep)
@@ -76,12 +77,12 @@ int Coord::ep2edge8(const EdgePerm &ep)
         while(isSliceEdge(ep[j]) || ep[j] == (EdgePerm::value_type) ~0UL) j++;
         edge8_perm[i] = ep[j] - 0;
     }
-    return static_cast<int>(edge8_perm.rank());
+    return int(edge8_perm.rank());
 }
 
 int Coord::cp2corner(const CornerPerm &cp)
 {
-    return static_cast<int>(cp.rank());
+    return int(cp.rank());
 }
 
 CornerPerm Coord::corner2cp(int i)
@@ -94,8 +95,8 @@ EdgePerm Coord::slice2ep(int i)
     auto si = lexicalOrderToIndices<12,4>(i);
     EdgePerm ep;
     // placing slice edges order-independently in responding indices
-    for(size_t i = 0, j = 0; i < 12; i++){
-        ep[i] = (i == si[j]) ? 8 + j++ : (EdgePerm::value_type) ~0UL;
+    for(size_t i = 0, j = 0, k = 0; i < 12; i++) {
+        ep[i] = (j < 4 && i == si[j]) ? 8 + j++ : k++;
     }
     return ep;
 }
@@ -104,9 +105,8 @@ EdgePerm Coord::edge42ep(int i)
 {
     EdgePerm ep;
     auto e4 = Perm<4,EdgePerm::value_type>::fromRank(i);
-    // placing slice edges order-dependently in normalized indices
-    for(size_t i = 0; i < 12; i++){
-        ep[i] = (i < 8) ? (EdgePerm::value_type) ~0UL : e4[i-8] + 8;
+    for(size_t i = 0; i < 12; i++) {
+        ep[i] = (i < 8) ? i : e4[i-8] + 8;
     }
     return ep;
 }
@@ -115,9 +115,8 @@ EdgePerm Coord::edge82ep(int i)
 {
     EdgePerm ep;
     auto e8 = Perm<8,EdgePerm::value_type>::fromRank(i);
-    // placing non-slice edges order-dependently in normalized indices
-    for(size_t i = 0; i < 12; i++){
-        ep[i] = (i < 8) ? e8[i] + 0 : (EdgePerm::value_type) ~0UL;
+    for(size_t i = 0; i < 12; i++) {
+        ep[i] = (i < 8) ? e8[i] + 0 : i;
     }
     return ep;
 }
@@ -126,10 +125,10 @@ EdgePerm Coord::see2ep(int slice, int edge4, int edge8)
 {
     auto e4 = Perm<4,EdgePerm::value_type>::fromRank(edge4);
     auto e8 = Perm<8,EdgePerm::value_type>::fromRank(edge8);
-    auto slice_indices = lexicalOrderToIndices<12,4>(slice);
+    auto s = lexicalOrderToIndices<12,4>(slice);
     EdgePerm ep;
     for(size_t i = 0, j = 0, x = 0, y = 0; i < 12; i++) {
-        ep[i] = (i == slice_indices[j] && ++j) ? e4[x++]+8: e8[y++]+0;
+        ep[i] = (j >=4 || i != s[j]) ? e8[y++]+0 : (++j,e4[x++]+8);
     }
     return ep;
 }

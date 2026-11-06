@@ -16,6 +16,34 @@ extension SolveResult: LocalizedError, CustomStringConvertible {
 
 // MARK: - Core APIs
 
+/// Initialize cube tables
+/// 
+/// - Parameters:
+///   - useSymmetry: Select the table set:
+///         `false`: smaller (<10 MB), fast to build, slower solving;
+///         `true`:  symmetry-based (~260 MB), slower to build, faster solving.
+///   - tableDir: Directory for reading and writting table files. 
+///         nil means the default directory
+///         Tables are loaded if present; otherwise they are built and written here. 
+/// - Notes: 
+///     Only the first call takes effect; call it before the first @ref solve,
+///     which invokes it with default arguments.
+/// 
+/// - Warning: 
+///     With `use_symmetry = true`, the first run may take minutes and write
+///     ~260 MB of data to @p dir.
+/// 
+func cubeInit(useSymmetry: Bool = true, tableDir: String? = nil)
+{
+    if let dir = tableDir {
+        dir.withCString { cString in 
+            c_cube_init(useSymmetry, cString);
+        }
+    } else {
+        c_cube_init(useSymmetry, nil)
+    }
+}
+
 /// Solves the Rubik's cube
 ///
 /// Uses Kociemba's two-phase algorithm. The search stops as soon as any solution 
@@ -30,6 +58,7 @@ extension SolveResult: LocalizedError, CustomStringConvertible {
 /// - Returns: A space-separated maneuver, eg. `"R U' F D' L2 B"`
 /// - Throws: A ``SolveResult`` if the src/tgt configuration is invalid or the
 ///           cube is unsolvable
+/// 
 public func solve(
     src: String,
     tgt: String? = nil,

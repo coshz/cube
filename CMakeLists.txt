@@ -49,6 +49,8 @@ set(CUBE_PACK_DIR "${PROJECT_BINARY_DIR}/dist" CACHE STRING "Cube packaging dire
 
 option(BUILD_STATIC_LIBS "Build cube static library" ON)
 option(BUILD_SWIFT_MODULE "Build Apple Cube.framework and Swift module map" ON)
+option(CUBE_USE_SYMMETRY "Use symmetry tables" ON)
+option(CUBE_ENABLE_TRACE "Enable tracing table generation" $<IF:$<CONFIG:Debug>,ON,OFF>)
 option(ENABLE_TEST "Enable testing" OFF)
 option(ENABLE_BENCHMARK "Enable benchmark" OFF)
 
@@ -95,7 +97,7 @@ endif()
 
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}-sdk")
 set(CPACK_PACKAGE_DIRECTORY ${CUBE_PACK_DIR})
-string(TOLOWER "${CPACK_PACKAGE_NAME}-${CUBE_VERSION_SEMVER}-${CMAKE_SYSTEM_NAME}-${system_proc}" CPACK_PACKAGE_FILE_NAME)
+string(TOLOWER "${CPACK_PACKAGE_NAME}-${CUBE_VERSION}-${CMAKE_SYSTEM_NAME}-${system_proc}" CPACK_PACKAGE_FILE_NAME)
 
 if(NOT CPACK_GENERATOR)
     if(WIN32) 
@@ -126,7 +128,7 @@ endif()
 if(ENABLE_BENCHMARK)
     add_subdirectory(bench)
 
-   add_custom_target(benchmark
+    add_custom_target(benchmark
         COMMAND $<TARGET_FILE:bench>
         DEPENDS $<TARGET_FILE:bench>
         USES_TERMINAL
@@ -196,6 +198,8 @@ message(STATUS "")
 message(STATUS "Options:")
 message(STATUS "  Bulid Static Libraries: ${BUILD_STATIC_LIBS}")
 message(STATUS "  Build Swift Module    : ${BUILD_SWIFT_MODULE}")
+message(STATUS "  Use Symmetry          : ${CUBE_USE_SYMMETRY}")
+message(STATUS "  Output Trace          : ${CUBE_ENABLE_TRACE}")
 message(STATUS "  Enable Testing        : ${ENABLE_TEST}")
 message(STATUS "  Enable Benchmark      : ${ENABLE_BENCHMARK}")
 message(STATUS "")

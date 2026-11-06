@@ -1,14 +1,28 @@
 #include "config.hh"
 #include <cstdlib>
 #include <filesystem>
+#include <mutex>
 #include <stdexcept>
 
 namespace cube::config 
 {
 namespace fs = std::filesystem;
 
+namespace {
+bool& use_symmetry_ref() 
+{
+    static bool val_ = CUBE_USE_SYMMETRY;
+    return val_;
+}
+
+fs::path& get_custom_dir_storage()
+{
+    static fs::path custom_dir = {};
+    return custom_dir;
+}
+
 /* get the system cache directory */
-inline auto get_cache_dir() -> std::filesystem::path
+auto get_cache_dir() -> std::filesystem::path
 {
 #ifdef _WIN32
     const char* localAppData = std::getenv("LOCALAPPDATA");
@@ -24,16 +38,20 @@ inline auto get_cache_dir() -> std::filesystem::path
 #endif
     throw std::runtime_error("Unable to determine cache path");
 }
+} 
 
-static fs::path& get_custom_dir_storage()
+bool use_symmetry() { return use_symmetry_ref(); }
+void use_symmetry(bool v) 
 {
-    static fs::path custom_dir = "";
-    return custom_dir;
+    static std::once_flag once;
+    std::call_once(once, [v]() { use_symmetry_ref() = v; });
 }
+
 
 void set_table_dir(fs::path dir)
 {
-    get_custom_dir_storage() = dir;
+    static std::once_flag once;
+    std::call_once(once, [dir]() { get_custom_dir_storage() = dir; });
 }
 
 fs::path get_table_dir()

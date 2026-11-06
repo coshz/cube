@@ -1,6 +1,7 @@
 #include "bench.h"
 #include "teestream.h"
 #include "cube/cube.hh"
+#include "cube/advanced.hh"
 #include "cube/version.h"
 #include <chrono>
 #include <cstddef>
@@ -42,10 +43,13 @@ std::string timestamp(const char* fmt = "%Y-%m-%d %H:%M:%S")
     return time_buf;
 }
 
-std::string out_filename(std::string tag, int N, int L, int G, unsigned int S, long long T)
+std::string out_filename(
+    std::string tag, 
+    int N, int L, int G, unsigned int S, long long T, bool use_symmetry)
 {
     std::stringstream ss;
     ss << tag 
+       << (use_symmetry ? "[sym=on]" : "[sym=off]")
        << "_N" << N
        << "_L" << L
        << "_G" << G
@@ -57,7 +61,9 @@ std::string out_filename(std::string tag, int N, int L, int G, unsigned int S, l
     return ss.str();
 }
 
-void benchmark_report(int N, int L, int G, unsigned int seed, long long timeout_ms, const std::string& log_file = "") 
+void benchmark_report(
+    int N, int L, int G, unsigned int seed, 
+    long long timeout_ms, bool use_symmetry, const std::string& log_file = "") 
 {
     TeeStream os(log_file);
     std::vector<TestCase> test_cases = generate_test_cases(N, L, seed);
@@ -69,9 +75,10 @@ void benchmark_report(int N, int L, int G, unsigned int seed, long long timeout_
     os << "================================================================================\n";
     os << " • Library Version       : " << CUBE_VERSION << "\n";
     os << " • Generated At          : " << timestamp("%Y-%m-%d %H:%M:%S") << "\n";
-    os << " • Test Cases (N)        : " << N << "\n";
-    os << " • Scramble Len (L)      : " << L << "\n";
-    os << " • Goodma Threshold (G)  : " << G << "\n";
+    os << " • Use Symmetry          : " << (use_symmetry ? "On" : "Off") << "\n";
+    os << " • Test Cases            : " << N << "\n";
+    os << " • Scramble Len          : " << L << "\n";
+    os << " • Good Threshold        : " << G << "\n";
     os << " • Random Seed           : " << seed << "\n";
     os << " • Timeout Threshold     : " << timeout_ms << " ms\n";
     os << "--------------------------------------------------------------------------------\n";
@@ -146,7 +153,7 @@ void benchmark_report(int N, int L, int G, unsigned int seed, long long timeout_
     std::sort(valid_durations.begin(), valid_durations.end());
     long long median_ms = valid_durations[valid_durations.size() / 2];
     long long avg_ms = total_ms / valid_durations.size();
-    double success_rate = (static_cast<double>(success_count) / N) * 100.0;
+    double success_rate = (double(success_count) / N) * 100.0;
 
     os << "\n";
     os << "================================================================================\n";
@@ -171,9 +178,10 @@ static void print_help(const char* program_name)
               << "Options:\n"
               << "  -n <num>      Number of test cases (default: 100)\n"
               << "  -l <len>      Scramble length (default: 30)\n"
-              << "  -g <len>      Goodma Threshold (default: 22)\n"
+              << "  -g <len>      Good Threshold (default: 22)\n"
               << "  -t <ms>       Timeout threshold in milliseconds (default: 20000)\n"
               << "  -s <seed>     Random seed (default: 1337)\n"
+              << "  -c <0|1>      Use symmetry (default: 0 for yes)\n"
               << "  -o <file>     Output log file (default: bench.log)\n"
               << "  -h            Show this help message\n";
 }
@@ -185,6 +193,7 @@ int main(int argc, char* argv[])
     int G = 22;
     long long timeout_ms = 10'000;
     unsigned int seed = 1337;
+    bool use_symmetry = true;
     std::string outfile {};
     for (int i = 1; i < argc; ++i) 
     {
@@ -204,14 +213,20 @@ int main(int argc, char* argv[])
                 timeout_ms = std::stoll(argv[++i]);
             } else if (arg == "-s") {
                 seed = static_cast<unsigned int>(std::stoul(argv[++i]));
+            } else if (arg == "-c") {
+                use_symmetry = !bool(std::stoul(argv[++i]));
             } else if (arg == "-o") {
                 outfile = argv[++i];
             }
         }
     }
-    if(outfile.empty()) { outfile = out_filename("solver",N,L,G,seed,timeout_ms); }
+    if(outfile.empty()) { outfile = out_filename("solver",N,L,G,seed,timeout_ms,use_symmetry); }
+
+    std::cout << "Initializing tables...\n"
+              << "(Note: this may take a while to build tables on the first run)" << std::endl;
+    cube::cube_init(use_symmetry,{});
 
     std::cout << "Generating benchmark report...\n" << std::endl;
-    benchmark_report(N, L, G, seed, timeout_ms, outfile);
+    benchmark_report(N, L, G, seed, timeout_ms, use_symmetry, outfile);
     std::cout << "\nDone. Report Location: " << std::filesystem::canonical(outfile).string() << std::endl;
 }

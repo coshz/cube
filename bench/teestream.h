@@ -17,8 +17,8 @@ protected:
     int overflow(int c) override 
     {
         if (c == EOF) return EOF;
-        int r1 = sb1_->sputc(static_cast<char>(c));
-        int r2 = sb2_->sputc(static_cast<char>(c));
+        int r1 = sb1_->sputc(char(c));
+        int r2 = sb2_->sputc(char(c));
         return (r1 == EOF || r2 == EOF) ? EOF : c;
     }
 
