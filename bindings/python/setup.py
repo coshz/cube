@@ -12,10 +12,15 @@ class CustomBuildExt(build_ext):
     def build_extensions(self): 
         compiler_type = self.compiler.compiler_type 
         for ext in self.extensions: 
+            ext.define_macros = list(ext.define_macros or []) + [
+                ('CUBE_USE_SYMMETRY', '1'),
+                ('CUBE_ENABLE_TRACE', '1'),
+            ]
             if compiler_type == 'msvc': 
-                ext.extra_compile_args = ['/std:c++17', '/O3', '/DNDEBUG']
+                extra = ['/std:c++17', '/O2', '/DNDEBUG']
             else:
-                ext.extra_compile_args = ['-std=c++17', '-O3', '-DNDEBUG', '-fPIC']
+                extra = ['-std=c++17', '-O3', '-DNDEBUG', '-fPIC']
+            ext.extra_compile_args = list(ext.extra_compile_args or []) + extra
         super().build_extensions()
 
 

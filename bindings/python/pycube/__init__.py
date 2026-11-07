@@ -12,6 +12,27 @@ class PermFormat(IntEnum):
     Cubie   = 1
     Cycle   = 2
 
+def cube_init(use_symmetry: bool = True, table_dir: str = ""):
+    """
+    Initialize the cube library by loading or building lookup tables.
+    Args:
+        use_symmetry: ``False`` uses compact tables (<10 MB, fast build,
+            slower solving); ``True`` uses symmetry tables (~260 MB, slow
+            build, faster solving).
+        table_dir: Directory to read/write table files; empty string means
+            the default. Tables are loaded if present, otherwise built there.
+    Note:
+        Only the first call takes effect; later calls are no-ops and their
+        arguments are ignored. The first :func:`solve` invokes it implicitly
+        with defaults.
+    Warning:
+        With ``use_symmetry=True``, the first run may take minutes and write
+        ~260 MB to ``table_dir``.
+    """
+    dir = table_dir.encode('utf-8')
+    lib.cube_init(use_symmetry, dir)
+
+
 def solve(src: str, tgt: str = CUBE_ID, good: int = 22) -> str:
     """ Solve the cube.
 

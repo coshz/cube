@@ -4,17 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cube-python"
-version = "0.5.0"
+version = "0.5.1"
 description = "Python binding for Cube C++ library"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "coshz", email = "fsinhx@gmail.com" }
 ]
 keywords = ["game", "rubiks-cube", "bindings"]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: C++",
     "Topic :: Software Development :: Libraries :: Python Modules",

@@ -7,6 +7,9 @@ print(f"Target State: {pycube.CUBE_ID}")
 # Validate state solvability
 scrambled = pycube.facecube("U F U' L2 R L' D2 B")
 
+# init cube library (load or build tables)
+pycube.cube_init(use_symmetry = False)
+
 if pycube.solvable(scrambled):
     try:
         # Find solution sequence

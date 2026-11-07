@@ -27,6 +27,9 @@ print(f"Target State: {pycube.CUBE_ID}")
 # Validate state solvability
 scrambled = pycube.facecube("U F U' L2 R L' D2 B")
 
+# init cube library (load or build tables)
+pycube.cube_init(use_symmetry = False)
+
 if pycube.solvable(scrambled):
     try:
         # Find solution sequence
@@ -52,6 +55,7 @@ from pycube import SolveError, CUBE_ID, PermFormat
 
 | Function | Description |
 | :--- | :--- |
+| `cube_init(use_symmetry=True,table_dir="")` | use symmetric pruning tables and customized table directory. |
 | `solve(src,tgt=CUBE_ID,good=22)` | Solve cube state `src`; stops as soon as a solution <= `good` moves is found. Returns solution string or raises `SolveError`. |
 | `facecube(maneuver,cube=CUBE_ID)` | Applies move sequence (e.g., `"U F U' L2"`) to a cube state and returns the new state. |
 | `solvable(cube)` | Returns `True` if the 54-character state string is physically solvable. |
