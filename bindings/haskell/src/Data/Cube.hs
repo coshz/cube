@@ -27,7 +27,9 @@
 --     let scrambledCube = foldl (&>) cubeId scrambledTurns
 --     putStrLn $ "Scrambled state: " ++ showCube scrambledCube
 --
---     -- 4. Solve using zero-cost C FFI solver and verify restoration
+--     -- 4a. build tables (`False` means without symmetry) under "cache" directory
+--     cubeInit False "cache"  
+--     -- 4b. Solve the scrambled cube & verify solution
 --     let sol = unsafeSolveFrom scrambledCube
 --     putStrLn $ "Optimal solution steps: " ++ showTurns sol
 --     putStrLn $ "Is fully restored? " ++ show (applyTurns scrambledCube sol == cubeId)
@@ -51,6 +53,7 @@ module Data.Cube
 , showTurns
 , parseTurns
   -- * Solving Interface (C FFI)
+, cubeInit
 , rawSolve
 , solve
 , unsafeSolve

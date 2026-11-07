@@ -23,6 +23,8 @@ main = do
 
     assertTest "Standard initial cube is legal" 
                 (isLegalCubeString initStr)
+
+    cubeInit False "cache"
     
     let identityMoves = unsafeSolveFrom cubeId
     assertTest "Solving already solved cube returns no moves" 

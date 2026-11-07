@@ -50,7 +50,10 @@ main = do
     let scrambledCube = foldl (&>) solvedCube turns
     putStrLn $ "Scrambled Cube:     " ++ showCube scrambledCube
 
-    -- 4. Solve the scrambled cube & verify
+    -- 4a. build tables (`False` means without symmetry) under "cache" directory 
+    cubeInit False "cache"  
+
+    -- 4b. Solve the scrambled cube & verify solution
     let solution = unsafeSolveFrom scrambledCube
     let restoredCube = applyTurns scrambledCube solution
 

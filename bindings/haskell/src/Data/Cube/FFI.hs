@@ -3,6 +3,12 @@ module Data.Cube.FFI where
 import Foreign.C.Types (CInt(..), CBool(..))
 import Foreign.C.String (CString)
 
+foreign import ccall "cube_init"
+    c_cube_init 
+        :: CBool    -- use symmetry 
+        -> CString  -- table directory
+        -> IO ()
+
 foreign import ccall "solve"
     c_solve 
         :: CString  -- buffer

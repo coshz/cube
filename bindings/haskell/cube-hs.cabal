@@ -20,7 +20,7 @@ name:               cube-hs
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.5.0.0
+version:            0.5.1.0
 
 -- A short (one-line) description of the package.
 synopsis:           High-performance, type-safe Rubik's Cube solver with C FFI bindings.
@@ -88,7 +88,7 @@ library
 
     cxx-sources:        cbits/cube_amalg.min.cpp
     include-dirs:       cbits
-    cxx-options:        -std=c++17 -O3
+    cxx-options:        -std=c++17 -O3 -DCUBE_USE_SYMMETRY=1 -DCUBE_ENABLE_TRACE=1
 
 test-suite cube-hs-test
     -- Import common warning flags.

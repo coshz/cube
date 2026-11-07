@@ -23,6 +23,7 @@ module Data.Cube.Internal
 , applyTurns
 , showTurns
 , parseTurns
+, cubeInit
 , rawSolve
 , solve
 , unsafeSolve
@@ -104,6 +105,24 @@ showTurns ts = unwords (map turnToString ts) where
         Dx1 -> "D"; Dx2 -> "D2"; Dx3 -> "D'"
         Lx1 -> "L"; Lx2 -> "L2"; Lx3 -> "L'"
         Bx1 -> "B"; Bx2 -> "B2"; Bx3 -> "B'"
+
+-- | Initialize the cube library by loading or building lookup tables.
+--
+-- @useSym@: 'False' uses compact tables (<10 MB, fast build, slower
+-- solving); 'True' uses symmetry tables (~260 MB, slow build, fasters olving).
+--
+-- @dir@: directory to read\/write table files; empty means the default.
+-- Tables are loaded if present, otherwise built there.
+--
+-- Only the first call takes effect; later calls are no-ops. The first 
+-- 'c_solve' invokes it implicitly with defaults.
+--
+-- Warning: @useSym = True@ may take minutes and write ~260 MB on first run.
+cubeInit :: Bool -> FilePath -> IO ()
+cubeInit useSymmetry tableDir = do
+    let cb = if useSymmetry then 1 else 0
+    withCString tableDir $ \cstr -> do
+        c_cube_init cb cstr
 
 -- | Uses Kociemba's two-phase algorithm. The search stops as soon as any solution 
 -- of length at most `good` is found, trading optimality for speed. 
