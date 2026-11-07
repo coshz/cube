@@ -4,7 +4,9 @@ fn main() {
     build
         .cpp(true)                 
         .std("c++17")              
-        .opt_level(2)              
+        .opt_level(2)    
+        .define("CUBE_USE_SYMMETRY", "1")
+        .define("CUBE_ENABLE_TRACE", "1")          
         .file("cxx/cube_amalg.min.cpp");
 
     if cfg!(target_os = "macos") {

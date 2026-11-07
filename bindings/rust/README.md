@@ -28,11 +28,14 @@ cube-rust = "0.5.0"
 ## 💡 Quick Start
 
 ```rust
-use cube_rust::{Cube, CubeError};
+use cube_rust::{Cube, cube_init};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize library (load or build tables)
+    cube_init(false,"tables/");
+
     // 1. Initialize a cube in standard solved state
-    let cube = Cube::default();
+    let mut cube = Cube::default();
 
     // 2. Apply moves 
     cube.apply_maneuver_mut("R U F' D2").unwrap();

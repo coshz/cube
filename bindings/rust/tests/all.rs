@@ -1,4 +1,13 @@
 use cube_rust::{permutation, Cube, CubeSolver};
+use std::sync::OnceLock;
+
+static INIT: OnceLock<()> = OnceLock::new();
+
+fn setup() {
+    INIT.get_or_init(||{
+        cube_rust::cube_init(true, "");
+    });
+}
 
 #[test]
 fn test_cube_solvability() {
@@ -19,6 +28,8 @@ fn test_cube_permutation() {
 
 #[test]
 fn test_cube_solver() {
+    setup();
+
     let scramble = "U F U' L2 R L' D2 B";
     let scrambled_cube = Cube::default().apply_maneuver(scramble).unwrap();
 

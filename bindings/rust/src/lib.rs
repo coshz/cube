@@ -35,6 +35,38 @@ use std::fmt;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
+/// Initializes the cube library by loading or building lookup tables.
+///
+/// # Arguments
+///
+/// * `use_symmetry` - Selects the table set. `false` uses compact tables
+///   (<10 MB, fast to build, slower solving); `true` uses symmetry tables
+///   (~260 MB, slow to build, faster solving).
+/// * `table_dir` - Directory to read/write table files. An empty string
+///   means the default directory. Tables are loaded if present, otherwise
+///   built and written there.
+///
+/// # Notes
+///
+/// Only the first call takes effect; later calls are no-ops and their
+/// arguments are ignored. The first [`solve`] invokes it implicitly with
+/// defaults.
+///
+/// With `use_symmetry = true`, the first run may take minutes and write
+/// ~260 MB to `table_dir`.
+///
+/// # Panics
+///
+/// Panics if `table_dir` contains an interior NUL byte.
+pub fn cube_init(use_symmetry: bool, table_dir: impl AsRef<str>) {
+    unsafe { 
+        let dir = table_dir.as_ref();
+        let c = (!dir.is_empty()).then(|| CString::new(dir).expect("table_dir contains interior NUL"));
+        let p_dir = c.as_ref().map_or(std::ptr::null(), |s| s.as_ptr());
+        ffi::cube_init(use_symmetry, p_dir);
+    }
+}
+
 /// An opaque domain type wrapping a 54-facelet cube configuration string.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cube(CString);

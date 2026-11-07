@@ -24,6 +24,11 @@ extern "C" {
     /// Converts a result code into a human-readable C-string description
     pub fn solve_result_to_string(sr: SolveResult) -> *const c_char;
 
+    pub fn cube_init(
+        use_symmetry: bool,
+        table_dir: *const c_char
+    );
+
     /// Core solve function
     pub fn solve(
         buf: *mut c_char,
