@@ -29,8 +29,8 @@ struct ColorState
 {
     std::array<Layer,54> s;
 
-    Layer & operator[](size_t i) noexcept           { return s[i]; }
-    const Layer operator[](size_t i) const noexcept { return s[i]; }
+    Layer & operator[](size_t i) noexcept       { return s[i]; }
+    Layer operator[](size_t i) const noexcept   { return s[i]; }
 
     // ? Should we make toFaceCube / toCubieCube constexpr
 

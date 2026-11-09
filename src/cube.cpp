@@ -60,8 +60,9 @@ Solution solve(std::string_view src, std::string_view tgt, int good)
 
     if (!found) return {SolveResult::NotFound, ""};
 
+    // concat Ph1 & Ph2 solutions
     std::vector<TurnMove> sol;
-    size_t n1 = s1.size(), n2 = s2.size();
+    const size_t n1 = s1.size(), n2 = s2.size();
     
     // if the transition moves of ph1-ph2 are homogeneous, combine them
     if (!s1.empty() && !s2.empty() && s1[n1 - 1] / 3 == s2[0] / 3) {

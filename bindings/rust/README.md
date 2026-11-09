@@ -22,7 +22,7 @@ cargo add cube-rust
 Or add it manually to `Cargo.toml`: 
 ```toml
 [dependencies]
-cube-rust = "0.5.0"
+cube-rust = "0.5.1"
 ```
 
 ## 💡 Quick Start

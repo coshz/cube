@@ -10,21 +10,19 @@ homepage = "https://github.com/coshz/cube"
 repository = "https://github.com/coshz/cube"
 readme = "README.md"
 license = "MIT"
-
 keywords = ["rubiks-cube", "solver", "algorithm"]
-
 categories = ["algorithms", "games", "external-ffi-bindings"]
-
 links = "cube-cxx"
-
 include = [
     "src/**/*",
     "cxx/cube_amalg.min.cpp",
     "tests/**/*",
+    "examples/**/*",
     "build.rs",
     "Cargo.toml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG"
 ]
 
 [dependencies]

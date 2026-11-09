@@ -3,7 +3,7 @@
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
  * Version: v0.5.1
- * Date: 2026-11-06
+ * Date: 2026-11-08
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
@@ -670,8 +670,8 @@ struct ColorState
 {
     std::array<Layer,54> s;
 
-    Layer & operator[](size_t i) noexcept           { return s[i]; }
-    const Layer operator[](size_t i) const noexcept { return s[i]; }
+    Layer & operator[](size_t i) noexcept       { return s[i]; }
+    Layer operator[](size_t i) const noexcept   { return s[i]; }
 
     // ? Should we make toFaceCube / toCubieCube constexpr
 
@@ -2440,7 +2440,7 @@ void SymReduction::build_stab_flipslice(FlipSliceStab& stab, const EqFlipSliceDo
 #  define CUBE_NO_EXPORT
 #else
 #  ifndef CUBE_EXPORT
-#    ifdef cube_shared_EXPORTS
+#    ifdef cube_EXPORTS
         /* We are building this library */
 #      define CUBE_EXPORT __attribute__((visibility("default")))
 #    else
@@ -2841,8 +2841,9 @@ Solution solve(std::string_view src, std::string_view tgt, int good)
 
     if (!found) return {SolveResult::NotFound, ""};
 
+    // concat Ph1 & Ph2 solutions
     std::vector<TurnMove> sol;
-    size_t n1 = s1.size(), n2 = s2.size();
+    const size_t n1 = s1.size(), n2 = s2.size();
 
     // if the transition moves of ph1-ph2 are homogeneous, combine them
     if (!s1.empty() && !s2.empty() && s1[n1 - 1] / 3 == s2[0] / 3) {
