@@ -1,0 +1,7 @@
+# Changelog
+
+## [0.6.0]
+
+- Performance: Support for symmetric pruning table 
+- Persistence: Support to customize table directory
+- Others: Upgrade underlying C++/wasm library to v0.5.1

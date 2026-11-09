@@ -5,7 +5,7 @@
         "access": "public"
     },
     "type": "module",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "A WASM-based Rubik's Cube library",
     "keywords": [
         "rubiks-cube-solver",
@@ -17,31 +17,48 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/coshz/cube.git"
+        "url": "git+https://github.com/coshz/cube.git"
     },
     "license": "MIT",
     "author": "coshz <fsinhx@gmail.com>",
-    "main": "./dist/index.mjs",
-    "module": "./dist/index.mjs",
-    "types": "./dist/index.d.mts",
+    "main": "./dist/index.node.mjs",
+    "module": "./dist/index.web.mjs",
+    "types": "./dist/index.node.d.mts",
     "exports": {
         ".": {
-            "import": "./dist/index.mjs",
-            "types": "./dist/index.d.mts"
+            "types": "./dist/index.d.mts",
+            "node": {
+                "types": "./dist/index.node.d.mts",
+                "default": "./dist/index.node.mjs"
+            },
+            "browser": {
+                "types": "./dist/index.web.d.mts",
+                "default": "./dist/index.web.mjs"
+            },
+            "default": {
+                "types": "./dist/index.web.d.mts",
+                "default": "./dist/index.web.mjs"
+            }
         }
     },
-    "files": [
-        "dist"
-    ],
+    "imports": {
+        "#internal/*": "./dist/internal/*"
+    },
+    "files": ["dist"],
     "scripts": {
-        "build:wasm": "make -f ../../dev/gen_wasm.mk",
-        "build:ts": "tsc --build",
-        "build": "npm run build:wasm && npm run build:ts",
-        "test": "tsx test/test_jscube.mts",
-        "watch": "tsc --watch"
+        "build:wasm": "rimraf dist/internal && make -f ../../dev/gen_wasm.mk",
+        "build:ts": "tsc --build --force",
+        "build:clean": "rimraf \"dist/*\" \"!dist/internal\" tsconfig.tsbuildinfo",
+        "build": "npm run build:clean && npm run build:wasm && npm run build:ts",
+        "clean": "rimraf dist tsconfig.tsbuildinfo",
+        "watch": "tsc --watch",
+        "demo:node": "tsx examples/demo-node/main.mts",
+        "demo:web": "vite examples/demo-web --open"
     },
     "devDependencies": {
         "@types/node": "^25.9.7",
-        "typescript": "^5.9.3"
+        "rimraf": "^6.1.4",
+        "typescript": "^5.9.3",
+        "vite": "^8.3.6"
     }
 }
