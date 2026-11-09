@@ -1,9 +1,11 @@
+#include "cube/advanced.hh"
 #include <cube/cube.hh>
 #include <iostream>
 
 int main() 
 {
   auto cube = cube::apply_maneuver("U F U' L2 R L' D2 B");
+  cube::cube_init(true,"tables");
   auto solution = cube::solve(cube);
   if(solution.is_success()) {
     std::cout << "Solution: " << solution.maneuver << std::endl;

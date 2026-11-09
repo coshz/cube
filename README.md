@@ -16,7 +16,6 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 - **📦 Cross-Platform SDK**: Ships C dynamic/static libraries, Swift module (`Cube.framework`), and interactive CLI (`icube`).
 - **🛠️ Standalone**: Zero external third-party dependencies.
 
-
 ## 📦 Language Bindings
 
 | Language | Directory & Guide | Package |
@@ -26,6 +25,15 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 | **Haskell** | [bindings/haskell](bindings/haskell/README.md) | [cube-hs](https://hackage.haskell.org/package/cube-hs) |
 | **TypeScript** | [bindings/wasm](bindings/wasm/README.md) | [@coshz/jscube](https://www.npmjs.com/package/@coshz/jscube) |
 
+## 📊 Performance
+
+Here is the Empirical Cumulative Distribution Function (ECDF) of solve times for 100 random scrambles of length 30 (timeout limit: 10000 ms). Enabling symmetry reduction (`sym=on`) significantly improves both the success rate and solving speed.
+
+<p align="center">
+  <img src="asset/bench/figures/v0051-ECDF.png" alt="Rubik's Cube Solver ECDF" width="80%">
+</p>
+
+> *Data generated using library v0.5.1*
 
 ## 🚀 Quick Start
 
@@ -55,6 +63,7 @@ icube solve "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 int main()
 {
   std::string_view cube = "FFLBURBURUUFRRRDDBUFBUFDFBRUDFBDFLLRDLLULLBRRULLFBBDDD";
+  cube::cube_init(true,"tables"); // build tables under "tables"
   auto sol = cube::solve(cube);
   if(sol.is_success()) {
     std::cout << sol.maneuver << std::endl;

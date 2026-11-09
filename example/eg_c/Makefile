@@ -3,7 +3,7 @@ PKG_CONFIG  ?= pkg-config
 .PHONY: all clean 
 all: out 
 out: eg.c
-	gcc $(shell pkg-config --cflags cube) $^ -o $@ \
+	gcc -O2 $(shell pkg-config --cflags cube) $^ -o $@ \
 		$(shell pkg-config --libs cube) \
 		-Wl,-rpath,$(shell pkg-config --variable=libdir cube)
 

@@ -48,14 +48,14 @@ std::string out_filename(
     int N, int L, int G, unsigned int S, long long T, bool use_symmetry)
 {
     std::stringstream ss;
-    ss << tag 
-       << (use_symmetry ? "[sym=on]" : "[sym=off]")
+    ss << "v" << std::hex << std::setfill('0') << std::setw(4) << CUBE_VERSION_CODE << std::dec
+       << "-" << tag 
+       << "_" << (use_symmetry ? "SYMT" : "SYMF")
        << "_N" << N
        << "_L" << L
        << "_G" << G
        << "_S" << S
        << "_T" << T
-       << "_v" << std::hex << std::setfill('0') << std::setw(4) << CUBE_VERSION_CODE
        << ".txt"
     ;
     return ss.str();
@@ -220,7 +220,7 @@ int main(int argc, char* argv[])
             }
         }
     }
-    if(outfile.empty()) { outfile = out_filename("solver",N,L,G,seed,timeout_ms,use_symmetry); }
+    if(outfile.empty()) { outfile = out_filename("bench",N,L,G,seed,timeout_ms,use_symmetry); }
 
     std::cout << "Initializing tables...\n"
               << "(Note: this may take a while to build tables on the first run)" << std::endl;

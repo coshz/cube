@@ -9,6 +9,8 @@ int main()
   // apply maneuver to give cube (here, CUBE_ID)
   facecube(buf, "U F U' L2 R L' D2 B", CUBE_ID);
 
+  cube_init(true, "tables");
+
   // solve from buf to CUBE_ID
   SolveResult sr = solve(sol, buf, CUBE_ID, 30);
 
