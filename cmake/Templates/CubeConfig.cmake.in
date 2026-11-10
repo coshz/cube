@@ -1,14 +1,17 @@
 @PACKAGE_INIT@
 
-include("${CMAKE_CURRENT_LIST_DIR}/CubeTargets.cmake")
 include(CMakeFindDependencyMacro)
+include("${CMAKE_CURRENT_LIST_DIR}/CubeTargets.cmake")
 
-if(TARGET Cube::cube_shared)
-    add_library(Cube::shared ALIAS Cube::cube_shared)
+if(TARGET Cube::shared)
+    set(Cube_shared_FOUND TRUE)
+else()
+    set(Cube_shared_FOUND FALSE)
+endif()
+if(TARGET Cube::static)
+    set(Cube_static_FOUND TRUE)
+else()
+    set(Cube_static_FOUND FALSE)
 endif()
 
-if(TARGET Cube::cube_static)
-    add_library(Cube::static ALIAS Cube::cube_static)
-endif()
-
-check_required_components(cube)
+check_required_components(Cube)

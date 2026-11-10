@@ -1,5 +1,4 @@
 #pragma once 
-
 #include <cstdio>
 #include <streambuf>
 #include <ostream>
@@ -38,7 +37,7 @@ private:
     std::ofstream file_;
     TeeStreambuf tbuf_;
 public:
-    explicit TeeStream(const std::string& outpath = "")
+    explicit TeeStream(const std::string& outpath)
         : std::ostream(nullptr)
         , file_(outpath)
         , tbuf_(std::cout.rdbuf(),file_.is_open() ? file_.rdbuf() : nullptr)

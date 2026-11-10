@@ -27,13 +27,16 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 
 ## 📊 Performance
 
-Here is the Empirical Cumulative Distribution Function (ECDF) of solve times for 100 random scrambles of length 30 (timeout limit: 10000 ms). Enabling symmetry reduction (`sym=on`) significantly improves both the success rate and solving speed.
+Here is the Empirical Cumulative Distribution Function (ECDF) of solve times for 100 random scrambles of length 30 (timeout limit: 10000 ms). 
 
 <p align="center">
-  <img src="asset/bench/figures/v0051-ECDF.png" alt="Rubik's Cube Solver ECDF" width="80%">
+  <img src="bench/reports/figures/v0051-ECDF.png" alt="Rubik's Cube Solver ECDF" width="80%">
 </p>
 
-> *Data generated using library v0.5.1*
+**Key Trade-offs:**
+*   Speed: `sym=on` significantly accelerates solving.
+*   Memory:`sym=on` requires ~260 MB RAM for tables, vs < 10 MB for `sym=off`.
+> *Data generated using library v0.5.1. You can explore the raw benchmark logs and figures in the [reports directory](bench/reports/).*
 
 ## 🚀 Quick Start
 
@@ -63,7 +66,7 @@ icube solve "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
 int main()
 {
   std::string_view cube = "FFLBURBURUUFRRRDDBUFBUFDFBRUDFBDFLLRDLLULLBRRULLFBBDDD";
-  cube::cube_init(true,"tables"); // build tables under "tables"
+  cube::cube_init(true,"tables"); // build tables under "tables" with sym=on
   auto sol = cube::solve(cube);
   if(sol.is_success()) {
     std::cout << sol.maneuver << std::endl;
@@ -104,10 +107,10 @@ cmake --build build --target install
 ```text
 .
 ├── amalg/            # Amalgamated C++ source (single-file distribution)
-├── asset/            # Project resources (snapshots, benchmark reports)
-├── app/              # Source code for command-line tool `icube`
+├── asset/            # Project resources (snapshots)
+├── app/              # Source code for command-line tool
 ├── bindings/         # Language bindings
-├── bench/            # Source code for benchmark 
+├── bench/            # benchmark (code, reports and figures)
 ├── cmake/            # CMake templates and modules
 ├── dev/              # Development scripts
 ├── example/          # Examples of using libcube in Make / CMake project

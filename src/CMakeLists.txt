@@ -87,6 +87,7 @@ target_link_libraries(cube_shared
 
 set_target_properties(cube_shared PROPERTIES
     OUTPUT_NAME     cube
+    EXPORT_NAME     shared
     VERSION         ${PROJECT_VERSION}
     SOVERSION       ${PROJECT_VERSION_MAJOR}
 )
@@ -97,9 +98,15 @@ if(BUILD_STATIC_LIBS)
     add_library(${PROJECT_NAME}::static ALIAS cube_static)
    
     if(WIN32)
-        set_target_properties(cube_static PROPERTIES OUTPUT_NAME "cube_static")
+        set_target_properties(cube_static PROPERTIES 
+            OUTPUT_NAME cube_static
+            EXPORT_NAME static 
+        )
     else()
-        set_target_properties(cube_static PROPERTIES OUTPUT_NAME "cube")
+        set_target_properties(cube_static PROPERTIES 
+            OUTPUT_NAME cube
+            EXPORT_NAME static
+        )
     endif()
     target_compile_definitions(cube_static PUBLIC CUBE_STATIC_DEFINE)
     target_link_libraries(cube_static PUBLIC cube_headers)

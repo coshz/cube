@@ -8,5 +8,6 @@ dist-*
 /doc
 .clangd
 .cache/
+__pycache__
 *.code-workspace
 TODO

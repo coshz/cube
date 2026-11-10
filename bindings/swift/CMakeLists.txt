@@ -13,7 +13,7 @@ add_swift_framework(cube_framework
     OBJECTS         $<TARGET_OBJECTS:cube_objs>
     LINK_FLAGS      "-lc++"
 )
-# ${PROJECT_NAME}::objs
+
 add_library("${PROJECT_NAME}::Framework" ALIAS cube_framework)
 
 get_target_property(CUBE_FW_DIR cube_framework FRAMEWORK_PATH)

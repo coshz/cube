@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <ctime>
 #include <iostream>
+#include <stdexcept>
+#include <system_error>
 #include <utility>
 #include <vector>
 #include <string>
@@ -19,6 +21,7 @@
 
 using namespace cube;
 using namespace std::chrono_literals;
+namespace fs = std::filesystem;
 
 std::vector<TestCase> generate_test_cases(int N, int L, unsigned int seed)
 {
@@ -61,11 +64,10 @@ std::string out_filename(
     return ss.str();
 }
 
-void benchmark_report(
+void benchmark_report(std::ostream& os,
     int N, int L, int G, unsigned int seed, 
-    long long timeout_ms, bool use_symmetry, const std::string& log_file = "") 
+    long long timeout_ms, bool use_symmetry) 
 {
-    TeeStream os(log_file);
     std::vector<TestCase> test_cases = generate_test_cases(N, L, seed);
 
     if (N == 0) { os << "No test cases provided." << std::endl; return; }
@@ -176,14 +178,34 @@ static void print_help(const char* program_name)
 {
     std::cout << "Usage: " << program_name << " [options]\n\n"
               << "Options:\n"
-              << "  -n <num>      Number of test cases (default: 100)\n"
-              << "  -l <len>      Scramble length (default: 30)\n"
-              << "  -g <len>      Good Threshold (default: 22)\n"
-              << "  -t <ms>       Timeout threshold in milliseconds (default: 20000)\n"
-              << "  -s <seed>     Random seed (default: 1337)\n"
-              << "  -c <0|1>      Use symmetry (default: 0 for yes)\n"
-              << "  -o <file>     Output log file (default: bench.log)\n"
-              << "  -h            Show this help message\n";
+              << "  -n <num>            Number of test cases (default: 100)\n"
+              << "  -l <len>            Scramble length (default: 30)\n"
+              << "  -g <len>            Good Threshold (default: 22)\n"
+              << "  -t <ms>             Timeout threshold in milliseconds (default: 10000)\n"
+              << "  -s <seed>           Random seed (default: 1337)\n"
+              << "  --sym <1|0>         Use symmetry (default: 1 for true)\n"
+              << "  --table-dir <dir>   Specify the table directory\n"
+              << "  --out-dir   <dir>   Specify the output directory\n"
+              << "  -h                  Show this help message\n";
+}
+
+auto ensure_directory(fs::path p) -> fs::path
+{
+    std::error_code ec;
+    if (p.empty()) p = fs::current_path();
+    if (fs::exists(p, ec)) {
+        if (ec)
+            throw std::runtime_error("cannot stat '" + p.string() + "': " + ec.message());
+        if (!fs::is_directory(p, ec))
+            throw std::runtime_error("'" + p.string() + "' exists but is not a directory");
+        return p;
+    }
+    if (ec)
+        throw std::runtime_error("cannot stat '" + p.string() + "': " + ec.message());
+
+    if (!fs::create_directories(p, ec) && ec)
+        throw std::runtime_error("cannot create '" + p.string() + "': " + ec.message());
+    return p;
 }
 
 int main(int argc, char* argv[]) 
@@ -194,7 +216,8 @@ int main(int argc, char* argv[])
     long long timeout_ms = 10'000;
     unsigned int seed = 1337;
     bool use_symmetry = true;
-    std::string outfile {};
+    fs::path table_dir {};
+    fs::path out_dir {};
     for (int i = 1; i < argc; ++i) 
     {
         std::string arg = argv[i];
@@ -213,20 +236,26 @@ int main(int argc, char* argv[])
                 timeout_ms = std::stoll(argv[++i]);
             } else if (arg == "-s") {
                 seed = static_cast<unsigned int>(std::stoul(argv[++i]));
-            } else if (arg == "-c") {
-                use_symmetry = !bool(std::stoul(argv[++i]));
-            } else if (arg == "-o") {
-                outfile = argv[++i];
+            } else if (arg == "--sym") {
+                use_symmetry = bool(std::stoul(argv[++i]));
+            } else if (arg == "--table-dir") {
+                table_dir = argv[++i];
+                ensure_directory(table_dir);
+            } else if (arg == "--out-dir") {
+                out_dir = argv[++i];
+                ensure_directory(out_dir);
             }
         }
     }
-    if(outfile.empty()) { outfile = out_filename("bench",N,L,G,seed,timeout_ms,use_symmetry); }
 
+    std::string outfile = out_filename("bench",N,L,G,seed,timeout_ms,use_symmetry);
+    
     std::cout << "Initializing tables...\n"
               << "(Note: this may take a while to build tables on the first run)" << std::endl;
-    cube::cube_init(use_symmetry,{});
+    cube::cube_init(use_symmetry,table_dir.string());
 
     std::cout << "Generating benchmark report...\n" << std::endl;
-    benchmark_report(N, L, G, seed, timeout_ms, use_symmetry, outfile);
-    std::cout << "\nDone. Report Location: " << std::filesystem::canonical(outfile).string() << std::endl;
+    TeeStream ts(out_dir / outfile);
+    benchmark_report(ts, N, L, G, seed, timeout_ms, use_symmetry);
+    std::cout << "\nDone. Report Location: " << fs::absolute(out_dir) << std::endl;
 }
