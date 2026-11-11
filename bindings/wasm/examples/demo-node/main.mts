@@ -1,7 +1,7 @@
-import { createNodeCubeApi } from '@coshz/jscube';
+import { createCubeApi } from '@coshz/jscube';
 
 async function main() {
-    const cube = await createNodeCubeApi();
+    const cube = await createCubeApi();
 
     // Scramble & check legality
     const scrambled = cube.facecube("U F U' L2 R L' D2 B")
@@ -13,7 +13,7 @@ async function main() {
     await cube.init(true);
 
     // Solve & verify
-    const solution = cube.solve(scrambled, { target: cube.cubeId, goodEnough: 22 });
+    const solution = await cube.solve(scrambled, { target: cube.cubeId, goodEnough: 22 });
     if (solution.ok) {
         console.log("solution: ", solution.solution);
         const endState = cube.facecube(solution.solution, scrambled);
@@ -21,5 +21,6 @@ async function main() {
     } else {
         console.error("solving failed:", solution.error)
     }
+    cube.abort()
 }
 await main();

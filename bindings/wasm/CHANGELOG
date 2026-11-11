@@ -1,13 +1,22 @@
 # Changelog
 
+## [0.7.1]
+
+### Documentation
+- Update `README.md` to reflect the new unified API introduced in v0.7.0.
+
+## [0.7.0]
+- **BREAKING**: Unified the Node.js and Web APIs into a single asynchronous `CubeApi` interface;
+- **Added**: Added `abort()` method, which aborts ongoing operations and terminates the underlying worker.
+
 ## [0.6.1]
 
 - **Massive memory footprint reduction**
   Solved the issue where WASM linear memory never shrinks. Resident memory dropped
-from 1.1 GB / 550 MB (first-time / subsequent loads) to 327 MB / 305 MB. 
+from 1.1 GB / 550 MB (first-time / subsequent loads) to 327 MB / 305 MB.
 
 ## [0.6.0]
 
-- Performance: Support for symmetric pruning table 
+- Performance: Support for symmetric pruning table
 - Persistence: Support to customize table directory
 - Others: Upgrade underlying C++/wasm library to v0.5.1

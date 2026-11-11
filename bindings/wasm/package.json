@@ -5,7 +5,7 @@
         "access": "public"
     },
     "type": "module",
-    "version": "0.6.1",
+    "version": "0.7.0",
     "description": "A WASM-based Rubik's Cube library",
     "keywords": [
         "rubiks-cube-solver",
@@ -44,7 +44,9 @@
     "imports": {
         "#internal/*": "./dist/internal/*"
     },
-    "files": ["dist"],
+    "files": [
+        "dist"
+    ],
     "scripts": {
         "build:wasm": "rimraf dist/internal && make -f ../../dev/gen_wasm.mk",
         "build:ts": "tsc --build --force",

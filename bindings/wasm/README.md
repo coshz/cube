@@ -8,6 +8,7 @@
 
 **High-performance, cross-platform WebAssembly Rubik's Cube core algorithm engine.**
 
+[Changelog](https://github.com/coshz/cube/blob/main/bindings/wasm/CHANGELOG) ·
 [Submit Issue](https://github.com/coshz/cube/issues)
 
 </div>
@@ -34,22 +35,22 @@ npm install @coshz/jscube
 ## 🚀 Quick Start
 
 ```typescript
-import { createNodeCubeApi } from '@coshz/jscube';
+import { createCubeApi } from '@coshz/jscube';
 
 async function main() {
-  const cube = await createNodeCubeApi();
+  const cube = await createCubeApi();
 
   // Scramble & check legality
   const scrambled = cube.facecube("U F U' L2 R L' D2 B")
   console.log("scrambled: ", scrambled);
   console.log("solvable:", cube.solvable(scrambled));
 
-  // useSymmetry=true: faster solving, but ~260 MB of tables. 
-  // Build once on first run (a few minutes), then cached via TableManager. 
+  // useSymmetry=true: faster solving, but ~260 MB of tables.
+  // Build once on first run (a few minutes), then cached via TableManager.
   await cube.init(true);
-  
+
   // Solve & verify
-  const solution = cube.solve(scrambled, { target: cube.cubeId, goodEnough: 22 });
+  const solution = await cube.solve(scrambled, { target: cube.cubeId, goodEnough: 22 });
   if (solution.ok) {
     console.log("solution: ", solution.solution);
     const endState = cube.facecube(solution.solution, scrambled);
@@ -57,6 +58,7 @@ async function main() {
   } else {
     console.error("solving failed:", solution.error)
   }
+  // cube.abort();
 }
 await main();
 ```
@@ -65,66 +67,126 @@ Examples: See [demo-node](./examples/demo-node/), [demo-web](./examples/demo-web
 
 ## 📖 API Reference
 
-### Environments
+### Unified Api for Node.js & Browser
 
 ```typescript
 // Node.js
-import type { NodeCubeApi } from '@coshz/jscube';
-import { createNodeCubeApi, SolveResult, SolveOptions, PermFormat } from '@coshz/jscube';
+import type { CubeApi } from '@coshz/jscube';
+import { createCubeApi, SolveResult, SolveOptions, PermFormat } from '@coshz/jscube';
 
-const api: NodeCubeApi = await createNodeCubeApi()
-
-// Browser (runs in a Web Worker)
-import type { WorkerCubeApi } from '@coshz/jscube';
-import { createWorkerCubeApi, SolveResult, SolveOptions, PermFormat } from '@coshz/jscube';
-
-const api: WorkerCubeApi = await createWorkerCubeApi();
+const api: CubeApi = await createCubeApi()
 ```
 
 #### Usage order
 
-| Method | Order |
-| :--- | :--- |
+| Method                                      | Order                 |
+| :------------------------------------------ | :-------------------- |
 | api . { solvable / permutation / facecube } | available immediately |
-| api . init(useSymmetry)                     | load or build tables |
-| api . solve(cube)                           | requires init() |
+| api . init(useSymmetry)                     | load or build tables  |
+| api . solve(cube)                           | requires init()       |
 
 #### Trade-off
 
-| Value | Table Size | Build time | Solve speed |
-| :--- | :--- | :--- | :--- |
-| `useSymmetry=false` | < 10 MB | fast | slower |
-| `useSymmetry=true` | ~260 MB | a few minutes | faster |`
+| Value               | Table Size | Build time    | Residient Mem | Solve speed |
+| :------------------ | :--------- | :------------ | :------------ | :---------- |
+| `useSymmetry=false` | < 10 MB    | fast          | 57 ~ 302 MB   | slower      |
+| `useSymmetry=true`  | ~260 MB    | a few minutes | 57 ~ 536 MB   | faster      |
+
+> for `useSymmetry=true`: Peak Mem ~= 927 MB, Residient Mem ~= 310 MB
 
 ### Methods
 
-| Method | Description |
-| :--- | :--- |
-| `init(useSymmetry)` | Loads or build tables; `useSymmetry` selects the table variant. |
-| `solve(src, options?)` | Solver. Returns a `SolveResult` object. |
-| `solvable(src)` | Returns `true` if the state string is physically solvable. |
+| Method                      | Description                                                            |
+| :-------------------------- | :--------------------------------------------------------------------- |
+| `init(useSymmetry)`         | Loads or build tables; `useSymmetry` selects the table variant.        |
+| `solve(src, options?)`      | Async Solver. Returns a `Promise<SolveResult>` object.                 |
+| `solvable(src)`             | Returns `true` if the state string is physically solvable.             |
 | `facecube(maneuver, cube?)` | Applies move sequence (e.g., `"R U R' U'"`) and returns the new state. |
-| `permutation(mOrc, fmt?)` | Returns the permutation array/string for a move sequence or a cube. |
+| `permutation(mOrc, fmt?)`   | Returns the permutation array/string for a move sequence or a cube.    |
 
 ### Types
 
 ```typescript
-// Base API: functions that don't require tables
 interface CubeApiBase {
-  readonly cubeId: string; // "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"
-  solvable: (src: string) => boolean;
-  facecube: (maneuver: string, cube?: string) => string;
-  permutation: (maneuver: string, fmt?: PermFormat) => string;
+    /** Solved-state 54-char facelet string. */
+    readonly cubeId: string;
+
+    /** `true` if the 54-char state string is physically reachable */
+    solvable: (src: string) => boolean;
+
+    /** Apply a move sequence (e.g. `"R U R' U'"`) to `cube` (default: `cubeId`)
+     * and return the resulting 54-char state. */
+    facecube: (maneuver: string, cube?: string) => string;
+
+    /** Permutation of a move sequence or cube state.
+     * `fmt` defaults to `PermFormat.Cycle`. */
+    permutation: (maneuver_or_cube: string, fmt?: PermFormat) => string;
 }
-// Node.js
-interface NodeCubeApi extends CubeApiBase {
-  init: (useSymmetry?: boolean) => Promise<void>;
-  solve: (src: string, options?: SolveOptions) => SolveResult;
+
+/** Abstract capability to abort the underlying worker */
+interface Abortable {
+    /**
+     * Terminate the active Worker and rest the API states.
+     * - If interrupted during `init`: any incomplete, newly generated tables will be cleaned up.
+     * - If interrupted during `solve`: the Worker is killed. The next `solve`
+     *  call will recreate a Worker, discarding the ongoing computation.
+     */
+    abort: () => void;
 }
-// Browser (Web Worker) - solve is async. 
-interface WorkerCubeApi extends CubeApiBase {
-  init: (useSymmetry?: boolean) => Promise<void>;
-  solve: (src: string, options?: SolveOptions) => Promise<SolveResult>;
+
+interface CubeCore extends CubeApiBase {
+    /**
+     * Load tables from persistent storage, or build and save them if missing.
+     *
+     * @param manager
+     *   The table manager used for persistence. See @ref TableManager.
+     *
+     * @param useSymmetry
+     *  * `false`: smaller (<10 MB), fast to build, slower solving;
+     *  * `true`: symmetry-based (~260 MB), slower to build, faster solving.
+     *
+     * @returns A promise that resolves to `boolean`:
+     *  * `true`: first-time build
+     *  * `false`: subsequent load
+     *
+     * @note Strongly recommended to call this explicitly before `solve`.
+     *  If skipped, `solve` still works, but C++ fall back to its own `useSymmetry`
+     *  setting, which may not be what you want.
+     */
+    init: (manager: TableManager, useSymmetry: boolean) => Promise<boolean>;
+
+    /**
+     * Solve the cube from a given state.
+     *
+     * @param src - 54-character state string, using the standard facelet order
+     *   (U1..U9, R1..R9, F1..F9, D1..D9, L1..L9, B1..B9). Obtainable from
+     *   `cube.facecube()` or `cube.cubeId` (the solved state).
+     *
+     * @param options.target - Goal state as a 54-character string.
+     *   Defaults to `cubeId` (solved state).
+     *
+     * @param options.goodEnough - Accept a solution once its length is <= this
+     *   many moves. Smaller values search longer for a shorter solution; larger
+     *   values return faster but may return a longer solution. Default `22`.
+     *
+     * @returns
+     *   - `{ ok: true, solution }` on success. `solution` is a space-separated
+     *     move sequence, e.g. `"R U R' U'"`.
+     *   - `{ ok: false, error }` if no solution is found (e.g. `target` is not
+     *     reachable, or search budget exhausted before hitting `goodEnough`).
+     *     Check `result.ok` before reading `solution`.
+     *
+     * @example
+     *  const r = cube.solve(cube.facecube("R U R' U'"));
+     *  if (r.ok) console.log(r.solution);   // e.g. "U R U' R'"
+     *  else     console.error(r.error);
+     */
+    solve(src: string, options?: SolveOptions): SolveResult;
+}
+
+interface CubeApi extends CubeApiBase, Abortable {
+    init: (useSymmetry?: boolean) => Promise<void>;
+    solve: (src: string, options?: SolveOptions) => Promise<SolveResult>;
 }
 
 interface SolveOptions {

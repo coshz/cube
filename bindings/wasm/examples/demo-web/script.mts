@@ -1,7 +1,7 @@
-import { createWorkerCubeApi } from '@coshz/jscube';
+import { createCubeApi } from '@coshz/jscube';
 
 async function main() {
-    const cube = await createWorkerCubeApi();
+    const cube = await createCubeApi();
 
     // Scramble & check legality
     const scrambled = cube.facecube("U F U' L2 R L' D2 B")

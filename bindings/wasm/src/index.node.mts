@@ -1,18 +1,18 @@
-import type { NodeCubeApi } from "./core.mjs";
+import type { CubeApi } from "./core.mjs";
 import { SolveResult, SolveOptions, PermFormat } from "./core.mjs";
-import { createNodeCubeApiWith } from './node.mjs';
+import { createCubeApiWith } from './worker/client-node.mjs'
 import path from "path";
 
-const VFS_MOUNT = '/coshz-jscube/tables';
 const HOST_DIR = path.resolve(
     process.env.TABLE_DIR ?? path.join(process.cwd(), "tables")
 );
 
-const createNodeCubeApi = async (): Promise<NodeCubeApi> =>
-    createNodeCubeApiWith(
-        async () => (await import('#internal/jscube.node.mjs')).default(),
-        { hostDir: HOST_DIR, vfsDir: VFS_MOUNT }
-    );
+const createCubeApi = (
+    opts: { hostDir?: string, workerUrl?: string | URL } = {}
+) => createCubeApiWith({
+    hostDir: opts.hostDir ?? HOST_DIR,
+    workerUrl: opts.workerUrl
+});
 
-export type { NodeCubeApi };
-export { SolveResult, SolveOptions, PermFormat, createNodeCubeApi }
+export type { CubeApi };
+export { SolveResult, SolveOptions, PermFormat, createCubeApi }

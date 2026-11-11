@@ -32,6 +32,17 @@ interface CubeApiBase {
     permutation: (maneuver_or_cube: string, fmt?: PermFormat) => string;
 }
 
+/** Abstract capability to abort the underlying worker */
+interface Abortable {
+    /**
+     * Terminate the active Worker and rest the API states.
+     * - If interrupted during `init`: any incomplete, newly generated tables will be cleaned up.
+     * - If interrupted during `solve`: the Worker is killed. The next `solve`
+     *  call will recreate a Worker, discarding the ongoing computation.
+     */
+    abort: () => void;
+}
+
 interface CubeCore extends CubeApiBase {
     /**
      * Load tables from persistent storage, or build and save them if missing.
@@ -43,13 +54,15 @@ interface CubeCore extends CubeApiBase {
      *  * `false`: smaller (<10 MB), fast to build, slower solving;
      *  * `true`: symmetry-based (~260 MB), slower to build, faster solving.
      *
-     * @returns A promise that resolves when the tables are ready.
+     * @returns A promise that resolves to `boolean`:
+     *  * `true`: first-time build
+     *  * `false`: subsequent load
      *
      * @note Strongly recommended to call this explicitly before `solve`.
      *  If skipped, `solve` still works, but C++ fall back to its own `useSymmetry`
      *  setting, which may not be what you want.
      */
-    init: (manager: TableManager, useSymmetry: boolean) => Promise<void>;
+    init: (manager: TableManager, useSymmetry: boolean) => Promise<boolean>;
 
     /**
      * Solve the cube from a given state.
@@ -80,12 +93,7 @@ interface CubeCore extends CubeApiBase {
     solve(src: string, options?: SolveOptions): SolveResult;
 }
 
-interface NodeCubeApi extends CubeApiBase {
-    init: (useSymmetry?: boolean) => Promise<void>;
-    solve: (src: string, options?: SolveOptions) => SolveResult;
-}
-
-interface WorkerCubeApi extends CubeApiBase {
+interface CubeApi extends CubeApiBase, Abortable {
     init: (useSymmetry?: boolean) => Promise<void>;
     solve: (src: string, options?: SolveOptions) => Promise<SolveResult>;
 }
@@ -98,11 +106,11 @@ async function createCubeCore(
     let ready = false;
 
     async function init(tableManager: TableManager, useSymmetry: boolean) {
-        if (ready) return;
+        if (ready) return false;
         await tableManager.prepare(m);
         m.cube_init(useSymmetry, tableManager.getVirtualPath());
         await tableManager.afterInit?.(m);
-        ready = true;
+        return ready = true;
     }
 
     return {
@@ -118,5 +126,5 @@ async function createCubeCore(
     };
 }
 
-export type { TableManager, NodeCubeApi, WorkerCubeApi };
-export { SolveOptions, SolveResult, PermFormat, CubeApiBase, CubeCore, createCubeCore };
+export type { TableManager, CubeApiBase, CubeApi, Abortable };
+export { SolveOptions, SolveResult, PermFormat, CubeCore, createCubeCore };

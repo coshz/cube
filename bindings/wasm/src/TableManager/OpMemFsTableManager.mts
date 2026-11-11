@@ -1,23 +1,22 @@
 import type { TableManager } from "../core.mjs";
 
 class OpMemFsTableManager implements TableManager {
-    private readonly vfsDir: string;
-    private readonly opfsDirname: string;
+    private readonly opfsDir: string;
     private opfsRoot?: FileSystemDirectoryHandle;
     private prepared = false;
 
-    private readonly SEAL_FILE = 'coshz_jscube_tables.sealed';
+    private readonly SEAL_FILE = '.sealed';
+    private readonly VFS_MOUNT = '/tmp/jscube/tables';
 
-    constructor(opts: { opfsDirname?: string; vfsDir: string }) {
-        this.opfsDirname = opts.opfsDirname ?? 'coshz_jscube_tables';
-        this.vfsDir = opts.vfsDir;
+    constructor(opts: { opfsDir: string }) {
+        this.opfsDir = opts.opfsDir;
     }
 
-    getVirtualPath() { return this.vfsDir; }
+    getVirtualPath() { return this.VFS_MOUNT; }
 
     async prepare({ FS }: { FS: any }): Promise<void> {
         if (this.prepared) return;
-        FS.mkdirTree(this.vfsDir);
+        FS.mkdirTree(this.VFS_MOUNT);
         this.opfsRoot = await this.getOpfsDir();
 
         // isSealed, a flag to mark tables are complete;
@@ -26,9 +25,9 @@ class OpMemFsTableManager implements TableManager {
         try {
             await this.opfsRoot.getFileHandle(this.SEAL_FILE);
             isSealed = true;
-        } catch {}
+        } catch { }
 
-        if(!isSealed) {
+        if (!isSealed) {
             for await (const [name] of this.opfsRoot.entries()) {
                 await this.opfsRoot.removeEntry(name);
             }
@@ -36,7 +35,7 @@ class OpMemFsTableManager implements TableManager {
 
         for (const name of await this.listOpfsFiles()) {
             const data = await this.readOpfs(name);
-            if (data) FS.writeFile(`${this.vfsDir}/${name}`, data);
+            if (data) FS.writeFile(`${this.VFS_MOUNT}/${name}`, data);
         }
         this.prepared = true;
     }
@@ -44,7 +43,7 @@ class OpMemFsTableManager implements TableManager {
     async afterInit({ FS }: { FS: any }): Promise<void> {
         const root = this.opfsRoot ??= await this.getOpfsDir();
         const memfs = new Set<string>(
-            FS.readdir(this.vfsDir).filter((n: string) => n !== '.' && n !== '..')
+            FS.readdir(this.VFS_MOUNT).filter((n: string) => n !== '.' && n !== '..')
         );
         const opfs = new Set<string>(await this.listOpfsFiles());
 
@@ -54,7 +53,7 @@ class OpMemFsTableManager implements TableManager {
 
         // persist and release memfs files
         for (const name of memfs) {
-            const path = `${this.vfsDir}/${name}`;
+            const path = `${this.VFS_MOUNT}/${name}`;
             const data = FS.readFile(path);
             await this.writeOpfs(name, data);
             FS.unlink(path);
@@ -71,7 +70,7 @@ class OpMemFsTableManager implements TableManager {
 
     private async getOpfsDir(): Promise<FileSystemDirectoryHandle> {
         const base = await navigator.storage.getDirectory();
-        return base.getDirectoryHandle(this.opfsDirname, { create: true });
+        return base.getDirectoryHandle(this.opfsDir, { create: true });
     }
 
     private async listOpfsFiles(): Promise<string[]> {
