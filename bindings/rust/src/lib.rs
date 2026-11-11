@@ -6,10 +6,10 @@
 //!
 //! ```rust
 //! use cube_rust::{Cube, CubeSolver};
-//! 
+//!
 //! // Initialize a cube in standard solved state
 //! let cube = Cube::default();
-//! 
+//!
 //! // Apply moves
 //! cube.apply_maneuver("R U R' U'").unwrap();
 //!
@@ -59,7 +59,7 @@ use std::os::raw::c_char;
 ///
 /// Panics if `table_dir` contains an interior NUL byte.
 pub fn cube_init(use_symmetry: bool, table_dir: impl AsRef<str>) {
-    unsafe { 
+    unsafe {
         let dir = table_dir.as_ref();
         let c = (!dir.is_empty()).then(|| CString::new(dir).expect("table_dir contains interior NUL"));
         let p_dir = c.as_ref().map_or(std::ptr::null(), |s| s.as_ptr());
@@ -98,14 +98,14 @@ impl Cube {
     pub fn apply_maneuver_mut(&mut self, maneuver: impl AsRef<str>) -> Result<(), CubeStringError>{
         let c_maneuver = CString::new(maneuver.as_ref()).map_err(|_| CubeStringError::InteriorNulByte)?;
         let mut buffer = [0u8; CUBE_BS];
-        
+
         let success = unsafe {
             ffi::facecube(
                 buffer.as_mut_ptr() as *mut c_char,
                 c_maneuver.as_ptr(),
                 self.as_ptr()
             )
-        }; 
+        };
 
         if !success {
             return Err(CubeStringError::InvalidManeuver);
@@ -163,7 +163,7 @@ pub fn permutation(ms_or_cube: impl AsRef<str>, fmt: i32) -> String {
     unsafe {
         let success = ffi::permutation(
             buffer.as_mut_ptr() as *mut c_char,
-            ms_or_cube.as_ptr(), 
+            ms_or_cube.as_ptr(),
             fmt
         );
         if !success {

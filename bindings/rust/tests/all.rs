@@ -40,4 +40,3 @@ fn test_cube_solver() {
 
     assert_eq!(scrambled_cube.apply_maneuver(solution).unwrap(), Cube::default());
 }
-

@@ -42,15 +42,15 @@ extern "C" {
 
     /// Applies a maneuver string to a color cube and writes the resulting state to the buffer
     pub fn facecube(
-        buf: *mut c_char, 
+        buf: *mut c_char,
         maneuver: *const c_char,
         cube: *const c_char
     ) -> bool;
 
     /// Converts a color cube OR a maneuver string into its string representation
     pub fn permutation(
-        buf: *mut c_char, 
-        ms_or_cube: *const c_char, 
+        buf: *mut c_char,
+        ms_or_cube: *const c_char,
         format: c_int
     ) -> bool;
 }

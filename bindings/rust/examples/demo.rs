@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Initialize a cube in standard solved state
     let mut cube = Cube::default();
 
-    // 2. Apply moves 
+    // 2. Apply moves
     cube.apply_maneuver_mut("R U F' D2").unwrap();
 
     // 3. Check if the scrambled state is solvable
