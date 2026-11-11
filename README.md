@@ -18,25 +18,25 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 
 ## 📦 Language Bindings
 
-| Language | Directory & Guide | Package |
-| :--- | :--- | :--- |
-| **Python** | [bindings/python](bindings/python/README.md) | [cube-python](https://pypi.org/project/cube-python/) |
-| **Rust** | [bindings/rust](bindings/rust/README.md) | [cube-rust](https://crates.io/crates/cube-rust) |
-| **Haskell** | [bindings/haskell](bindings/haskell/README.md) | [cube-hs](https://hackage.haskell.org/package/cube-hs) |
-| **TypeScript** | [bindings/wasm](bindings/wasm/README.md) | [@coshz/jscube](https://www.npmjs.com/package/@coshz/jscube) |
+| Language       | Directory & Guide                              | Package                                                      |
+| :------------- | :--------------------------------------------- | :----------------------------------------------------------- |
+| **Python**     | [bindings/python](bindings/python/README.md)   | [cube-python](https://pypi.org/project/cube-python/)         |
+| **Rust**       | [bindings/rust](bindings/rust/README.md)       | [cube-rust](https://crates.io/crates/cube-rust)              |
+| **Haskell**    | [bindings/haskell](bindings/haskell/README.md) | [cube-hs](https://hackage.haskell.org/package/cube-hs)       |
+| **TypeScript** | [bindings/wasm](bindings/wasm/README.md)       | [@coshz/jscube](https://www.npmjs.com/package/@coshz/jscube) |
 
 ## 📊 Performance
 
-Here is the Empirical Cumulative Distribution Function (ECDF) of solve times for 100 random scrambles of length 30 (timeout limit: 10000 ms). 
+Here is the Empirical Cumulative Distribution Function (ECDF) of solve times for 100 random scrambles of length 30 (timeout limit: 10000 ms).
 
 <p align="center">
-  <img src="bench/reports/figures/v0051-ECDF.png" alt="Rubik's Cube Solver ECDF" width="80%">
+  <img src="bench/reports/figures/v0052-ECDF.png" alt="Rubik's Cube Solver ECDF" width="80%">
 </p>
 
 **Key Trade-offs:**
 *   Speed: `sym=on` significantly accelerates solving.
 *   Memory:`sym=on` requires ~260 MB RAM for tables, vs < 10 MB for `sym=off`.
-> *Data generated using library v0.5.1. You can explore the raw benchmark logs and figures in the [reports directory](bench/reports/).*
+> *Data generated using library v0.5.2. You can explore the raw benchmark logs and figures in the [reports directory](bench/reports/).*
 
 ## 🚀 Quick Start
 
@@ -71,8 +71,8 @@ int main()
   if(sol.is_success()) {
     std::cout << sol.maneuver << std::endl;
     if(cube::cubeId == cube::apply_maneuver(sol.maneuver, cube))
-      std::cout << "solution verified\n"; 
-    else 
+      std::cout << "solution verified\n";
+    else
       std::cout << "wrong solution\n";
   } else {
     std::cerr << "solve failed: " << cube::to_string(sol.status) << std::endl;

@@ -2,7 +2,7 @@
  * File: cube_amalg.min.cpp
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
- * Version: v0.5.2-alpha+build.002
+ * Version: v0.5.2
  * Date: 2026-11-11
  * Homepage: https://github.com/coshz/cube
  * License: MIT

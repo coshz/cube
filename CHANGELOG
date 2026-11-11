@@ -1,3 +1,7 @@
+v0.5.2
+- Style: Format existing files (trim trailing whitespace and insert final newline).
+- Maintained codebase consistency with .editorconfig rules.
+
 v0.5.1
 - **Refactoring**: Apply cube symmetry to pruning tables to improve solver performance
 - **Polish**: Add performance benchmarks
@@ -39,7 +43,7 @@ v0.2.1
 v0.2.0-202510
   - project refactoring and performance improvement
   - python & javascript binding
-  
+
 v0.1.1 (2024.5.27)
   - rewrite maneuver.cpp to amend `info` command bug;
   - add cmake support (build / testing libcube library);
