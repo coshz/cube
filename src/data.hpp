@@ -29,14 +29,14 @@ struct Perm
     {
         for(size_t i = 0; i < N; ++i) X[i] = static_cast<T>(i);
     }
-    
+
     /* construct from an array; throw exception if NOT a permutation */
     constexpr Perm(const std::array<T,N>& xs) noexcept
         :X{xs}
     {
         assert(isValidPermutation<N>(xs) && "array must be a valid permutation");
     }
-   
+
     /* construct from a list; throw exception if NOT a permutation */
     constexpr Perm(std::initializer_list<T> xs) noexcept
     {
@@ -52,7 +52,7 @@ struct Perm
      *
      * @details Satisfies the right-action associativity axiom:
      *              (src * P) * Q = src * (P * Q)
-     *  
+     *
      *   - Vector Action: src * P   := P.backpermute(src)
      *   - Perm Product:    P * Q   := Q.backpermute(P)
      */
@@ -127,7 +127,7 @@ struct CArray
         std::size_t i = 0;
         for(T val : list) { if(i < L) { xs[i++] = (val % n + n) % n; } }
     }
-   
+
     constexpr T& operator[](size_t idx) noexcept             { return xs[idx]; }
     constexpr const T& operator[](size_t idx) const noexcept { return xs[idx]; }
 
@@ -182,12 +182,12 @@ constexpr CArray<N,L,T>& operator*=(CArray<N,L,T> &xs, const Perm<L,T> &P)
 }
 
 template<typename T, size_t N, size_t... Ns>
-struct ArrayHelper 
+struct ArrayHelper
 {
     using type = std::array<typename ArrayHelper<T,Ns...>::type,N>;
 };
 template<typename T, size_t N>
-struct ArrayHelper<T,N> 
+struct ArrayHelper<T,N>
 {
     using type = std::array<T,N>;
 };
@@ -204,28 +204,28 @@ struct NArray
     const auto& operator[](size_t i) const noexcept { return storage[i]; }
 
     template<typename U, std::enable_if_t<std::is_integral_v<U>,int> = 0>
-    auto& operator[](const std::array<U,dim>& indices) noexcept 
+    auto& operator[](const std::array<U,dim>& indices) noexcept
     {
         return std::apply(
-            [this](auto... args) -> decltype(auto) { return (*this)(args...); }, 
+            [this](auto... args) -> decltype(auto) { return (*this)(args...); },
             indices
         );
     }
     template<typename U, std::enable_if_t<std::is_integral_v<U>,int> = 0>
-    const auto& operator[](const std::array<U,dim>& indices) const noexcept 
+    const auto& operator[](const std::array<U,dim>& indices) const noexcept
     { return const_cast<NArray*>(this)->operator[](indices); }
 
     template<typename... Is, std::enable_if_t<sizeof...(Is)==dim, int> = 0>
-    decltype(auto) operator()(Is... is) noexcept 
+    decltype(auto) operator()(Is... is) noexcept
     { return at<0>(storage, {size_t(is)...}); }
 
     template<typename... Is, std::enable_if_t<sizeof...(Is)==dim, int> = 0>
-    decltype(auto) operator()(Is... is) const noexcept 
+    decltype(auto) operator()(Is... is) const noexcept
     { return at<0>(storage, {size_t(is)...}); }
 
     template<typename F> void for_each(F&& f)       { for_each_rec(storage, f); }
     template<typename F> void for_each(F&& f) const { for_each_rec(storage, f); }
-    
+
     void fill(const T &val) { for_each([&val](T& e){ e = val; }); }
 private:
     template<size_t I, typename Arr>
@@ -238,7 +238,7 @@ private:
     template<typename Arr, typename F>
     static void for_each_rec(Arr&& arr, F&& f)
     {
-        for(auto& e: arr) 
+        for(auto& e: arr)
         {
             if constexpr (std::is_same_v<std::remove_reference_t<decltype(e)>,T>) {
                 f(e);

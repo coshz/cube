@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 coshz
 
-#pragma once 
+#pragma once
 
 #include "cube/cube_export.h"
 #include <filesystem>
@@ -13,22 +13,22 @@
 
 namespace cube {
 
-/*! 
+/*!
  * @brief Initialize the cube library by loading or building lookup tables.
  * @param use_symmetry Select the table set:
  *      - `false`: smaller (<10 MB), fast to build, slower solving;
  *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
  *      This is a memory/disk/build-time vs solve-speed trade-off.
- * @param dir Directory for reading and writting table files. 
- *      Empty means the default directory (see @ref get_table_dir()). 
- *      Tables are loaded if present; otherwise they are built and written here. 
+ * @param dir Directory for reading and writting table files.
+ *      Empty means the default directory (see @ref get_table_dir()).
+ *      Tables are loaded if present; otherwise they are built and written here.
  * @note Only the first call takes effect; call it before the first @ref solve,
  *      which invokes it with default arguments.
  * @warning With `use_symmetry = true`, the first run may take minutes and write
  *      ~260 MB of data to @p dir.
  */
 CUBE_EXPORT void cube_init(
-    bool use_symmetry = CUBE_USE_SYMMETRY, 
+    bool use_symmetry = CUBE_USE_SYMMETRY,
     std::string_view dir = {}
 );
 

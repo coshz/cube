@@ -28,7 +28,7 @@ std::vector<TestCase> generate_test_cases(int N, int L, unsigned int seed)
     std::mt19937 rng(seed);
     std::vector<TestCase> cases;
     cases.reserve(N);
-    for (int i = 0; i < N; ++i) 
+    for (int i = 0; i < N; ++i)
     {
         std::string scramble = generate_random_maneuver(L, rng);
         std::string config = cube::apply_maneuver(scramble);
@@ -37,7 +37,7 @@ std::vector<TestCase> generate_test_cases(int N, int L, unsigned int seed)
     return cases;
 }
 
-std::string timestamp(const char* fmt = "%Y-%m-%d %H:%M:%S") 
+std::string timestamp(const char* fmt = "%Y-%m-%d %H:%M:%S")
 {
     auto now = std::chrono::system_clock::now();
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
@@ -47,12 +47,12 @@ std::string timestamp(const char* fmt = "%Y-%m-%d %H:%M:%S")
 }
 
 std::string out_filename(
-    std::string tag, 
+    std::string tag,
     int N, int L, int G, unsigned int S, long long T, bool use_symmetry)
 {
     std::stringstream ss;
     ss << "v" << std::hex << std::setfill('0') << std::setw(4) << CUBE_VERSION_CODE << std::dec
-       << "-" << tag 
+       << "-" << tag
        << "_" << (use_symmetry ? "SYMT" : "SYMF")
        << "_N" << N
        << "_L" << L
@@ -65,8 +65,8 @@ std::string out_filename(
 }
 
 void benchmark_report(std::ostream& os,
-    int N, int L, int G, unsigned int seed, 
-    long long timeout_ms, bool use_symmetry) 
+    int N, int L, int G, unsigned int seed,
+    long long timeout_ms, bool use_symmetry)
 {
     std::vector<TestCase> test_cases = generate_test_cases(N, L, seed);
 
@@ -88,7 +88,7 @@ void benchmark_report(std::ostream& os,
 
     os << TestCaseResult::format_header() << std::endl;
     os << "--------------------------------------------------------------------------------\n";
-    
+
     std::vector<TestCaseResult> results;
     results.reserve(N);
 
@@ -102,7 +102,7 @@ void benchmark_report(std::ostream& os,
     std::vector<long long> valid_durations;
     valid_durations.reserve(N);
 
-    for (int i = 0; i < N; ++i) 
+    for (int i = 0; i < N; ++i)
     {
         const auto& [scramble, config] = test_cases[i];
 
@@ -122,7 +122,7 @@ void benchmark_report(std::ostream& os,
         long long duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
 
         bool success = opt_res && opt_res->is_success();
-        
+
         if (success) {
             success_count++;
             std::string maneuver = opt_res->maneuver;
@@ -146,7 +146,7 @@ void benchmark_report(std::ostream& os,
     }
 
     os << "--------------------------------------------------------------------------------\n";
-    
+
     if (valid_durations.empty()) {
         os << " [Error] No valid successful cases to summarize.\n\n";
         return;
@@ -174,7 +174,7 @@ void benchmark_report(std::ostream& os,
     os << "================================================================================\n";
 }
 
-static void print_help(const char* program_name) 
+static void print_help(const char* program_name)
 {
     std::cout << "Usage: " << program_name << " [options]\n\n"
               << "Options:\n"
@@ -208,7 +208,7 @@ auto ensure_directory(fs::path p) -> fs::path
     return p;
 }
 
-int main(int argc, char* argv[]) 
+int main(int argc, char* argv[])
 {
     int N = 100;
     int L = 30;
@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
     bool use_symmetry = true;
     fs::path table_dir {};
     fs::path out_dir {};
-    for (int i = 1; i < argc; ++i) 
+    for (int i = 1; i < argc; ++i)
     {
         std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
@@ -249,7 +249,7 @@ int main(int argc, char* argv[])
     }
 
     std::string outfile = out_filename("bench",N,L,G,seed,timeout_ms,use_symmetry);
-    
+
     std::cout << "Initializing tables...\n"
               << "(Note: this may take a while to build tables on the first run)" << std::endl;
     cube::cube_init(use_symmetry,table_dir.string());

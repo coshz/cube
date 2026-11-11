@@ -18,7 +18,7 @@ inline constexpr CubieCube S_F2 = {{5,4,7,6,1,0,3,2},{0,0,0,0,0,0,0,0},{6,5,4,7,
 
 enum Sym: uint8_t
 {
-    Id, U1, U2, U3, 
+    Id, U1, U2, U3,
     RL, RL_U1, RL_U2, RL_U3,
     FF, FF_U1, FF_U2, FF_U3,
     FF_RL, FF_RL_U1, FF_RL_U2, FF_RL_U3
@@ -31,8 +31,8 @@ inline constexpr std::array<Sym,N_SYM_D4h> sym_inv_entries  = { Id,U3,U2,U1,RL,R
 
 constexpr Sym operator~(Sym s) { return sym_inv_entries[s]; }
 
-inline constexpr std::array<CubieCube,N_SYM_D4h> SymmetricMove = { 
-    CubieCube::id, S_U4, S_U4*S_U4, S_U4*S_U4*S_U4, 
+inline constexpr std::array<CubieCube,N_SYM_D4h> SymmetricMove = {
+    CubieCube::id, S_U4, S_U4*S_U4, S_U4*S_U4*S_U4,
     S_RL, S_RL*S_U4, S_RL*S_U4*S_U4, S_RL*S_U4*S_U4*S_U4,
     S_F2, S_F2*S_U4, S_F2*S_U4*S_U4, S_F2*S_U4*S_U4*S_U4,
     S_F2*S_RL, S_F2*S_RL*S_U4, S_F2*S_RL*S_U4*S_U4, S_F2*S_RL*S_U4*S_U4*S_U4
@@ -71,7 +71,7 @@ using FlipSliceConj = NArray<flipslice_t,N_SYM_D4h,N_FLIP,N_SLICE>;
  *
  *  - Normalized transition on (X,EqY):
  *      T :: Move -> (X,EqY) -> (X,EqY)
- *           \(m,(x,c)) -> (x,c) * m := canon( (x,rep(c)) * m ), 
+ *           \(m,(x,c)) -> (x,c) * m := canon( (x,rep(c)) * m ),
  *      here, canon :: (X,Y) -> (X,EqY)
  *                      \(x,y) -> (s * x * s', b) where (b,s) = emb(y)
  */
@@ -82,8 +82,8 @@ struct SymReduction
     using CornerDom     = NArray<corner_eq_t,N_CORNER>;
     using EqCornerDom   = NArray<corner_t,EQ_CORNER>;
     using FlipSliceDom  = NArray<flipslice_eq_t,N_FLIP,N_SLICE>;
-    using EqFlipSliceDom= NArray<flipslice_t,EQ_FLIPSLICE>; 
-    
+    using EqFlipSliceDom= NArray<flipslice_t,EQ_FLIPSLICE>;
+
     typedef uint16_t SymMask;
     using CornerStab    = NArray<SymMask,EQ_CORNER>;
     using FlipSliceStab = NArray<SymMask,EQ_FLIPSLICE>;
@@ -91,7 +91,7 @@ public:
     /* table-based TurnMove-transform builder */
 
     static auto make_trans_edge8_corner(
-        const CornerDom& emb, const EqCornerDom& rep, const Edge8Conj& conj, 
+        const CornerDom& emb, const EqCornerDom& rep, const Edge8Conj& conj,
         const MoveEdge8& tran_edge8, const MoveCorner& tran_corner
     ) {
         return [&](TurnMove m, const std::pair<uint16_t,uint16_t>& ec) -> std::pair<uint16_t,uint16_t> {
@@ -103,7 +103,7 @@ public:
     }
 
     static auto make_trans_twist_flipslice(
-        const FlipSliceDom& emb, const EqFlipSliceDom& rep, const TwistConj& conj, 
+        const FlipSliceDom& emb, const EqFlipSliceDom& rep, const TwistConj& conj,
         const MoveTwist& tran_twist, const MoveFlip& tran_flip, const MoveSlice& tran_slice
     ) {
         return [&](TurnMove m, const std::pair<uint16_t,uint16_t>& tfs) -> std::pair<uint16_t,uint16_t> {
@@ -128,21 +128,21 @@ public:
 
 /*!
  * @brief conjugate S' * C * S
- *  A projection from C to X comutes with Move if: 
+ *  A projection from C to X comutes with Move if:
  *      proj_X (c * m ) = proj_X (c) * m, for all c in C, m in Move
- */ 
+ */
 
 inline int conjugate_slice(Sym s, int slice)    { return Coord::ep2slice(SymmetricMove[~s].ep * Coord::slice2ep(slice) * SymmetricMove[s].ep); }
 inline int conjugate_edge4(Sym s, int edge4)    { return Coord::ep2edge4(SymmetricMove[~s].ep * Coord::edge42ep(edge4) * SymmetricMove[s].ep); }
 inline int conjugate_edge8(Sym s, int edge8)    { return Coord::ep2edge8(SymmetricMove[~s].ep * Coord::edge82ep(edge8) * SymmetricMove[s].ep); }
 inline int conjugate_corner(Sym s, int corner)  { return Coord::cp2corner(SymmetricMove[~s].cp * Coord::corner2cp(corner) * SymmetricMove[s].cp); }
-inline int conjugate_twist(Sym s, int twist)  
-{ 
+inline int conjugate_twist(Sym s, int twist)
+{
     auto co = Coord::twist2co(twist) * SymmetricMove[s];
     return Coord::co2twist(is_mirror(s) ? ~co : co);
 }
-inline flipslice_t conjugate_flipslice(Sym s, const flipslice_t& fs) 
-{ 
+inline flipslice_t conjugate_flipslice(Sym s, const flipslice_t& fs)
+{
     auto c = CubieCube { {},{},Coord::slice2ep(fs[1]),Coord::flip2eo(fs[0]) };
     c = SymmetricMove[~s] * c * SymmetricMove[s];
     return { uint16_t(Coord::eo2flip(c.eo)), uint16_t(Coord::ep2slice(c.ep)) };

@@ -4,12 +4,12 @@
 #include <mutex>
 #include <stdexcept>
 
-namespace cube::config 
+namespace cube::config
 {
 namespace fs = std::filesystem;
 
 namespace {
-bool& use_symmetry_ref() 
+bool& use_symmetry_ref()
 {
     static bool val_ = CUBE_USE_SYMMETRY;
     return val_;
@@ -38,10 +38,10 @@ auto get_cache_dir() -> std::filesystem::path
 #endif
     throw std::runtime_error("Unable to determine cache path");
 }
-} 
+}
 
 bool use_symmetry() { return use_symmetry_ref(); }
-void use_symmetry(bool v) 
+void use_symmetry(bool v)
 {
     static std::once_flag once;
     std::call_once(once, [v]() { use_symmetry_ref() = v; });
@@ -64,7 +64,7 @@ fs::path get_table_dir()
     if(const char *env = std::getenv("CUBE_TABLE_DIR")) {
         if(env[0] != '\0') return fs::path(env);
     }
-    
+
     try {
         // system cache dir
         return get_cache_dir() / "cube.coshz" / "tables";

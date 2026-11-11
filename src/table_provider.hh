@@ -37,7 +37,7 @@ template<auto K> struct table_meta;
 template<auto K> using table_t = typename table_meta<K>::type;
 template<auto K> constexpr std::string_view tag_v = table_meta<K>::value;
 
-#define Unwrap(...) __VA_ARGS__ 
+#define Unwrap(...) __VA_ARGS__
 #define spec_table_meta(Kind,Type,Tag) \
     template<> struct table_meta<Kind> \
     {                                  \
@@ -85,9 +85,9 @@ using EqTables  = decltype(make_ek_tuple(std::make_index_sequence<size_t(EqKind:
 using StabTables= decltype(make_sk_tuple(std::make_index_sequence<size_t(StabKind::Count)>{}));
 using PrunTables= decltype(make_pk_tuple(std::make_index_sequence<size_t(PrunKind::Count)>{}));
 using Tables    = decltype(std::tuple_cat(
-    std::declval<MoveTables>(), 
-    std::declval<ConjTables>(), 
-    std::declval<EqTables>(), 
+    std::declval<MoveTables>(),
+    std::declval<ConjTables>(),
+    std::declval<EqTables>(),
     std::declval<StabTables>(),
     std::declval<PrunTables>()
 ));
@@ -99,10 +99,10 @@ constexpr size_t index_v = []() constexpr {
                     ,C_Conj = size_t(ConjKind::Count)
                     ,C_Eq   = size_t(EqKind::Count)
                     ,C_Stab = size_t(StabKind::Count);
-    if constexpr (std::is_same_v<T, MoveKind>)  return size_t(K); 
-    if constexpr (std::is_same_v<T, ConjKind>)  return size_t(K) + C_Move; 
-    if constexpr (std::is_same_v<T, EqKind>)    return size_t(K) + C_Move + C_Conj; 
-    if constexpr (std::is_same_v<T, StabKind>)  return size_t(K) + C_Move + C_Conj + C_Eq; 
+    if constexpr (std::is_same_v<T, MoveKind>)  return size_t(K);
+    if constexpr (std::is_same_v<T, ConjKind>)  return size_t(K) + C_Move;
+    if constexpr (std::is_same_v<T, EqKind>)    return size_t(K) + C_Move + C_Conj;
+    if constexpr (std::is_same_v<T, StabKind>)  return size_t(K) + C_Move + C_Conj + C_Eq;
     if constexpr (std::is_same_v<T, PrunKind>)  return size_t(K) + C_Move + C_Conj + C_Eq + C_Stab;
 }();
 
@@ -112,21 +112,21 @@ class TablePool
 public:
     static const TablePool& instance() { return instance_mut(); }
 
-    template<auto K> const auto& get() const 
-    { 
+    template<auto K> const auto& get() const
+    {
         const auto& slot = std::get<index_v<K>>(tables_);
         if(!slot) {
             VTRACE("fatal: table %s is not initialized\n", tag_v<K>.data());
             std::terminate();
         }
-        return *slot; 
+        return *slot;
     }
 
     /** @param Builder :: (table_t<K>&) -> void */
     template<auto K, typename Builder> const auto& ensure(Builder&& builder)
     {
         auto& slot = std::get<index_v<K>>(tables_);
-        if(!slot) { 
+        if(!slot) {
             slot = std::make_unique<table_t<K>>();
             builder(*slot);
         }
@@ -137,7 +137,7 @@ public:
 private:
     friend class TableProvider;
     static TablePool& instance_mut() { static TablePool pool; return pool; }
-}; 
+};
 
 enum class LoadStatus { Ok, Missing, Incompatible, Corrupted, OsErr };
 template<auto K> struct table_with_header;
@@ -161,7 +161,7 @@ public:
 private:
     template<bool use_symmetry>
     TableProvider(fs::path dir, std::bool_constant<use_symmetry>)
-        : tdir_{dir} 
+        : tdir_{dir}
         , pool_{TablePool::instance_mut()}
     { load_or_build<use_symmetry>(); }
 
@@ -175,14 +175,14 @@ private:
 
         if constexpr (!use_symmetry) {
             ensure_all<
-                PrunKind::SliceFlip, PrunKind::SliceTwist, 
+                PrunKind::SliceFlip, PrunKind::SliceTwist,
                 PrunKind::Edge4Edge8, PrunKind::Edge4Corner
             >();
         } else {
             ensure_all<
                 EqKind::EmbCorner, EqKind::EmbFlipSlice,
                 ConjKind::TwistConj, ConjKind::Edge8Conj,
-                PrunKind::TwistEqFlipSlice, 
+                PrunKind::TwistEqFlipSlice,
                 PrunKind::Edge4Edge8, PrunKind::Edge8EqCorner
             >();
 
@@ -195,7 +195,7 @@ private:
     }
 
     template<auto K>
-    static constexpr bool should_persist() 
+    static constexpr bool should_persist()
     {
         using T = std::remove_cv_t<decltype(K)>;
         if constexpr (std::is_same_v<T, MoveKind> || std::is_same_v<T, PrunKind>) return true;
@@ -221,7 +221,7 @@ private:
 
     /* build tables */
 
-    template<MoveKind K> void build_table(table_t<K>& t) 
+    template<MoveKind K> void build_table(table_t<K>& t)
     {
         if constexpr (K == MoveKind::Twist)   { t.build(transform_twist); }
         if constexpr (K == MoveKind::Flip)    { t.build(transform_flip); }
@@ -231,38 +231,38 @@ private:
         if constexpr (K == MoveKind::Corner)  { t.build(transform_corner); }
     }
 
-    template<ConjKind K> void build_table(table_t<K>& t) 
+    template<ConjKind K> void build_table(table_t<K>& t)
     {
         if constexpr (K == ConjKind::TwistConj)  { t.build(conjugate_twist); }
         if constexpr (K == ConjKind::SliceConj)  { t.build(conjugate_slice); }
         if constexpr (K == ConjKind::Edge4Conj)  { t.build(conjugate_edge4); }
         if constexpr (K == ConjKind::Edge8Conj)  { t.build(conjugate_edge8); }
         if constexpr (K == ConjKind::CornerConj) { t.build(conjugate_corner); }
-        if constexpr (K == ConjKind::FlipSliceConj) { 
+        if constexpr (K == ConjKind::FlipSliceConj) {
             for(int flip = 0; flip < N_FLIP; ++flip) {
                 for(int slice = 0; slice < N_SLICE; ++slice) {
-                    for(auto s: sym_entries)  
+                    for(auto s: sym_entries)
                         t[s][flip][slice] = conjugate_flipslice(s, {uint16_t(flip),uint16_t(slice)});
                 }
             }
         }
-    } 
+    }
 
-    template<StabKind K> void build_table(table_t<K>& t) 
+    template<StabKind K> void build_table(table_t<K>& t)
     {
-        if constexpr(K == StabKind::CornerStab) { 
+        if constexpr(K == StabKind::CornerStab) {
             SymReduction::build_stab_corner(t,
                 ensure<EqKind::RepCorner>(), ensure<ConjKind::CornerConj>()
             );
         }
-        if constexpr(K == StabKind::FlipSliceStab) { 
+        if constexpr(K == StabKind::FlipSliceStab) {
             SymReduction::build_stab_flipslice(t,
                 ensure<EqKind::RepFlipSlice>(), ensure<ConjKind::FlipSliceConj>()
             );
         }
     }
 
-    template<EqKind K> void build_table(table_t<K>& t) 
+    template<EqKind K> void build_table(table_t<K>& t)
     {
         if constexpr (K == EqKind::EmbCorner)   { SymReduction::build_emb_corner(t, ensure<ConjKind::CornerConj>()); }
         if constexpr (K == EqKind::RepCorner)   { SymReduction::build_rep_corner(t, ensure<EqKind::EmbCorner>()); }
@@ -276,15 +276,15 @@ private:
         if constexpr (K == PrunKind::SliceFlip)     { t.build_disjU(ensure<MoveKind::Slice>(), ensure<MoveKind::Flip>()); return ; }
         if constexpr (K == PrunKind::Edge4Corner)   { t.build_disjU(ensure<MoveKind::Edge4>(), ensure<MoveKind::Corner>()); return; }
         if constexpr (K == PrunKind::Edge4Edge8)    { t.build_disjU(ensure<MoveKind::Edge4>(), ensure<MoveKind::Edge8>()); return; }
-        
-        if constexpr (K == PrunKind::Edge8EqCorner) { 
+
+        if constexpr (K == PrunKind::Edge8EqCorner) {
             t.build_XxEqY(
                 ensure<MoveKind::Edge8>(), ensure<ConjKind::Edge8Conj>(),
                 ensure<MoveKind::Corner>(), ensure<EqKind::EmbCorner>(), ensure<EqKind::RepCorner>(), ensure<StabKind::CornerStab>()
             );
         }
 
-        if constexpr (K == PrunKind::TwistEqFlipSlice) { 
+        if constexpr (K == PrunKind::TwistEqFlipSlice) {
             const auto& tran_flip = ensure<MoveKind::Flip>();
             const auto& tran_slice = ensure<MoveKind::Slice>();
             auto tran_flipslice = [&tran_flip,&tran_slice](TurnMove m, const flipslice_t& fs) -> flipslice_t {
@@ -325,16 +325,16 @@ struct table_with_header
     struct meta_info { uint64_t filetag, checksum; };
 
     static constexpr auto encode_filetag(std::array<uint32_t,2> vk) -> uint64_t
-    { 
+    {
         const auto& [ver,kind] = vk;
-        return TABLE_MAGIC ^ ((uint64_t(ver) << 32) | uint64_t(kind)); 
+        return TABLE_MAGIC ^ ((uint64_t(ver) << 32) | uint64_t(kind));
     }
-    
-    [[maybe_unused]] 
-    static auto decode_filetag(uint64_t tag) -> std::array<uint32_t,2> 
-    { 
+
+    [[maybe_unused]]
+    static auto decode_filetag(uint64_t tag) -> std::array<uint32_t,2>
+    {
         const uint64_t vk = tag ^ TABLE_MAGIC;
-        return { uint32_t(vk >> 32), uint32_t(vk & 0xffffffff) }; 
+        return { uint32_t(vk >> 32), uint32_t(vk & 0xffffffff) };
     }
 
     static constexpr uint64_t filetag_v = encode_filetag({uint32_t(TABLE_VERSION),uint32_t(index_v<K>)});
@@ -356,7 +356,7 @@ struct table_with_header
         os.write(reinterpret_cast<const char*>(&t.storage), sizeof(t.storage));
         return bool(os);
     }
-            
+
 private:
     static uint64_t fnv1a(const void* data, size_t n)
     {

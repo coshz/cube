@@ -14,7 +14,7 @@ using namespace cube::data;
 ColorState ColorState::fromString(std::string_view cube)
 {
     assert(is_valid_config(cube) && "invalid cube config");
-   
+
     std::array<Layer,54> xs{};
     std::transform(cube.cbegin(), cube.cend(), xs.begin(), [](char c) {
         switch(c) {
@@ -34,7 +34,7 @@ bool ColorState::is_valid_config(std::string_view cfg)
 {
     // check size
     if(cfg.size() != 54) return false;
-       
+
     // check centers
     std::set<char> vs { cfg[CC[0]],cfg[CC[1]],cfg[CC[2]],cfg[CC[3]],cfg[CC[4]],cfg[CC[5]] };
     if(vs.size() != 6) return false;

@@ -37,7 +37,7 @@ std::string apply_maneuver(std::string_view s, const std::vector<TurnMove> &ms)
 auto parse_maneuver(std::string_view s) -> std::vector<TurnMove>
 {
     assert(is_valid_maneuver(s) && "invalid maneuver");
-   
+
     // expand: (Y){n} => Y...Y
     auto expand = [](std::string_view in) -> std::string {
         static const std::regex group_re(R"(\(([^)]+)\)(?:\{(\d+)\})?)");

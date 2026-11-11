@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include "coord.hh"
 #include "data.hpp"
 #include "rubik.hh"
@@ -17,15 +17,15 @@ using namespace cube::pdb::table;
 using cube::config::use_symmetry;
 
 /* The search phase */
-enum Phase { Ph1=0, Ph2=1 }; 
+enum Phase { Ph1=0, Ph2=1 };
 
 struct CoordOps
 {
-    /** 
+    /**
      * @brief move-table based coord transform for phase Ph1 & Ph2
      * @attention In the current implementation, the Ph2 components of resultant
-     * are left uncomputed in Ph1. Therefore, please DO NOT use this function to 
-     * obtain the origin of Ph2. Use @ref `ph2_origin` instead. 
+     * are left uncomputed in Ph1. Therefore, please DO NOT use this function to
+     * obtain the origin of Ph2. Use @ref `ph2_origin` instead.
      */
     template<Phase PhX>
     static auto transform(const Coord&, TurnMove) -> Coord;
@@ -42,17 +42,17 @@ struct CoordOps
 };
 
 template<Phase PhX>
-auto CoordOps::transform(const Coord& c, TurnMove m) -> Coord 
+auto CoordOps::transform(const Coord& c, TurnMove m) -> Coord
 {
     const TablePool& pool = TablePool::instance();
-    if constexpr (PhX == Ph1) 
-        return { 
+    if constexpr (PhX == Ph1)
+        return {
             pool.get<MoveKind::Twist>()(m,c.twist),
             pool.get<MoveKind::Flip>()(m,c.flip),
             pool.get<MoveKind::Slice>()(m,c.slice),
             -1,-1,-1
         };
-    else 
+    else
         return {
             0,0,0,
             pool.get<MoveKind::Corner>()(m,c.corner),
@@ -99,21 +99,21 @@ auto CoordOps::distance(const Coord& c) -> uint8_t
 }
 
 template<Phase PhX>
-auto CoordOps::origin(const CubieCube& cc, const std::vector<TurnMove>& sol) -> Coord 
+auto CoordOps::origin(const CubieCube& cc, const std::vector<TurnMove>& sol) -> Coord
 {
-    if constexpr (PhX == Ph1) return Coord::CubieCube2Coord(cc); 
+    if constexpr (PhX == Ph1) return Coord::CubieCube2Coord(cc);
     else {
         const TablePool& pool = TablePool::instance();
         Coord c = Coord::CubieCube2Coord(cc);
         int corner = c.corner, edge4, edge8;
         auto ep = cc.ep;
-        for(auto m: sol) 
+        for(auto m: sol)
         {
             corner = pool.get<MoveKind::Corner>()(m,corner);
             ep = ep * ElementaryMove[m].ep;
         }
         edge4 = Coord::ep2edge4(ep);
-        edge8 = Coord::ep2edge8(ep);   
+        edge8 = Coord::ep2edge8(ep);
         return { 0,0,0,corner,edge4,edge8 };
     }
 }

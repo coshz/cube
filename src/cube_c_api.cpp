@@ -11,11 +11,11 @@ void cube_init(bool use_symmetry, const char* dir)
     cube::cube_init(use_symmetry, dir ? std::string_view(dir) : std::string_view{});
 }
 
-const char* solve_result_to_string(int sr) 
-{ 
+const char* solve_result_to_string(int sr)
+{
     return solve_result_info(static_cast<SolveResult>(sr));
 }
-    
+
 SolveResult solve(
     char* buf, const char *src, const char* tgt, int good)
 {

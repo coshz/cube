@@ -38,7 +38,7 @@ struct REPL
 
 std::string REPL::cli_help(bool full)
 {
-    std::string usage = 
+    std::string usage =
 R"(
 [Usage]
   icube                     Start interactive REPL
@@ -60,7 +60,7 @@ R"(
 
 std::string REPL::help(bool full)
 {
-    return !full ? 
+    return !full ?
 R"(
 [Help]==========================================================================
 § Commands:                                                                    §
@@ -162,7 +162,7 @@ auto REPL::parse_args(const std::string &line) -> REPL::S
 auto REPL::execute_cmd(const REPL::S &s) -> std::string {
     if (s.cmd == "solve") {
         auto sol = cube::solve(s.arg1, s.arg2, s.arg3 < 0 ? 0 : s.arg3);
-        return sol.is_success() 
+        return sol.is_success()
             ? sol.maneuver
             : "!!! "s += cube::to_string(sol.status);
     } else if (s.cmd == "color") {
@@ -174,12 +174,12 @@ auto REPL::execute_cmd(const REPL::S &s) -> std::string {
     } else if (s.cmd == "perm") {
         int fmt_val = 2;
         if(!s.arg2.empty()) {
-            try { 
-                fmt_val = std::stoi(s.arg2); 
+            try {
+                fmt_val = std::stoi(s.arg2);
             } catch(...) {
                 return "!!! perm: invalid format";
-            } 
-            if (fmt_val < 0 || fmt_val > 2) 
+            }
+            if (fmt_val < 0 || fmt_val > 2)
                 return "!!! perm: format must be 0, 1 or 2";
         }
         try {
@@ -259,13 +259,13 @@ int main(int argc, char *argv[])
         }
     }
     if(verbose) {
-        std::cout << "[Info] Loading / building tables (sym:" 
+        std::cout << "[Info] Loading / building tables (sym:"
                   << (use_symmetry ? "on" : "off")
                   << ",dir:" << cube::get_table_dir().string() << ")..."
                   << std::endl;
     }
     cube::cube_init(use_symmetry, custom_dir);
-    if(verbose) { 
+    if(verbose) {
         std::cout << "[Info] All tables are built." << std::endl;
     }
     if(!inline_cmd.empty()) {

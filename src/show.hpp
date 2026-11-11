@@ -12,7 +12,7 @@
 #include <vector>
 
 namespace cube::show {
-    
+
 using std::size_t;
 using namespace cube::data;
 
@@ -91,8 +91,8 @@ inline std::string to_string(const ColorState& cs)
         case D: return 'D';
         case L: return 'L';
         case B: return 'B';
-        default: throw std::invalid_argument("to_string(ColorState): ???");        
-        } 
+        default: throw std::invalid_argument("to_string(ColorState): ???");
+        }
     });
 }
 
@@ -118,7 +118,7 @@ inline std::string to_string(const CubieCube& cc, CubeFormat fmt)
     default: // Cycle
         const auto [fixed_corner,cycles_corner] = decomposite(cc.cp);
         const auto [fixed_edge, cycles_edge ]   = decomposite(cc.ep);
-       
+
         std::string s1, s2;
         s1.reserve(64);
         s2.reserve(64);
@@ -142,7 +142,7 @@ inline std::string to_string(const CubieCube& cc, CubeFormat fmt)
                     if(i > 0) out += ',';
                     size_t prev_idx = cycle[(N-1+i)%N];
                     out += OrientationToString[ori_arr[prev_idx]];
-                    out += name_table[cycle[i]]; 
+                    out += name_table[cycle[i]];
                 }
                 out += ')';
             }

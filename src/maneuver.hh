@@ -42,4 +42,3 @@ inline auto operator""_Tm(const char* ts, size_t n) -> std::vector<TurnMove>
 bool is_valid_maneuver(std::string_view);
 
 } // namespace cube::internal
-

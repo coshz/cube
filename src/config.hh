@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include <filesystem>
 
 namespace cube::config {
@@ -7,8 +7,8 @@ namespace cube::config {
 void set_table_dir(std::filesystem::path dir);
 
 /*!
- * @brief get directory for move / prunning tables 
- * 
+ * @brief get directory for move / prunning tables
+ *
  * Resolve order:
  * - user-settings (set via @link set_table_dir)
  * - environment variable (`CUBE_TABLE_DIR`)

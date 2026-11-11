@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include "coord.hh"
 #include "data.hpp"
 #include "rubik.hh"
@@ -19,7 +19,7 @@ using namespace cube::symmetry;
 
 #if CUBE_ENABLE_TRACE
 #   define VTRACE(...) fprintf(stderr,__VA_ARGS__)
-#else 
+#else
 #   define VTRACE(...) do{}while(0)
 #endif
 
@@ -29,13 +29,13 @@ using namespace cube::symmetry;
 template<size_t coord_size>
 struct MoveTableBase: MoveTableLayout<coord_size>
 {
-    static constexpr size_t size = coord_size; 
+    static constexpr size_t size = coord_size;
 
     /*! @param tran_fn :: Turn -> X -> X */
     template<typename F> void build(F&& tran_fn)
     {
-        for(size_t x = 0; x < coord_size; ++x) 
-            for(auto m: turn_entries) 
+        for(size_t x = 0; x < coord_size; ++x)
+            for(auto m: turn_entries)
                 (*this)(m,x) = tran_fn(m,x);
     }
 };
@@ -46,13 +46,13 @@ struct MoveTableBase: MoveTableLayout<coord_size>
 template<size_t coord_size>
 struct ConjTableBase: ConjTableLayout<coord_size>
 {
-    static constexpr size_t size = coord_size; 
+    static constexpr size_t size = coord_size;
 
     /*! @param conj_fn ::  Sym -> X -> X */
-    template<typename F> void build(F&& conj_fn) 
+    template<typename F> void build(F&& conj_fn)
     {
-        for(size_t x = 0; x < coord_size; ++x) 
-            for(auto s: sym_entries) 
+        for(size_t x = 0; x < coord_size; ++x)
+            for(auto s: sym_entries)
                 (*this)[s][x] = conj_fn(s,x);
     }
 };
@@ -72,7 +72,7 @@ struct PrunTableBase: NArray<uint8_t,Ns...>
     using index_type = std::array<size_t,PrunTableBase::dim>;
 
     template<typename...MTs>
-    void build_disjU(MTs&&... tables) 
+    void build_disjU(MTs&&... tables)
     {
         static_assert(sizeof...(tables) == PrunTableBase::dim);
         auto ts = std::tie(tables...);
@@ -101,7 +101,7 @@ struct PrunTableBase: NArray<uint8_t,Ns...>
         };
         auto orbit = [&](const index_type& c, auto&& visit) {
             const auto [x,eqY] = c;
-            for(auto s: sym_entries) 
+            for(auto s: sym_entries)
             {
                 if(stab(eqY) & (1u << s)) visit(index_type{conj(s,x),eqY});
             }
@@ -109,7 +109,7 @@ struct PrunTableBase: NArray<uint8_t,Ns...>
         build(next,orbit);
     }
 
-    template<typename NextFn, typename OrbitFn> 
+    template<typename NextFn, typename OrbitFn>
     void build(NextFn&& next_fn, OrbitFn&& orbit_fn)
     {
         constexpr auto unvisited = std::numeric_limits<uint8_t>::max();
@@ -125,22 +125,22 @@ struct PrunTableBase: NArray<uint8_t,Ns...>
         index_type starting {};
         orbit_fn(starting,visit_fn);
         q.push(starting);
-        while(!q.empty()) 
+        while(!q.empty())
         {
-            VTRACE("[depth %3zu] visited: %9zu / %-9zu\n", 
+            VTRACE("[depth %3zu] visited: %9zu / %-9zu\n",
                 depth, discovered, PrunTableBase::size
             );
             ++depth;
             const auto n_depth = q.size();
-            for(auto _ = 0; _ < n_depth; ++_) 
+            for(auto _ = 0; _ < n_depth; ++_)
             {
-                auto c = q.front(); q.pop();            
-                for(auto m: turn_entries) {             
-                    const auto c_next = next_fn(m,c);   
-                    if((*this)[c_next] == unvisited) {  
-                        orbit_fn(c_next,visit_fn);      
-                        q.push(c_next);                 
-                    }                                   
+                auto c = q.front(); q.pop();
+                for(auto m: turn_entries) {
+                    const auto c_next = next_fn(m,c);
+                    if((*this)[c_next] == unvisited) {
+                        orbit_fn(c_next,visit_fn);
+                        q.push(c_next);
+                    }
                 }
             }
         }

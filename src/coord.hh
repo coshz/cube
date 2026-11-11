@@ -7,10 +7,10 @@
 namespace cube::pdb {
 
 /*!
- * @brief The coordinate space of cube. 
- * 
- * @details 
- *  Coord, the product space of (Twist,Flip,Slice,Corner,Edge4,Edge8), is used 
+ * @brief The coordinate space of cube.
+ *
+ * @details
+ *  Coord, the product space of (Twist,Flip,Slice,Corner,Edge4,Edge8), is used
  * for tables generation. See CoordTables (in @ref table_coord.hh).
  *  The coordinates of:
  *  1. Ph1
@@ -21,7 +21,7 @@ namespace cube::pdb {
  *      - corner: the location number of 8 corner cubies
  *      - edge4: the location number of 4 slice edge cubies
  *      - edge8: the location number of 8 non- UD-slice edge cubies
- * 
+ *
  * @remarks
  * Alought the three components (slice2ep,edge42ep,edge82ep) of \(s,e4,e8) -> ep
  * aren't well-defined functions, the following is guaranteed:
@@ -66,7 +66,7 @@ struct Coord
     static EdgePerm     edge42ep(int);        // incomplete EdgePerm
     static EdgePerm     edge82ep(int);        // incomplete EdgePerm
     static EdgePerm     see2ep(int,int,int);  // complete EdgePerm
-        
+
     /* conversion between Coord and CubieCube */
 
     static Coord        CubieCube2Coord(const CubieCube &);
@@ -83,7 +83,7 @@ inline constexpr Coord Coord::id = { 0,0,0,0,0,0 };
 
 /* type of TurnMove-based transformation tables  */
 
-template<size_t coord_size> 
+template<size_t coord_size>
 using MoveTableLayout = NArray<uint16_t,N_MOVE,coord_size>;
 
 using MoveTwist = MoveTableLayout<N_TWIST>;
@@ -93,9 +93,9 @@ using MoveEdge4 = MoveTableLayout<N_EDGE4>;
 using MoveEdge8 = MoveTableLayout<N_EDGE8>;
 using MoveCorner= MoveTableLayout<N_CORNER>;
 
-/** 
- * @defgroup TurnMove-transformation generators 
- * @{ 
+/**
+ * @defgroup TurnMove-transformation generators
+ * @{
  */
 
 inline int transform_twist(TurnMove m, int twist)   { return Coord::co2twist(Coord::twist2co(twist) * ElementaryMove[m]); }

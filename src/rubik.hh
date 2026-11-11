@@ -100,7 +100,7 @@ struct CubieCube
 
     friend bool operator==(const CubieCube &lhs, const CubieCube &rhs)
     { return lhs.cp == rhs.cp && lhs.co == rhs.co && lhs.ep == rhs.ep && lhs.eo == rhs.eo; }
-   
+
     static const CubieCube id;
 };
 

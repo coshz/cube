@@ -59,10 +59,10 @@ int KociembaSolver::start_search_ph1(
     }
 
     int bestL = maxL + 1;
-    for(auto m: SearchContext::EM<Ph1>) 
+    for(auto m: SearchContext::EM<Ph1>)
     {
         if(is_dull_pair(m, ctx.recall<Ph1>(d))) continue;
-        
+
         ctx.record<Ph1>(d-1,m);
         auto l = start_search_ph1(ctx, CoordOps::transform<Ph1>(c,m), d-1, d_orig, bestL-2);
         if(l >= 0 && bestL > l+1) {
@@ -78,10 +78,10 @@ bool KociembaSolver::start_search_ph2(
     SearchContext& ctx, const Coord& c, size_t togo)
 {   if(togo < CoordOps::distance<Ph2>(c)) return false;
     if(togo == 0) return CoordOps::distance<Ph2>(c) == 0;
-    for(auto m: SearchContext::EM<Ph2>) 
+    for(auto m: SearchContext::EM<Ph2>)
     {
         if(is_dull_pair(m, ctx.recall<Ph2>(togo))) continue;
-        
+
         ctx.record<Ph2>(togo-1,m);
         bool ret = start_search_ph2(ctx, CoordOps::transform<Ph2>(c,m), togo-1);
         if(ret) return true;

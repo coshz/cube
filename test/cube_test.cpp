@@ -25,7 +25,7 @@ TEST(CubeTest_0, BasicAssertions)
     EXPECT_EQ(cR,show::to_string(ColorState::fromString(cR)));
 }
 
-TEST(CubeTest, BasicAssertions) 
+TEST(CubeTest, BasicAssertions)
 {
     std::vector<TurnMove> ts = {Ux1,Rx1,Dx2,Bx3,Lx2,Fx1,Dx3,Rx2};
     auto fc = FaceCube::id * ts;

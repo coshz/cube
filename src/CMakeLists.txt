@@ -37,8 +37,8 @@ generate_export_header(cube_shared
 # Public header
 # ------------------------------------------------------------------------------
 
-target_sources(cube_headers INTERFACE 
-    FILE_SET HEADERS 
+target_sources(cube_headers INTERFACE
+    FILE_SET HEADERS
     BASE_DIRS
         ${CUBE_BUILD_INCLUDE_DIR}
     FILES
@@ -80,7 +80,7 @@ target_compile_definitions(cube_objs PRIVATE ${cube_export_macro})
 # Main C++ library (shared & static)
 # ------------------------------------------------------------------------------
 
-target_link_libraries(cube_shared 
+target_link_libraries(cube_shared
     PRIVATE ${PROJECT_NAME}::objs
     PUBLIC cube_headers
 )
@@ -96,14 +96,14 @@ if(BUILD_STATIC_LIBS)
     # build static library from source !!!
     add_library(cube_static STATIC ${lib_sources})
     add_library(${PROJECT_NAME}::static ALIAS cube_static)
-   
+
     if(WIN32)
-        set_target_properties(cube_static PROPERTIES 
+        set_target_properties(cube_static PROPERTIES
             OUTPUT_NAME cube_static
-            EXPORT_NAME static 
+            EXPORT_NAME static
         )
     else()
-        set_target_properties(cube_static PROPERTIES 
+        set_target_properties(cube_static PROPERTIES
             OUTPUT_NAME cube
             EXPORT_NAME static
         )
@@ -115,14 +115,14 @@ if(BUILD_STATIC_LIBS)
 endif()
 
 # Fix MSVC compile error
-# fatal error LNK1179: invalid or corrupt file: duplicate COMDAT 
+# fatal error LNK1179: invalid or corrupt file: duplicate COMDAT
 # '??$build_table@$0A@@TableProvider@table@pdb@cube@@AEAAXAEAU?$NArray@G$0KNA@@data@3@@Z'
 if(MSVC)
-    target_compile_options(cube_objs 
+    target_compile_options(cube_objs
         PRIVATE /Zc:enumEncoding
     )
     if(BUILD_STATIC_LIBS)
-        target_compile_options(cube_static 
+        target_compile_options(cube_static
             PRIVATE /Zc:enumEncoding
         )
     endif()

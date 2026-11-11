@@ -20,7 +20,7 @@ class SearchContext
 {
 public:
     SearchContext(const CubieCube& cc = CubieCube::id, size_t good = 22)
-        : root_(cc), tgtlen_(good) 
+        : root_(cc), tgtlen_(good)
     {}
 
     CubieCube   root() const    { return root_; }
@@ -75,16 +75,16 @@ private:
 };
 
 /*!
- * @brief The Kociemba's algorithm to search the first solution. 
+ * @brief The Kociemba's algorithm to search the first solution.
  */
 class KociembaSolver
 {
 public:
     /*!
      * @brief Two phase solver that finds the shortest solution
-     * @param cc    the cube 
+     * @param cc    the cube
      * @param good  early-exit threshold. This search stops as soon as a solution
-     *              of length <= `good` is found. If the returned length is 
+     *              of length <= `good` is found. If the returned length is
      *              > `good`, the two-phase optimum is guaranteed.
      * @return (is_solved,sol1,sol2) - solX is the PhX solution. For a legal cube
      *         coord, the `is_solved` is always true.
@@ -92,7 +92,7 @@ public:
     static auto solve(const CubieCube &cc, size_t good)
         -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>;
 protected:
-    /* Attemp to find a solution at most `maxL` steps where the Ph1 solution to 
+    /* Attemp to find a solution at most `maxL` steps where the Ph1 solution to
     `c` is of exact `d` steps; Return the legnth of solution */
     static int start_search_ph1(SearchContext& ctx, const Coord& c, size_t d, size_t d_orig, size_t maxL);
 

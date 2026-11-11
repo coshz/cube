@@ -28,14 +28,14 @@ TEST(PermutationTest,BasicAssertions)
     auto m0 = "R";
     permutation(buf,m0);
     EXPECT_STREQ(buf,"(-dfr,+drb,-ubr,+urf)(fr,dr,br,ur)");
-    
+
     // edge flip
     auto m1 = "FUD'L2U2D2RUR'D2U2L2DU'F'U'";
     permutation(buf,m1);
     EXPECT_STREQ(buf,"(+ur)(+uf)");
 
     // corner 3-cycle
-    auto m2 = "RB'RF2R'BRF2R2"; 
+    auto m2 = "RB'RF2R'BRF2R2";
     permutation(buf,m2);
     EXPECT_STREQ(buf,"(ufl,ubr,urf)");
 
