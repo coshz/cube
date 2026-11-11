@@ -9,8 +9,8 @@ from pathlib import Path
 
 def sync():
     script_dir = Path(__file__).resolve().parent
-    python_dir = script_dir.parent      
-    repo_root = script_dir.parents[2]   
+    python_dir = script_dir.parent
+    repo_root = script_dir.parents[2]
     target_dir = python_dir / "cxx"
 
     cxx_files = [
@@ -20,12 +20,12 @@ def sync():
 
     abs_files = [repo_root / f for f in cxx_files]
     missing_files = [ p for p in abs_files if not p.exists()]
-    
-    if missing_files: 
+
+    if missing_files:
         formatted = "\n".join(f"  -{p}" for p in missing_files)
         print(f"[sync_cxx] ERROR: Cannot find the following files:\n{formatted}", file=sys.stderr)
         sys.exit(1)
-    
+
     target_dir.mkdir(parents=True, exist_ok=True)
     for src in abs_files:
         dst = target_dir / src.name

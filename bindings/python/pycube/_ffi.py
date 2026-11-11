@@ -1,9 +1,9 @@
 """
 Python ctypes wrapper and FFI definitions for the C++ shared library.
 
-Ref: 
+Ref:
     ../cxx_src/cube.h
-    
+
 See Also:
     ../cxx_src/cube_amalg.min.cpp
 """
@@ -17,25 +17,25 @@ class CubeCDLL(CDLL):
 
 
 def _load_library() -> CubeCDLL:
-    package_dir = Path(__file__).parent 
+    package_dir = Path(__file__).parent
     allowed_suffixes = { '.so', '.dylib', '.dll', '.pyd' }
-    candidates = [ 
+    candidates = [
         p for p in package_dir.glob("_native*")
         if p.suffix in allowed_suffixes
     ]
 
-    if not candidates: 
+    if not candidates:
         raise FileNotFoundError(
             f"Could not find compiled C++ shared library inside '{package_dir}'.\n"
             "If you are developing locally, run `pip install -e .` or "
             "`python setup.py build_ext --inplace` to build the native extension first."
         )
-        
+
     lib_path = str(candidates[0])
     return CubeCDLL(lib_path)
 
 
-_libcube = _load_library() 
+_libcube = _load_library()
 
 _libcube.cube_init.argtypes = [c_bool, c_char_p]
 _libcube.cube_init.restype = None
