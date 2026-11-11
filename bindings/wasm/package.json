@@ -5,7 +5,7 @@
         "access": "public"
     },
     "type": "module",
-    "version": "0.6.0",
+    "version": "0.6.1",
     "description": "A WASM-based Rubik's Cube library",
     "keywords": [
         "rubiks-cube-solver",

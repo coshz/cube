@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.1]
+
+- **Massive memory footprint reduction**
+  Solved the issue where WASM linear memory never shrinks. Resident memory dropped
+from 1.1 GB / 550 MB (first-time / subsequent loads) to 327 MB / 305 MB. 
+
 ## [0.6.0]
 
 - Performance: Support for symmetric pruning table 

@@ -8,7 +8,6 @@ let core: CubeCore | null = null;
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
     const msg = e.data;
-
     if (msg.type === 'init') {
         try {
             const initModule = () =>
@@ -26,7 +25,6 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
         }
         return;
     }
-
     if (msg.type === 'solve') {
         if (!core) {
             post({ type: 'solve', id: msg.id, result: { ok: false, error: 'not initialized' } });
