@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GADTs #-}
 
-module Data.Cube.Internal 
+module Data.Cube.Internal
 (
   Color(..)
 , Face(..)
@@ -30,7 +30,7 @@ module Data.Cube.Internal
 , solveFrom
 , unsafeSolveFrom
 )
-where 
+where
 
 import Data.Cube.Def
 import Data.Cube.FFI
@@ -71,7 +71,7 @@ parseCube cubeStr
 
 -- | Checks if a 54-character string represents a legal (solvable) cube state.
 isLegalCubeString :: String -> Bool
-isLegalCubeString str = 
+isLegalCubeString str =
     length str == 54 &&
     unsafePerformIO (withCString str $ \c_str -> do
         CBool res <- c_solvable c_str
@@ -83,9 +83,9 @@ applyTurns = foldl (&>)
 
 -- | Parses a space-separated string of turns (e.g., "R U R' U'") into a list of `Turn`.
 parseTurns :: String -> Maybe [Turn]
-parseTurns str = mapM stringToTurn (words str) where 
-    stringToTurn :: String -> Maybe Turn 
-    stringToTurn s = case s of 
+parseTurns str = mapM stringToTurn (words str) where
+    stringToTurn :: String -> Maybe Turn
+    stringToTurn s = case s of
         "U" -> Just Ux1; "U2" -> Just Ux2; "U'" -> Just Ux3
         "R" -> Just Rx1; "R2" -> Just Rx2; "R'" -> Just Rx3
         "F" -> Just Fx1; "F2" -> Just Fx2; "F'" -> Just Fx3
@@ -95,10 +95,10 @@ parseTurns str = mapM stringToTurn (words str) where
         _ -> Nothing
 
 -- | Converts a list of turns into a space-separated string representation.
-showTurns :: [Turn] -> String 
-showTurns ts = unwords (map turnToString ts) where 
-    turnToString :: Turn -> String 
-    turnToString t = case t of 
+showTurns :: [Turn] -> String
+showTurns ts = unwords (map turnToString ts) where
+    turnToString :: Turn -> String
+    turnToString t = case t of
         Ux1 -> "U"; Ux2 -> "U2"; Ux3 -> "U'"
         Rx1 -> "R"; Rx2 -> "R2"; Rx3 -> "R'"
         Fx1 -> "F"; Fx2 -> "F2"; Fx3 -> "F'"
@@ -114,7 +114,7 @@ showTurns ts = unwords (map turnToString ts) where
 -- @dir@: directory to read\/write table files; empty means the default.
 -- Tables are loaded if present, otherwise built there.
 --
--- Only the first call takes effect; later calls are no-ops. The first 
+-- Only the first call takes effect; later calls are no-ops. The first
 -- 'c_solve' invokes it implicitly with defaults.
 --
 -- Warning: @useSym = True@ may take minutes and write ~260 MB on first run.
@@ -124,10 +124,10 @@ cubeInit useSymmetry tableDir = do
     withCString tableDir $ \cstr -> do
         c_cube_init cb cstr
 
--- | Uses Kociemba's two-phase algorithm. The search stops as soon as any solution 
--- of length at most `good` is found, trading optimality for speed. 
+-- | Uses Kociemba's two-phase algorithm. The search stops as soon as any solution
+-- of length at most `good` is found, trading optimality for speed.
 -- If the returned maneuver is *longer* than `good`, no shorter solution exists
--- and the result is the two-phase optimum. 
+-- and the result is the two-phase optimum.
 rawSolve :: Cube -> Cube -> Int -> Either String [Turn]
 rawSolve src tgt good = unsafePerformIO $
     withCString (showCube src) $ \c_src ->
@@ -136,15 +136,15 @@ rawSolve src tgt good = unsafePerformIO $
         resCode <- c_solve c_buf c_src c_tgt (fromIntegral good)
         if resCode == 0
             then parseCSolution c_buf
-            else handleErr resCode  
+            else handleErr resCode
     where
-        parseCSolution buf = do 
+        parseCSolution buf = do
             str <- peekCString buf
             return $ case parseTurns str of
                 Just turns  -> Right turns
                 Nothing     -> Left $ "failed to parse solver string: " ++ show str
-    
-        handleErr code = do 
+
+        handleErr code = do
             errPtr <- c_solve_result_to_string code
             errStr <- peekCString errPtr
             return $ Left $ "Solver error (" ++ show code ++ "): "++ errStr
@@ -154,16 +154,16 @@ rawSolve src tgt good = unsafePerformIO $
 solve :: Cube -> Cube -> Either String [Turn]
 solve src tgt = rawSolve src tgt 22
 
--- | Same as `solve`, but throws a runtime error if no solution is found 
+-- | Same as `solve`, but throws a runtime error if no solution is found
 -- or if parsing fails. Use this only when Cube is known to be legal.
 unsafeSolve :: Cube -> Cube -> [Turn]
-unsafeSolve src tgt = case solve src tgt of 
+unsafeSolve src tgt = case solve src tgt of
     Left err -> error err
     Right ts -> ts
 
 -- | Solves the given cube back to the solved state (`cubeId`).
 solveFrom :: Cube -> Either String [Turn]
-solveFrom c = solve c cubeId 
+solveFrom c = solve c cubeId
 
 -- | Same as `solveFrom`, but throws a runtime error on failure.
 unsafeSolveFrom :: Cube -> [Turn]

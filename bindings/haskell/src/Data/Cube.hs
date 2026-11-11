@@ -6,7 +6,7 @@
 -- Maintainer  : fsinhx@gmail.com
 -- Stability   : stable
 --
--- This module provides a safe-by-default Haskell interface for 3x3 Rubik's Cube 
+-- This module provides a safe-by-default Haskell interface for 3x3 Rubik's Cube
 -- manipulation and solving via C FFI.
 --
 -- === Example Usage
@@ -28,7 +28,7 @@
 --     putStrLn $ "Scrambled state: " ++ showCube scrambledCube
 --
 --     -- 4a. build tables (`False` means without symmetry) under "cache" directory
---     cubeInit False "cache"  
+--     cubeInit False "cache"
 --     -- 4b. Solve the scrambled cube & verify solution
 --     let sol = unsafeSolveFrom scrambledCube
 --     putStrLn $ "Optimal solution steps: " ++ showTurns sol
@@ -36,7 +36,7 @@
 -- @
 
 module Data.Cube
-( 
+(
   -- * Core Types
   Turn(..)
 , Cube
@@ -46,7 +46,7 @@ module Data.Cube
 , isLegalCubeString
 , showCube
 , parseCube
-  -- * Algebraic Operations & Group Actions 
+  -- * Algebraic Operations & Group Actions
 , (&>)
 , applyTurns
   -- * WCA Turns Representation

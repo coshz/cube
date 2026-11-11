@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Data.Cube.Def where 
+module Data.Cube.Def where
 
 import Data.Cube.Raw (rawBase6)
 
@@ -26,40 +26,40 @@ data Face
 data Turn
     = Ux1 | Ux2 | Ux3
     | Rx1 | Rx2 | Rx3
-    | Fx1 | Fx2 | Fx3 
+    | Fx1 | Fx2 | Fx3
     | Dx1 | Dx2 | Dx3
     | Lx1 | Lx2 | Lx3
     | Bx1 | Bx2 | Bx3
     deriving (Eq, Show, Enum, Bounded)
 
-newtype Cube = Cube (Vector 54 Color) 
+newtype Cube = Cube (Vector 54 Color)
     deriving (Eq)
 
-newtype Move = Move (Vector 54 Int) 
+newtype Move = Move (Vector 54 Int)
     deriving (Eq)
 
-instance Semigroup Move where 
+instance Semigroup Move where
     Move m1 <> Move m2 = Move (V.backpermute m1 m2)
 
 instance Monoid Move where
     mempty = Move (fromMaybe (error "mempty") (V.fromList [0..53]))
 
-class ActsOn c m where 
+class ActsOn c m where
     (&>) :: c -> m -> c
 
 instance ActsOn Cube Move where
-    (Cube c)  &> (Move p) = Cube (V.backpermute c p)  
+    (Cube c)  &> (Move p) = Cube (V.backpermute c p)
 
-class Actionable a where 
+class Actionable a where
     toMove :: a -> Move
 
     toAction :: a -> (Cube -> Cube)
     toAction a = (&> toMove a)
 
-instance Actionable a => Actionable [a] where 
+instance Actionable a => Actionable [a] where
     toMove = mconcat . map toMove
 
-instance Actionable Move where 
+instance Actionable Move where
     toMove = id
 
 instance Show Cube where
@@ -71,12 +71,12 @@ instance Show Move where
 instance ActsOn Cube Turn where
     c &> t = c &> toMove t
 
-instance Actionable Turn where 
+instance Actionable Turn where
     toMove t = moveTable_ ! fromEnum t
 
 moveTable_ :: Array Int Move
 moveTable_ = listArray(0,17) (concatMap powers base6) where
-    powers v = [v, v <> v, v <> v <> v] 
+    powers v = [v, v <> v, v <> v <> v]
     base6    = map unsafeMoveFromRaw rawBase6
 
 moveFaces :: Move -> [Face]
@@ -86,13 +86,13 @@ showAction :: Actionable a => a -> String
 showAction a = "Action " ++ show (moveFaces (toMove a))
 
 moveFromRaw :: [Int] -> Maybe Move
-moveFromRaw xs 
+moveFromRaw xs
     | isValidPerm xs = Move <$> V.fromList (map toEnum xs)
     | otherwise = Nothing
-    where 
+    where
         isValidPerm ys = sort ys == [0..53]
 
 unsafeMoveFromRaw :: [Int] -> Move
-unsafeMoveFromRaw xs = case moveFromRaw xs of 
+unsafeMoveFromRaw xs = case moveFromRaw xs of
     Just m -> m
     Nothing -> error "unsafeMoveFromRaw: input is not a valid 0..53 permutation"
