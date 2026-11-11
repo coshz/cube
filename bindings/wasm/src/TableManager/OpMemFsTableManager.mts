@@ -51,8 +51,8 @@ class OpMemFsTableManager implements TableManager {
         // remove files that aren't needed in memory
         for (const name of opfs)
             if (!memfs.has(name)) await root.removeEntry(name);
-        
-        // persist and release memfs files     
+
+        // persist and release memfs files
         for (const name of memfs) {
             const path = `${this.vfsDir}/${name}`;
             const data = FS.readFile(path);

@@ -46,8 +46,8 @@ async function createWorkerCubeApiWith(
 
         init(useSymmetry = false) {
             return initPromise ??= (async () => {
-                // Since WASM linear memory cannot shrink, we terminate the first worker 
-                // after the second one takes over, to release the memory bloat caused 
+                // Since WASM linear memory cannot shrink, we terminate the first worker
+                // after the second one takes over, to release the memory bloat caused
                 // by table generation.
 
                 const gen1 = spawnWorker(useSymmetry);

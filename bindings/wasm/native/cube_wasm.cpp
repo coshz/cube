@@ -7,7 +7,7 @@
 
 using namespace emscripten;
 
-val wasm_solve( 
+val wasm_solve(
     std::string src, std::string tgt, int good
 ) {
     auto sr = cube::solve(src, tgt, good);

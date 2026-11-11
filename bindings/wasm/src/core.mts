@@ -1,5 +1,5 @@
 interface SolveOptions {
-    target?: string; 
+    target?: string;
     goodEnough?: number;
 }
 
@@ -23,11 +23,11 @@ interface CubeApiBase {
     /** `true` if the 54-char state string is physically reachable */
     solvable: (src: string) => boolean;
 
-    /** Apply a move sequence (e.g. `"R U R' U'"`) to `cube` (default: `cubeId`) 
+    /** Apply a move sequence (e.g. `"R U R' U'"`) to `cube` (default: `cubeId`)
      * and return the resulting 54-char state. */
     facecube: (maneuver: string, cube?: string) => string;
 
-    /** Permutation of a move sequence or cube state. 
+    /** Permutation of a move sequence or cube state.
      * `fmt` defaults to `PermFormat.Cycle`. */
     permutation: (maneuver_or_cube: string, fmt?: PermFormat) => string;
 }
@@ -35,17 +35,17 @@ interface CubeApiBase {
 interface CubeCore extends CubeApiBase {
     /**
      * Load tables from persistent storage, or build and save them if missing.
-     * 
+     *
      * @param manager
      *   The table manager used for persistence. See @ref TableManager.
-     * 
+     *
      * @param useSymmetry
      *  * `false`: smaller (<10 MB), fast to build, slower solving;
      *  * `true`: symmetry-based (~260 MB), slower to build, faster solving.
-     * 
-     * @returns A promise that resolves when the tables are ready. 
-     * 
-     * @note Strongly recommended to call this explicitly before `solve`. 
+     *
+     * @returns A promise that resolves when the tables are ready.
+     *
+     * @note Strongly recommended to call this explicitly before `solve`.
      *  If skipped, `solve` still works, but C++ fall back to its own `useSymmetry`
      *  setting, which may not be what you want.
      */

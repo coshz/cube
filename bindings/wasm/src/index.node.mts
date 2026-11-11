@@ -8,7 +8,7 @@ const HOST_DIR = path.resolve(
     process.env.TABLE_DIR ?? path.join(process.cwd(), "tables")
 );
 
-const createNodeCubeApi = async (): Promise<NodeCubeApi> => 
+const createNodeCubeApi = async (): Promise<NodeCubeApi> =>
     createNodeCubeApiWith(
         async () => (await import('#internal/jscube.node.mjs')).default(),
         { hostDir: HOST_DIR, vfsDir: VFS_MOUNT }

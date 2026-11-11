@@ -8,10 +8,10 @@ async function main() {
     console.log("scrambled: ", scrambled);
     console.log("solvable:", cube.solvable(scrambled));
 
-    // useSymmetry=true: faster solving, but ~260 MB of tables. 
-    // Build once on first run (a few minutes), then cached via TableManager. 
+    // useSymmetry=true: faster solving, but ~260 MB of tables.
+    // Build once on first run (a few minutes), then cached via TableManager.
     await cube.init(true);
-    
+
     // Solve & verify
     const solution = cube.solve(scrambled, { target: cube.cubeId, goodEnough: 22 });
     if (solution.ok) {
