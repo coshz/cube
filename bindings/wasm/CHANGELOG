@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.2]
+
+### Fixed
+fix(worker): ensure the workerUrl is wrapped in URL object
+- Wrap custom `opt.workerUrl` in `new URL()` for both Web and Node entry points.
+
 ## [0.7.1]
 
 ### Documentation

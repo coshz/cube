@@ -9,9 +9,9 @@ async function createCubeApiWith(
     opts: { hostDir: string; workerUrl?: string | URL }
 ): Promise<CubeApi> {
     const spawn = (useSymmetry: boolean): SpawnedWorker => {
-        const worker = new Worker(
-            opts.workerUrl ?? new URL('./entry-node.mjs', import.meta.url)
-        );
+        const worker = opts.workerUrl
+            ? new Worker(new URL(opts.workerUrl))
+            : new Worker(new URL('./entry-node.mjs', import.meta.url));
         const ready = Promise.withResolvers<boolean>();
         let solveCb: ((msg: Extract<WorkerResponse, { type: 'solve' }>) => void) | null = null;
         let isTerminated = false;

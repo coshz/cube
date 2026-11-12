@@ -8,10 +8,9 @@ async function createCubeApiWith(
     opts: { opfsDir: string; workerUrl?: string | URL }
 ): Promise<CubeApi> {
     const spawn = (useSymmetry: boolean): SpawnedWorker => {
-        const worker = new Worker(
-            opts.workerUrl ?? new URL('./entry-web.mjs', import.meta.url),
-            { type: 'module' }
-        );
+        const worker = opts.workerUrl
+            ? new Worker(new URL(opts.workerUrl), { type: 'module' })
+            : new Worker(new URL('./entry-web.mjs', import.meta.url), { type: 'module' });
         const ready = Promise.withResolvers<boolean>();
         let solveCb: ((msg: Extract<WorkerResponse, { type: 'solve' }>) => void) | null = null;
         let isTerminated = false;
