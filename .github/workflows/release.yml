@@ -22,7 +22,7 @@ jobs:
           - os: ubuntu-latest
             arch: x86_64
             cmake_flags: ""
-          - os: macos-13
+          - os: macos-latest
             arch: x86_64
             cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=x86_64"
             generator: "-G Ninja"
