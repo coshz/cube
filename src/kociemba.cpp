@@ -1,5 +1,4 @@
 #include "kociemba.hh"
-#include "coord.hh"
 #include "rubik.hh"
 #include "data.hpp"
 #include "table_ops.hh"
@@ -16,10 +15,9 @@ using namespace cube::pdb::ops;
  *  - A=Ux1,B=Ux2     (A and its prev B are "homogeneous")
  *  - A=Dx1,B=Ux1     (A > B && A and B are "disjoint")
  */
-inline bool is_dull_pair(const TurnMove A, const int B)
+inline bool is_dull_pair(const TurnMove A, const TurnMove B)
 {
-    if(!(B >= Ux1 && B <= Bx3)) return false;
-    return (A/3 == B/3) || (A/3 == B/3+3);
+    return B != Nop && ((A/3 == B/3) || (A/3 == B/3+3));
 }
 
 auto KociembaSolver::solve(const CubieCube &cc, size_t good)
@@ -31,7 +29,7 @@ auto KociembaSolver::solve(const CubieCube &cc, size_t good)
     auto c = CoordOps::origin<Ph1>(cc);
     for(auto togo = CoordOps::distance<Ph1>(c); togo < bestL; ++togo)
     {
-        int l = start_search_ph1(ctx, c,togo,togo,bestL-1);
+        int l = start_search_ph1(ctx,c,togo,togo,bestL-1);
         if(l >= 0) bestL = std::min(bestL,size_t(l));
         if(bestL <= ctx.tgtlen()) break;
     }
@@ -76,7 +74,8 @@ int KociembaSolver::start_search_ph1(
 
 bool KociembaSolver::start_search_ph2(
     SearchContext& ctx, const Coord& c, size_t togo)
-{   if(togo < CoordOps::distance<Ph2>(c)) return false;
+{
+    if(togo < CoordOps::distance<Ph2>(c)) return false;
     if(togo == 0) return CoordOps::distance<Ph2>(c) == 0;
     for(auto m: SearchContext::EM<Ph2>)
     {

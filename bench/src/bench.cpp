@@ -51,7 +51,7 @@ std::string out_filename(
     int N, int L, int G, unsigned int S, long long T, bool use_symmetry)
 {
     std::stringstream ss;
-    ss << "v" << std::hex << std::setfill('0') << std::setw(4) << CUBE_VERSION_CODE << std::dec
+    ss << "v" << std::hex << std::setfill('0') << std::setw(4) << cube_version_code << std::dec
        << "-" << tag
        << "_" << (use_symmetry ? "SYMT" : "SYMF")
        << "_N" << N
@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
 
     std::cout << "Initializing tables...\n"
               << "(Note: this may take a while to build tables on the first run)" << std::endl;
-    cube::cube_init(use_symmetry,table_dir.string());
+    cube::init(use_symmetry,table_dir.string());
 
     std::cout << "Generating benchmark report...\n" << std::endl;
     TeeStream ts(out_dir / outfile);

@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 
     std::string custom_dir = "";
     std::string inline_cmd = "";
-    bool use_symmetry = CUBE_USE_SYMMETRY;
+    bool use_symmetry = true;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
                   << ",dir:" << cube::get_table_dir().string() << ")..."
                   << std::endl;
     }
-    cube::cube_init(use_symmetry, custom_dir);
+    cube::init(use_symmetry, custom_dir);
     if(verbose) {
         std::cout << "[Info] All tables are built." << std::endl;
     }

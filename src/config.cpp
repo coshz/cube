@@ -11,7 +11,7 @@ namespace fs = std::filesystem;
 namespace {
 bool& use_symmetry_ref()
 {
-    static bool val_ = CUBE_USE_SYMMETRY;
+    static bool val_ = true;
     return val_;
 }
 
@@ -46,7 +46,6 @@ void use_symmetry(bool v)
     static std::once_flag once;
     std::call_once(once, [v]() { use_symmetry_ref() = v; });
 }
-
 
 void set_table_dir(fs::path dir)
 {

@@ -13,7 +13,7 @@ namespace cube {
 
 using namespace cube::data;
 
-namespace internal {
+namespace internal::maneuver {
 
 std::string apply_maneuver(std::string_view s, const std::vector<TurnMove> &ms)
 {

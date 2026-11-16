@@ -23,9 +23,9 @@
 #       SOURCES       swift/Toy.swift
 #       HEADERS       include/toy.h
 #       MODULEMAP     swift/module.modulemap
-#       APINOTES      swift/Toy.apinotes (optional)               
+#       APINOTES      swift/Toy.apinotes (optional)
 #       OBJECTS       $<TARGET_OBJECTS:toy_objects> (optional)
-#       LINK_FLAGS    "-lc++" (optional)          
+#       LINK_FLAGS    "-lc++" (optional)
 #   )
 #
 # Defines target <TARGET_NAME> (added to ALL). If swiftc isn't available
@@ -33,13 +33,12 @@
 # instead of failing the configure — callers don't need their own guard.
 
 find_program(SWIFTC_EXECUTABLE swiftc)
-find_program(LIPO_EXECUTABLE lipo)
 
 function(add_swift_framework TARGET_NAME)
     if(TARGET "${TARGET_NAME}")
         message(FATAL_ERROR "add_swift_framework(): Target '${TARGET_NAME}' already exists!")
-    elseif(NOT APPLE OR NOT SWIFTC_EXECUTABLE OR NOT LIPO_EXECUTABLE)
-        message(WARNING "add_swift_framework(): Non-Apple platform or swiftc/lipo missing -- skipping. ")
+    elseif(NOT APPLE OR NOT SWIFTC_EXECUTABLE)
+        message(WARNING "add_swift_framework(): Non-Apple platform or swiftc missing -- skipping.")
         add_library("${TARGET_NAME}" INTERFACE)
         return()
     endif()
@@ -51,11 +50,8 @@ function(add_swift_framework TARGET_NAME)
         ${ARGN}
     )
 
-    if(NOT ARG_MODULEMAP)
-        message(FATAL_ERROR "add_swift_framework(): MODULEMAP is required!")
-    endif()
-    if(NOT ARG_SOURCES)
-        message(FATAL_ERROR "add_swift_framework(): SOURCES is required!")
+    if(NOT ARG_MODULEMAP OR NOT ARG_SOURCES)
+        message(FATAL_ERROR "add_swift_framework(): MODULEMAP and SOURCE are required!")
     endif()
     if(NOT ARG_NAME)
         set(ARG_NAME "${TARGET_NAME}")
@@ -65,7 +61,7 @@ function(add_swift_framework TARGET_NAME)
     _make_absolute(ARG_APINOTES)
     _make_absolute(ARG_HEADERS)
     _make_absolute(ARG_SOURCES)
-    
+
     set(fw_target       "${TARGET_NAME}")
     set(fw_name         "${ARG_NAME}.framework")
     set(fw_dir          "${CMAKE_CURRENT_BINARY_DIR}/${fw_name}")
@@ -75,20 +71,18 @@ function(add_swift_framework TARGET_NAME)
     set(ver_modules     "${ver_dir}/Modules")
     set(ver_swiftmodule "${ver_modules}/${ARG_NAME}.swiftmodule")
     set(ver_binary      "${ver_dir}/${ARG_NAME}")
-    
+
     set(sdk_path        ${CMAKE_OSX_SYSROOT})
     if(NOT sdk_path)
         execute_process(
-            COMMAND xcrun --show-sdk-path 
-            OUTPUT_VARIABLE sdk_path 
+            COMMAND xcrun --show-sdk-path
+            OUTPUT_VARIABLE sdk_path
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
     endif()
 
     # ------------------------------------------------------------------
     # 1) prepare — Versions/<v>/{Headers,Modules} + the Current/ Symlinks
-    #   Must exist before compiling: that's how `-import-underlying-module` 
-    #   finds the Clang half of the module.
     # ------------------------------------------------------------------
     set(prepare_stamp "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}_framework_prepare.stamp")
 
@@ -110,9 +104,7 @@ function(add_swift_framework TARGET_NAME)
         )
     endif()
 
-    string(TOLOWER "${ARG_NAME}" HEADER_PREFIX )
     list(APPEND prepare_steps
-        COMMAND ${CMAKE_COMMAND} -E create_symlink "." "${ver_headers}/${HEADER_PREFIX}"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "${fw_ver}" "${fw_dir}/Versions/Current"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "Versions/Current/Headers" "${fw_dir}/Headers"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "Versions/Current/Modules" "${fw_dir}/Modules"
@@ -129,60 +121,48 @@ function(add_swift_framework TARGET_NAME)
     )
 
     # ------------------------------------------------------------------
-    # 2) compile — multi-architecture compilation && binaries merging
+    # 2) compile — for the architecture of host only
     # ------------------------------------------------------------------
-    set(target_archs ${CMAKE_OSX_ARCHITECTURES})
-    if(NOT target_archs)
-        set(target_archs "${CMAKE_SYSTEM_PROCESSOR}")
+    set(arch ${CMAKE_SYSTEM_PROCESSOR})
+    if(CMAKE_OSX_ARCHITECTURES)
+        list(GET CMAKE_OSX_ARCHITECTURES 0 arch)
     endif()
-    
-    set(slice_binaries "")
-    set(swiftc_commands "")
-
-    foreach(arch IN LISTS target_archs)
-        set(min_ver "11.0")
-        if(arch STREQUAL "x86_64")
-            set(min_ver "10.15")
-        endif()
-        set(effective_ver ${CMAKE_OSX_DEPLOYMENT_TARGET})
-        if(NOT effective_ver OR effective_ver VERSION_LESS min_ver)
-            set(effective_ver ${min_ver})
-        endif()
-
-        set(triple "${arch}-apple-macosx${effective_ver}")
-        set(slice_bin "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}_${triple}.slice")
-        list(APPEND slice_binaries "${slice_bin}")
-        list(APPEND swiftc_commands
-            COMMAND ${SWIFTC_EXECUTABLE}
-                    -emit-library
-                    -emit-module 
-                    -enable-library-evolution
-                    -target ${triple}
-                    -emit-module-path "${ver_swiftmodule}/${arch}-apple-macos.swiftmodule"
-                    -emit-module-interface-path "${ver_swiftmodule}/${arch}-apple-macos.swiftinterface"
-                    -import-underlying-module -module-name "${ARG_NAME}"
-                    -sdk "${sdk_path}"
-                    -F "${CMAKE_CURRENT_BINARY_DIR}"
-                    -Xlinker -install_name -Xlinker "@rpath/${fw_name}/${ARG_NAME}"
-                    ${ARG_LINK_FLAGS}
-                    -o "${slice_bin}"
-                    ${ARG_SOURCES} ${ARG_OBJECTS}
-        )
-    endforeach()
+    set(min_ver "11.0")
+    if(arch STREQUAL "x86_64")
+        set(min_ver "10.15")
+    endif()
+    set(effective_ver ${CMAKE_OSX_DEPLOYMENT_TARGET})
+    if(NOT effective_ver OR effective_ver VERSION_LESS min_ver)
+        set(effective_ver ${min_ver})
+    endif()
+    set(triple "${arch}-apple-macosx${effective_ver}")
 
     add_custom_command(
         OUTPUT  ${ver_binary}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${ver_swiftmodule}"
-        ${swiftc_commands}
-        COMMAND ${LIPO_EXECUTABLE} -create ${slice_binaries} -output "${ver_binary}"
+        COMMAND ${SWIFTC_EXECUTABLE}
+                -emit-library
+                -emit-module
+                -enable-library-evolution
+                -target ${triple}
+                -emit-module-path "${ver_swiftmodule}/${arch}-apple-macos.swiftmodule"
+                -emit-module-interface-path "${ver_swiftmodule}/${arch}-apple-macos.swiftinterface"
+                -import-underlying-module -module-name "${ARG_NAME}"
+                -sdk "${sdk_path}"
+                -F "${CMAKE_CURRENT_BINARY_DIR}"
+                -Xlinker -install_name -Xlinker "@rpath/${fw_name}/${ARG_NAME}"
+                ${ARG_LINK_FLAGS}
+                -o "${ver_binary}"
+                ${ARG_SOURCES} ${ARG_OBJECTS}
         DEPENDS "${prepare_stamp}" ${ARG_SOURCES} ${ARG_OBJECTS}
+
         COMMAND_EXPAND_LISTS
-        COMMENT "Compiling ${fw_name} [${target_archs}]"
+        COMMENT "Compiling ${fw_name} [${arch}]"
         VERBATIM
     )
 
     # ------------------------------------------------------------------
-    # 3) Target export 
+    # 3) Target export
     # ------------------------------------------------------------------
 
     set(fw_build_target "${ARG_NAME}_framework_build")
@@ -191,19 +171,18 @@ function(add_swift_framework TARGET_NAME)
     add_library(${fw_target} INTERFACE)
     add_dependencies(${fw_target} "${fw_build_target}")
 
-    target_compile_options(${fw_target} INTERFACE 
+    target_compile_options(${fw_target} INTERFACE
         $<BUILD_INTERFACE:-F${CMAKE_CURRENT_BINARY_DIR}>
     )
-    target_link_libraries(${fw_target} INTERFACE 
+    target_link_libraries(${fw_target} INTERFACE
         $<BUILD_INTERFACE:-F${CMAKE_CURRENT_BINARY_DIR}>
         "-framework ${ARG_NAME}"
     )
     set_target_properties(${fw_target} PROPERTIES
         FRAMEWORK_NAME "${ARG_NAME}"
-        FRAMEWORK_PATH "${fw_dir}"
+        FRAMEWORK_PATH "$<BUILD_INTERFACE:${fw_dir}>$<INSTALL_INTERFACE:Frameworks/${fw_name}>"
     )
 endfunction()
-
 
 macro(_make_absolute paths)
     if(DEFINED ${paths} AND NOT "${${paths}}" STREQUAL "")

@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #define CUBE_VERSION        "@CUBE_VERSION@"
 #define CUBE_VERSION_FULL   "@CUBE_VERSION_FULL@"
@@ -20,17 +20,34 @@
 #define CUBE_VER_MSK_MINOR_ ((1U << CUBE_VER_BIT_MINOR_) - 1)
 #define CUBE_VER_MSK_PATCH_ ((1U << CUBE_VER_BIT_PATCH_) - 1)
 
-#if 0 > CUBE_VERSION_MAJOR || CUBE_VERSION_MAJOR > CUBE_VER_MSK_MAJOR_
+#if CUBE_VERSION_MAJOR > CUBE_VER_MSK_MAJOR_
 #   error "CUBE_VERSION_MAJOR out of range [0..31]"
 #endif
-#if 0 > CUBE_VERSION_MINOR || CUBE_VERSION_MINOR > CUBE_VER_MSK_MINOR_
+#if CUBE_VERSION_MINOR > CUBE_VER_MSK_MINOR_
 #   error "CUBE_VERSION_MINOR out of range [0..127]"
 #endif
-#if 0 > CUBE_VERSION_PATCH || CUBE_VERSION_PATCH > CUBE_VER_MSK_PATCH_
+#if CUBE_VERSION_PATCH > CUBE_VER_MSK_PATCH_
 #   error "CUBE_VERSION_PATCH out of range [0..15]"
 #endif
 
-#define CUBE_VERSION_CODE (\
+#define CUBE_VERSION_CODE_ (\
     ((CUBE_VERSION_MAJOR & CUBE_VER_MSK_MAJOR_) << CUBE_VER_SFT_MAJOR_) | \
     ((CUBE_VERSION_MINOR & CUBE_VER_MSK_MINOR_) << CUBE_VER_SFT_MINOR_) | \
     ((CUBE_VERSION_PATCH & CUBE_VER_MSK_PATCH_) << CUBE_VER_SFT_PATCH_) )
+
+#ifdef __cplusplus
+inline constexpr unsigned int cube_version_code = CUBE_VERSION_CODE_;
+#else
+enum { cube_version_code = CUBE_VERSION_CODE_ };
+#endif
+
+#undef CUBE_VER_BIT_MAJOR_
+#undef CUBE_VER_BIT_MINOR_
+#undef CUBE_VER_BIT_PATCH_
+#undef CUBE_VER_SFT_MAJOR_
+#undef CUBE_VER_SFT_MINOR_
+#undef CUBE_VER_SFT_PATCH_
+#undef CUBE_VER_MSK_MAJOR_
+#undef CUBE_VER_MSK_MINOR_
+#undef CUBE_VER_MSK_PATCH_
+#undef CUBE_VERSION_CODE_

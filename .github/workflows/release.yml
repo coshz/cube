@@ -5,9 +5,9 @@ on:
     tags:
       - 'v*'
     branches:
-      - 'fix/ci-debug'
+      - 'ci/**'
   pull_request:
-    branches:    
+    branches:
       - 'main'
   workflow_dispatch:
 
@@ -16,13 +16,13 @@ jobs:
     name: Build & Pack on ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false  
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             arch: x86_64
             cmake_flags: ""
-          - os: macos-latest
+          - os: macos-13
             arch: x86_64
             cmake_flags: "-DBUILD_SWIFT_MODULE=on -DCMAKE_OSX_ARCHITECTURES=x86_64"
             generator: "-G Ninja"
@@ -34,7 +34,6 @@ jobs:
             arch: x64
             cmake_flags: ""
             generator: "-G Ninja"
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,9 +47,9 @@ jobs:
         if: startsWith(matrix.os, 'windows')
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Configure CMake 
+      - name: Configure CMake
         shell: bash
-        run: | 
+        run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             ${{ matrix.generator }} \
@@ -59,35 +58,73 @@ jobs:
       - name: Build
         shell: bash
         run: cmake --build build --config Release
-          
-      - name: Package 
+
+      - name: Package
         shell: bash
         run: cmake --build build --target package --config Release
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
-        with: 
+        with:
           name: dist-${{ matrix.os }}-${{ matrix.arch }}
-          path: | 
+          path: |
             build/dist/*
             !build/dist/_CPack_Packages
+            dist/*.xcframework.zip
+            dist/*.xcframework.zip.sha256
+          if-no-files-found: error
+
+  build-xcframework:
+    name: Build XCFramework (universal)
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Ninja
+        run: brew install ninja
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -G Ninja -B build
+
+      - name: Build XCFramework
+        shell: bash
+        run: |
+          bash dev/scripts/build_xcframework.sh
+          for zip in dist/*.xcframework.zip; do
+            [ -e "$zip" ] || continue
+            sha=$(shasum -a 256 "$zip" | cut -d' ' -f1)
+            echo "$sha" > "$zip.sha256"
+          done
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-xcframework
+          path: |
+            dist/*.xcframework.zip
+            dist/*.xcframework.zip.sha256
           if-no-files-found: error
 
   publish-release:
     name: Create GitHub Release
-    needs: [build-and-package]
+    needs: [build-and-package, build-xcframework]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: dists
           merge-multiple: true
-      
+
       - name: Display downloaded files
         run: |
           ls -R dists

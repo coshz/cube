@@ -3,7 +3,6 @@ name = "cube-rust"
 version = "0.5.1"
 edition = "2021"
 rust-version = "1.70"
-authors = ["coshz <fsinhx@gmail.com>"]
 description = "A efficient Rubik's Cube solver library"
 documentation = "https://docs.rs/cube-rust"
 homepage = "https://github.com/coshz/cube"
@@ -31,7 +30,7 @@ include = [
 cc = "1.0"
 
 [profile.release]
-opt-level = 3        
-lto = true           
-codegen-units = 1    
+opt-level = 3
+lto = true
+codegen-units = 1
 panic = "abort"

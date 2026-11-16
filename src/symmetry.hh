@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-namespace cube::symmetry {
+namespace cube::pdb::symmetry {
 
 using cube::CubieCube;
 using namespace cube::pdb;

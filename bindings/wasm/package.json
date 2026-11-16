@@ -48,7 +48,7 @@
         "dist"
     ],
     "scripts": {
-        "build:wasm": "rimraf dist/internal && make -f ../../dev/gen_wasm.mk",
+        "build:wasm": "rimraf dist/internal && make -f ../../dev/make/gen_wasm.mk",
         "build:ts": "tsc --build --force",
         "build:clean": "rimraf --glob \"dist/!(internal)\" tsconfig.tsbuildinfo",
         "build": "npm run build:clean && npm run build:wasm && npm run build:ts",

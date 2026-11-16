@@ -7,7 +7,6 @@ dist
 dist-*
 /doc
 .clangd
-.editorconfig
 .cache/
 __pycache__
 *.code-workspace

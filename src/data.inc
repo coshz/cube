@@ -12,7 +12,7 @@ L7 L8 L9 F7 F8 F9 R7 R8 R9 B7 B8 B9
 
 enum Face       { U1,U2,U3,U4,U5,U6,U7,U8,U9,R1,R2,R3,R4,R5,R6,R7,R8,R9,F1,F2,F3,F4,F5,F6,F7,F8,F9,D1,D2,D3,D4,D5,D6,D7,D8,D9,L1,L2,L3,L4,L5,L6,L7,L8,L9,B1,B2,B3,B4,B5,B6,B7,B8,B9 };
 enum Layer      { U,R,F,D,L,B };
-enum TurnMove   { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
+enum TurnMove   { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3,Nop };
 enum Symmetry   { S_URF3,S_F2,S_U4,S_LR2 };
 
 enum ColorIndex { UCol,RCol,FCol,DCol,LCol,BCol,NoCol };
@@ -52,7 +52,7 @@ const EdgeNeighbour     EN  = {{URF,UBR},{UFL,URF},{ULB,UFL},{UBR,ULB},{DRB,DFR}
  *      (p <*> q)[i] = p[q[i]]  -- (right action)
  *  (2) carry to:
  *      (p . X)[p[i]] = X[i]
- *      (q <.> p)[i] = q[p[i]]  -- (left action) 
+ *      (q <.> p)[i] = q[p[i]]  -- (left action)
  * Symobols:
  * From above, p <*> q = p <.> q denoting p * q, right acting denoting x * p and
  * left acting denoting p * x.
@@ -83,11 +83,11 @@ const Facelet FaceletSym[4] = {
  * clockwise from its standard orientation.
  */
 const CornerCubie CornerCubieMove[6] = {
-    {{UBR,0},{URF,0},{UFL,0},{ULB,0},{DFR,0},{DLF,0},{DBL,0},{DRB,0}},  
-    {{DFR,2},{UFL,0},{ULB,0},{URF,1},{DRB,1},{DLF,0},{DBL,0},{UBR,2}},  
-    {{UFL,1},{DLF,2},{ULB,0},{UBR,0},{URF,2},{DFR,1},{DBL,0},{DRB,0}},  
-    {{URF,0},{UFL,0},{ULB,0},{UBR,0},{DLF,0},{DBL,0},{DRB,0},{DFR,0}},  
-    {{URF,0},{ULB,1},{DBL,2},{UBR,0},{DFR,0},{UFL,2},{DLF,1},{DRB,0}},  
+    {{UBR,0},{URF,0},{UFL,0},{ULB,0},{DFR,0},{DLF,0},{DBL,0},{DRB,0}},
+    {{DFR,2},{UFL,0},{ULB,0},{URF,1},{DRB,1},{DLF,0},{DBL,0},{UBR,2}},
+    {{UFL,1},{DLF,2},{ULB,0},{UBR,0},{URF,2},{DFR,1},{DBL,0},{DRB,0}},
+    {{URF,0},{UFL,0},{ULB,0},{UBR,0},{DLF,0},{DBL,0},{DRB,0},{DFR,0}},
+    {{URF,0},{ULB,1},{DBL,2},{UBR,0},{DFR,0},{UFL,2},{DLF,1},{DRB,0}},
     {{URF,0},{UFL,0},{UBR,1},{DRB,2},{DFR,0},{DLF,0},{ULB,2},{DBL,1}}
 };
 
@@ -108,9 +108,9 @@ const EdgeCubie EdgeCubieMove[6] = {
 };
 
 const CornerCubie CornerCubieSym[4] = {
-    {{URF,1},{DFR,2},{DLF,1},{UFL,2},{UBR,2},{DRB,1},{DBL,2},{ULB,1}},   
-    {{DLF,0},{DFR,0},{DRB,0},{DBL,0},{UFL,0},{URF,0},{UBR,0},{ULB,0}},   
-    {{UBR,0},{URF,0},{UFL,0},{ULB,0},{DRB,0},{DFR,0},{DLF,0},{DBL,0}},  
+    {{URF,1},{DFR,2},{DLF,1},{UFL,2},{UBR,2},{DRB,1},{DBL,2},{ULB,1}},
+    {{DLF,0},{DFR,0},{DRB,0},{DBL,0},{UFL,0},{URF,0},{UBR,0},{ULB,0}},
+    {{UBR,0},{URF,0},{UFL,0},{ULB,0},{DRB,0},{DFR,0},{DLF,0},{DBL,0}},
     {{UFL,3},{URF,3},{UBR,3},{ULB,3},{DLF,3},{DFR,3},{DRB,3},{DBL,3}}
 };
 

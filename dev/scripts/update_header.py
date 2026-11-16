@@ -11,7 +11,7 @@ DEFAULT_CONFIG = {
     "homepage": "https://github.com/coshz/cube",
     "license": "MIT",
     "version": "0.1.0.0",
-    "year": str(datetime.now().year), 
+    "year": str(datetime.now().year),
     "date": datetime.now().strftime("%Y-%m-%d"),
     "extensions": (".cpp", ".hpp", ".h", ".hh", ".c"),
     "targets": ["."]
@@ -31,13 +31,12 @@ def get_header_template(config):
  *
  * Copyright (c) {config["year"]} {config["author"]}. All rights reserved.
  */
-
 """
 
 
 def process_file(file_path, config, header_template):
     filename = os.path.basename(file_path)
-    
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -58,16 +57,16 @@ def process_file(file_path, config, header_template):
         print(f"[ERROR] Failed to process {file_path}: {e}")
 
 
-def make_parser(): 
+def make_parser():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Batch insert or update file header comments in C/C++ source files."
     )
-    
+
     # Target positions and flags
     parser.add_argument(
-        "targets", 
-        nargs="*", 
+        "targets",
+        nargs="*",
         help="Target files or directories to process (default: current directory '.')"
     )
     parser.add_argument("--author", type=str, help=f"Author info (default: '{DEFAULT_CONFIG['author']}')")
@@ -78,8 +77,8 @@ def make_parser():
     parser.add_argument("--year", type=str, help=f"Copyright year (default: '{DEFAULT_CONFIG['year']}')")
     parser.add_argument("--date", type=str, help=f"Date string (default: '{DEFAULT_CONFIG['date']}')")
     parser.add_argument(
-        "--extensions", 
-        type=str, 
+        "--extensions",
+        type=str,
         help="Comma-separated file extensions to target (e.g., '.cpp,.h,.c')"
     )
     return parser
@@ -107,7 +106,7 @@ def build_config(args):
         config["date"] = args.date
     if args.extensions:
         exts = [
-            e.strip() if e.strip().startswith(".") else f".{e.strip()}" 
+            e.strip() if e.strip().startswith(".") else f".{e.strip()}"
             for e in args.extensions.split(",")
         ]
         config["extensions"] = tuple(exts)
@@ -138,7 +137,7 @@ def main():
                         process_file(full_path, config, header_template)
         else:
             print(f"[WARN] Target path does not exist: {target}")
-            
+
     print("\n=== Complete! ===")
 
 

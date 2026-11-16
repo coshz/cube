@@ -25,7 +25,7 @@ val wasm_solve(
 EMSCRIPTEN_BINDINGS(cube_module) {
     constant("cubeId", std::string(cube::cubeId));
     function("cube_init",+[](bool use_symmetry, std::string table_dir){
-        cube::cube_init(use_symmetry, table_dir);
+        cube::init(use_symmetry, table_dir);
     });
     function("solve", &wasm_solve);
     function("facecube", +[](std::string maneuver, std::string cube) {

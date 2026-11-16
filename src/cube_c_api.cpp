@@ -1,6 +1,5 @@
 #include "cube/cube.h"
 #include "cube/cube.hh"
-#include "cube/advanced.hh"
 #include <cstring>
 #include <string_view>
 
@@ -8,7 +7,7 @@ extern "C" {
 
 void cube_init(bool use_symmetry, const char* dir)
 {
-    cube::cube_init(use_symmetry, dir ? std::string_view(dir) : std::string_view{});
+    cube::init(use_symmetry, dir ? dir : "");
 }
 
 const char* solve_result_to_string(int sr)

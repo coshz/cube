@@ -26,7 +26,7 @@ version:            0.5.1.0
 synopsis:           High-performance, type-safe Rubik's Cube solver with C FFI bindings.
 
 -- A longer description of the package.
-description:        A professional Haskell library providing algebraic operations and zero-cost FFI bindings to C solvers for Rubik's Cube. 
+description:        A professional Haskell library providing algebraic operations and zero-cost FFI bindings to C solvers for Rubik's Cube.
 
 -- The license under which the package is released.
 license:            MIT
@@ -88,7 +88,7 @@ library
 
     cxx-sources:        cbits/cube_amalg.min.cpp
     include-dirs:       cbits
-    cxx-options:        -std=c++17 -O3 -DCUBE_USE_SYMMETRY=1 -DCUBE_ENABLE_TRACE=1
+    cxx-options:        -std=c++17 -O3 -DCUBE_ENABLE_TRACE=1
 
 test-suite cube-hs-test
     -- Import common warning flags.

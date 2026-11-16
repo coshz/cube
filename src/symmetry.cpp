@@ -5,7 +5,7 @@
 #include <limits>
 #include <memory>
 
-namespace cube::symmetry {
+namespace cube::pdb::symmetry {
 
 void SymReduction::build_emb_corner(CornerDom& emb, const CornerConj& conj)
 {

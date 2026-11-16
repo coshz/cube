@@ -2,10 +2,8 @@
 // Copyright (c) 2026 coshz
 
 #pragma once
-
-#include "cube/cube_export.h"
-#include "cube/version.h"
-
+#include "cube_export.h"
+#include "version.h"
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -56,9 +54,23 @@ struct Solution {
 };
 
 /*!
- * @brief Checks if a color configuration is solvable.
+ * @brief Initialize the cube library by loading or building lookup tables.
+ * @param use_symmetry Select the table set:
+ *      - `false`: smaller (<10 MB), fast to build, slower solving;
+ *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
+ *      This is a memory/disk/build-time vs solve-speed trade-off.
+ * @param dir Directory for reading and writting table files.
+ *      Empty means the default directory (see @ref get_table_dir()).
+ *      Tables are loaded if present; otherwise they are built and written here.
+ * @note Only the first call takes effect; call it before the first @ref solve,
+ *      which invokes it with default arguments.
+ * @warning With `use_symmetry = true`, the first run may take minutes and write
+ *      ~260 MB of data to @p dir.
  */
-CUBE_EXPORT bool is_solvable(std::string_view color_cube);
+CUBE_EXPORT void init(
+    bool use_symmetry = true,
+    std::string_view dir = {}
+);
 
 /*!
  * @brief Solves the Rubik's cube from source state to target state.
@@ -72,6 +84,11 @@ CUBE_EXPORT bool is_solvable(std::string_view color_cube);
     std::string_view tgt = cubeId,
     int good = 22
 );
+
+/*!
+ * @brief Checks if a color configuration is solvable.
+ */
+CUBE_EXPORT bool is_solvable(std::string_view color_cube);
 
 /*!
  * @brief Applies a sequence of moves to a color cube.

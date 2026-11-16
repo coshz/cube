@@ -1,26 +1,22 @@
 cmake_minimum_required(VERSION 3.28)
 
 if(APPLE)
-    if(NOT CMAKE_OSX_ARCHITECTURES)
-        set(CMAKE_OSX_ARCHITECTURES ${CMAKE_SYSTEM_PROCESSOR} CACHE STRING "Supported macOS architectures")
-    endif()
     if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment target")
     endif()
-
     if(BUILD_SWIFT_MODULE AND NOT CMAKE_GENERATOR STREQUAL "Ninja")
         message(FATAL_ERROR "ninja is required if BUILD_SWIFT_MODULE is enabled")
     endif()
 endif()
 
-# version info (read from file / string)
+# version info
 include("cmake/Modules/CubeVersion.cmake")
 configure_version(CUBE
     FILE "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
 )
 
-project(cube 
-    VERSION ${CUBE_VERSION} 
+project(cube
+    VERSION ${CUBE_VERSION}
     LANGUAGES CXX
 )
 
@@ -44,15 +40,13 @@ endif()
 # Options
 # ------------------------------------------------------------------------------
 
-set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
+set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type")
 set(CUBE_PACK_DIR "${PROJECT_BINARY_DIR}/dist" CACHE STRING "Cube packaging directory")
 
-option(BUILD_STATIC_LIBS "Build cube static library" ON)
-option(BUILD_SWIFT_MODULE "Build Apple Cube.framework and Swift module map" ON)
-option(CUBE_USE_SYMMETRY "Use symmetry tables" ON)
+option(BUILD_STATIC_LIBS "Build static library" ON)
+option(BUILD_SWIFT_MODULE "Build Cube.framework" ON)
 option(CUBE_ENABLE_TRACE "Enable tracing table generation" $<IF:$<CONFIG:Debug>,ON,OFF>)
 option(ENABLE_TEST "Enable testing" OFF)
-# option(ENABLE_BENCHMARK "Enable benchmark" OFF)
 
 # ------------------------------------------------------------------------------
 # Generated headers
@@ -60,10 +54,11 @@ option(ENABLE_TEST "Enable testing" OFF)
 
 set(CUBE_BUILD_INCLUDE_DIR "${PROJECT_BINARY_DIR}/include" )
 
-set(cube_public_headers 
+set(cube_public_headers
     cube.h
     cube.hh
     advanced.hh
+    cube_export.h
 )
 
 foreach(header IN LISTS cube_public_headers)
@@ -100,17 +95,17 @@ set(CPACK_PACKAGE_DIRECTORY ${CUBE_PACK_DIR})
 string(TOLOWER "${CPACK_PACKAGE_NAME}-${CUBE_VERSION}-${CMAKE_SYSTEM_NAME}-${system_proc}" CPACK_PACKAGE_FILE_NAME)
 
 if(NOT CPACK_GENERATOR)
-    if(WIN32) 
-        set(CPACK_GENERATOR "ZIP") 
-    else() 
-        set(CPACK_GENERATOR "TGZ") 
+    if(WIN32)
+        set(CPACK_GENERATOR "ZIP")
+    else()
+        set(CPACK_GENERATOR "TGZ")
     endif()
 endif()
 
 include(CPack)
 
 # ------------------------------------------------------------------------------
-# Build 
+# Build
 # ------------------------------------------------------------------------------
 
 add_subdirectory(src)   # library
@@ -121,12 +116,12 @@ if(BUILD_SWIFT_MODULE AND APPLE)
 endif()
 
 if(ENABLE_TEST)
-    enable_testing() 
+    enable_testing()
     add_subdirectory(test)
 endif()
 
 # ------------------------------------------------------------------------------
-# Cmake package
+# Package
 # ------------------------------------------------------------------------------
 
 write_basic_package_version_file(
@@ -138,14 +133,14 @@ write_basic_package_version_file(
 configure_package_config_file(
     "${PROJECT_SOURCE_DIR}/cmake/Templates/CubeConfig.cmake.in"
     "${PROJECT_BINARY_DIR}/CubeConfig.cmake"
-    INSTALL_DESTINATION 
+    INSTALL_DESTINATION
         "${CMAKE_INSTALL_LIBDIR}/cmake/cube"
 )
 
 install(
-    EXPORT "${PROJECT_NAME}Targets" 
-    FILE CubeTargets.cmake 
-    NAMESPACE Cube:: 
+    EXPORT "${PROJECT_NAME}Targets"
+    FILE CubeTargets.cmake
+    NAMESPACE Cube::
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/cube"
 )
 
@@ -172,39 +167,41 @@ install(
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
 )
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Configuration Summary
 # ------------------------------------------------------------------------------
 
 message(STATUS "--------------------------------------------------------------")
-message(STATUS "  ${PROJECT_NAME} v${PROJECT_VERSION} Configuration Summary")
+message(STATUS "The Configuration Summary of ${PROJECT_NAME}")
+message(STATUS "  Project Verison: ${PROJECT_VERSION}")
+message(STATUS "  Build Version  : ${CUBE_VERSION_FULL}")
 message(STATUS "--------------------------------------------------------------")
-message(STATUS "")
 message(STATUS "Environment:")
 message(STATUS "  OS                    : ${CMAKE_SYSTEM_NAME}")
 message(STATUS "  Camke Generator       : ${CMAKE_GENERATOR}")
-message(STATUS "  C++ Compiler          : ${CMAKE_CXX_COMPILER}")
+message(STATUS "  C++ Standard          : ${CMAKE_CXX_STANDARD}")
 message(STATUS "")
 message(STATUS "Options:")
 message(STATUS "  Bulid Static Libraries: ${BUILD_STATIC_LIBS}")
 message(STATUS "  Build Swift Module    : ${BUILD_SWIFT_MODULE}")
-message(STATUS "  Use Symmetry          : ${CUBE_USE_SYMMETRY}")
-message(STATUS "  Output Trace          : ${CUBE_ENABLE_TRACE}")
+message(STATUS "  Trace Output          : ${CUBE_ENABLE_TRACE}")
 message(STATUS "  Enable Testing        : ${ENABLE_TEST}")
 message(STATUS "")
 message(STATUS "Build Configuration:")
-message(STATUS "  C++ Standard          : ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build Type            : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Build Directory       : ${PROJECT_BINARY_DIR}")
 message(STATUS "  Install Prefix        : ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "  Package Directory     : ${CUBE_PACK_DIR}")
 message(STATUS "")
-message(STATUS "Available Targets:")
-message(STATUS "  all (default)         : Build the project")
-message(STATUS "  install               : Install built artifacts to CMAKE_INSTALL_PREFIX")
-message(STATUS "  package               : Package sdk")
-message(STATUS "")
-message(STATUS "Use")
-message(STATUS "  'cmake -B <build> -D<key>=<value>' to configure project;")
-message(STATUS "  'cmake --build <build> --target <target>' to execute build tasks.")
+message(STATUS "Available Commands:")
+message(STATUS "  Configure (See 'Options' and 'Build Configuration' above)")
+message(STATUS "    'cmake -B <build> -D<key>=<value>'")
+message(STATUS "  Build (All targets: {all(default),cube_shared,cube_static,icube})")
+message(STATUS "    'cmake --build <build>'")
+message(STATUS "    'cmake --build <build> --target <target>'")
+message(STATUS "  Install")
+message(STATUS "    'cmake --install <build>'")
+message(STATUS "    'cmake --install <build> --prefix <prefix>'")
+message(STATUS "  Package")
+message(STATUS "    'cmake --build <build> --target package'")
 message(STATUS "--------------------------------------------------------------")

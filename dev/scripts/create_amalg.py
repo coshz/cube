@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-
+"""
+Create a amalg
+"""
 import argparse
-import re 
+import re
 import os
 from typing import Tuple, Optional
 
@@ -23,9 +25,9 @@ def make_parser():
 
 def resolve_header_path(
     header_name: str, current_dir, include_dirs: list[str]
-) -> Optional[str]: 
+) -> Optional[str]:
     cand = os.path.abspath(os.path.join(current_dir, header_name))
-    if os.path.isfile(cand): 
+    if os.path.isfile(cand):
         return cand
     for d in include_dirs:
         cand = os.path.abspath(os.path.join(d, header_name))
@@ -39,7 +41,7 @@ def remove_comments(text: str) -> str:
         r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
         re.DOTALL | re.MULTILINE
     )
-    def replacer(match): 
+    def replacer(match):
         s = match.group(0)
         return "" if s.startswith("/") else s
     return re.sub(pattern, replacer, text)
@@ -47,11 +49,11 @@ def remove_comments(text: str) -> str:
 
 def expand_cpp_file(
     path: str, include_dirs: list[str], visited_headers: set[str]
-) -> Tuple[list[str], str]: 
+) -> Tuple[list[str], str]:
     """
     Expand a c++ header or source file
 
-    Return: 
+    Return:
         a list of public header files, the remaining content
     """
     includes = []
@@ -72,7 +74,7 @@ def expand_cpp_file(
             if m:
                 header_name = m.group(1)
                 header_path = resolve_header_path(header_name, current_dir, include_dirs)
-                if header_path: 
+                if header_path:
                     incl, cont = expand_cpp_file(header_path, include_dirs, visited_headers)
                     includes.extend(incl)
                     content += cont
@@ -94,7 +96,7 @@ def expand_cpp_sources(
         includes.extend(includes_)
         content += content_
 
-    # clean duplicated headers 
+    # clean duplicated headers
     includes = list(dict.fromkeys(includes))
 
     if compacted:

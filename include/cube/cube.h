@@ -2,10 +2,8 @@
 // Copyright (c) 2026 coshz
 
 #pragma once
-
-#include "cube/cube_export.h" // CUBE_EXPORT
-#include "cube/version.h"
-
+#include "cube_export.h" // CUBE_EXPORT
+#include "version.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -108,12 +106,12 @@ typedef CF_ENUM(int32_t,SolveResult) {
 static inline const char* solve_result_info(SolveResult sr)
 {
     switch(sr) {
-    case SolveResultSuccess:    return "Success.";
-    case SolveResultUnsolvable: return "The cube configuration is unsolvable.";
-    case SolveResultNotFound:   return "No solution found within the step limit.";
-    case SolveResultInvalidSrc: return "Invalid source color configuration.";
-    case SolveResultInvalidTgt: return "Invalid target color configuration.";
-    case SolveResultUnknownErr: return "Unknown error.";
+    case SolveResultSuccess:    return "Success";
+    case SolveResultUnsolvable: return "The cube configuration is unsolvable";
+    case SolveResultNotFound:   return "No solution found within the step limit";
+    case SolveResultInvalidSrc: return "Invalid source color configuration";
+    case SolveResultInvalidTgt: return "Invalid target color configuration";
+    case SolveResultUnknownErr: return "Unknown error";
     default:                    return "???";
     }
 }
@@ -131,7 +129,7 @@ CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
  *      - `false`: smaller (<10 MB), fast to build, slower solving;
  *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
  *      This is a memory/disk/build-time vs solve-speed trade-off.
- * @param dir Directory for reading and writting table files.
+ * @param table_dir Directory for reading and writting table files.
  *      NULL means the default directory (see @ref get_table_dir()).
  *      Tables are loaded if present; otherwise they are built and written here.
  * @note Only the first call takes effect; call it before the first @ref solve,
@@ -140,8 +138,8 @@ CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
  *      ~260 MB of data to @p dir.
  */
 CUBE_EXPORT void cube_init(
-    bool use_symmetry   Default(CUBE_USE_SYMMETRY),
-    const char* dir     Default(0)
+    bool use_symmetry       Default(true),
+    const char* table_dir   Default(0)
 );
 
 /*!

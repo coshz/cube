@@ -2,11 +2,10 @@ fn main() {
     let mut build = cc::Build::new();
 
     build
-        .cpp(true)                 
-        .std("c++17")              
-        .opt_level(2)    
-        .define("CUBE_USE_SYMMETRY", "1")
-        .define("CUBE_ENABLE_TRACE", "1")          
+        .cpp(true)
+        .std("c++17")
+        .opt_level(2)
+        .define("CUBE_ENABLE_TRACE", "1")
         .flag_if_supported("-Wno-sign-compare")
         .flag_if_supported("-Wno-unused-variable")
         .file("cxx/cube_amalg.min.cpp");

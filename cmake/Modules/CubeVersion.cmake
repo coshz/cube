@@ -27,10 +27,10 @@ include_guard(GLOBAL)
 #   configure_version(CUBE_PYTHON STRING "v0.4.1-beta")
 #=============================================================================
 function(configure_version NAME_PREFIX)
-    cmake_parse_arguments(ARG 
-        "" 
-        "STRING;FILE" 
-        "" 
+    cmake_parse_arguments(ARG
+        ""
+        "STRING;FILE"
+        ""
         ${ARGN}
     )
     if(ARG_STRING)
@@ -42,11 +42,11 @@ function(configure_version NAME_PREFIX)
         file(READ "${ARG_FILE}" RAW_VERSION)
         string(STRIP "${RAW_VERSION}" RAW_VERSION)
     else()
-        message(FATAL_ERROR "invalid argument: one of FILE or STRING must be provided")
+        message(FATAL_ERROR "Missing argument: either FILE or STRING is required")
     endif()
-    
-    string(REGEX REPLACE "^[vV]" "" ver_cleaned "${RAW_VERSION}")
-    if(NOT ver_cleaned MATCHES "^(([0-9]+)\\.([0-9]+)\\.([0-9]+))(-([A-Za-z0-9.-]+))?(\\+([A-Za-z0-9.-]+))?$")
+
+    set(re_ver "^[vV]?(([0-9]+)\\.([0-9]+)\\.([0-9]+))(-([A-Za-z0-9.-]+))?(\\+([A-Za-z0-9.-]+))?$")
+    if(NOT RAW_VERSION MATCHES "${re_ver}")
         message(FATAL_ERROR "Invalid version string: ${RAW_VERSION}")
     endif()
 
@@ -56,10 +56,10 @@ function(configure_version NAME_PREFIX)
     set(ver_patch       "${CMAKE_MATCH_4}")
     set(ver_prerelease  "${CMAKE_MATCH_6}")
     set(ver_buildmeta   "${CMAKE_MATCH_8}")
-    
+
     set(${NAME_PREFIX}_VERSION_MAJOR    ${ver_major}    PARENT_SCOPE)
     set(${NAME_PREFIX}_VERSION_MINOR    ${ver_minor}    PARENT_SCOPE)
     set(${NAME_PREFIX}_VERSION_PATCH    ${ver_patch}    PARENT_SCOPE)
     set(${NAME_PREFIX}_VERSION          ${ver_core}     PARENT_SCOPE)
-    set(${NAME_PREFIX}_VERSION_FULL     ${ver_cleaned}  PARENT_SCOPE)
+    set(${NAME_PREFIX}_VERSION_FULL     ${RAW_VERSION}  PARENT_SCOPE)
 endfunction()

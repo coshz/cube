@@ -1,7 +1,7 @@
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-import os 
-import platform 
+import os
+import platform
 
 
 if platform.system() == "Darwin":
@@ -9,14 +9,13 @@ if platform.system() == "Darwin":
 
 
 class CustomBuildExt(build_ext):
-    def build_extensions(self): 
-        compiler_type = self.compiler.compiler_type 
-        for ext in self.extensions: 
+    def build_extensions(self):
+        compiler_type = self.compiler.compiler_type
+        for ext in self.extensions:
             ext.define_macros = list(ext.define_macros or []) + [
-                ('CUBE_USE_SYMMETRY', '1'),
                 ('CUBE_ENABLE_TRACE', '1'),
             ]
-            if compiler_type == 'msvc': 
+            if compiler_type == 'msvc':
                 extra = ['/std:c++17', '/O2', '/DNDEBUG']
             else:
                 extra = ['-std=c++17', '-O3', '-DNDEBUG', '-fPIC']

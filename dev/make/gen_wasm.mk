@@ -22,7 +22,6 @@ endif
 
 EM_COMPILE_FLAGS := -r -std=c++17 $(WASM_OPT_FLAGS) \
                     -I$(CUBE_BUILD_INCLUDE_DIR) \
-                    -DCUBE_USE_SYMMETRY=0 \
                     -DCUBE_ENABLE_TRACE=1
 
 EM_LINK_BASE     := -lembind $(WASM_OPT_FLAGS) \

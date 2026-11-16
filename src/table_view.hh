@@ -15,10 +15,10 @@
 namespace cube::pdb::table {
 
 using namespace cube::data;
-using namespace cube::symmetry;
+using namespace cube::pdb::symmetry;
 
 #if CUBE_ENABLE_TRACE
-#   define VTRACE(...) fprintf(stderr,__VA_ARGS__)
+#   define VTRACE(...) do{fprintf(stderr,__VA_ARGS__);}while(0)
 #else
 #   define VTRACE(...) do{}while(0)
 #endif

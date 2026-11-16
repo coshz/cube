@@ -15,6 +15,7 @@ namespace cube::pdb::ops {
 using namespace cube::data;
 using namespace cube::pdb::table;
 using cube::config::use_symmetry;
+using cube::CubieCube;
 
 /* The search phase */
 enum Phase { Ph1=0, Ph2=1 };
@@ -65,36 +66,36 @@ template<Phase PhX>
 auto CoordOps::distance(const Coord& c) -> uint8_t
 {
     const TablePool& pool = TablePool::instance();
+    if(use_symmetry()) goto symmetry_on; // else goto symmetry_off;
 
+symmetry_off:
     if constexpr (PhX == Ph1) {
-        if (!use_symmetry()) {
-            return std::max(
-                pool.get<PrunKind::SliceTwist>()(c.slice,c.twist),
-                pool.get<PrunKind::SliceFlip>()(c.slice,c.flip)
-            );
-        } else {
-            const auto [eq, s] = pool.get<EqKind::EmbFlipSlice>()(c.flip,c.slice);
-            return pool.get<PrunKind::TwistEqFlipSlice>()(
-                pool.get<ConjKind::TwistConj>()(~s,c.twist),
-                eq
-            );
-        }
+        return std::max(
+            pool.get<PrunKind::SliceTwist>()(c.slice,c.twist),
+            pool.get<PrunKind::SliceFlip>()(c.slice,c.flip)
+        );
     } else {
-        if (!use_symmetry()) {
-            return std::max(
-                pool.get<PrunKind::Edge4Corner>()(c.edge4,c.corner),
-                pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8)
-            );
-        } else {
-            const auto [eq, s] = pool.get<EqKind::EmbCorner>()(c.corner);
-            return std::max(
-                pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8),
-                pool.get<PrunKind::Edge8EqCorner>()(
-                    pool.get<ConjKind::Edge8Conj>()(~s,c.edge8),
-                    eq
-                )
-            );
-        }
+        return std::max(
+            pool.get<PrunKind::Edge4Corner>()(c.edge4,c.corner),
+            pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8)
+        );
+    }
+symmetry_on:
+    if constexpr (PhX == Ph1) {
+        const auto [eq, s] = pool.get<EqKind::EmbFlipSlice>()(c.flip,c.slice);
+        return pool.get<PrunKind::TwistEqFlipSlice>()(
+            pool.get<ConjKind::TwistConj>()(~s,c.twist),
+            eq
+        );
+    } else {
+        const auto [eq, s] = pool.get<EqKind::EmbCorner>()(c.corner);
+        return std::max(
+            pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8),
+            pool.get<PrunKind::Edge8EqCorner>()(
+                pool.get<ConjKind::Edge8Conj>()(~s,c.edge8),
+                eq
+            )
+        );
     }
 }
 

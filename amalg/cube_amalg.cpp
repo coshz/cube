@@ -2,14 +2,13 @@
  * File: cube_amalg.cpp
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
- * Version: v0.5.2
- * Date: 2026-11-11
+ * Version: 0.5.3-alpha.build002
+ * Date: 2026-11-17
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
  * Copyright (c) 2026 coshz <fsinhx@gmail.com>. All rights reserved.
  */
-
 #include <cstddef>
 #include <vector>
 #include <array>
@@ -281,7 +280,7 @@ L7 L8 L9 F7 F8 F9 R7 R8 R9 B7 B8 B9
 
 enum Face       { U1,U2,U3,U4,U5,U6,U7,U8,U9,R1,R2,R3,R4,R5,R6,R7,R8,R9,F1,F2,F3,F4,F5,F6,F7,F8,F9,D1,D2,D3,D4,D5,D6,D7,D8,D9,L1,L2,L3,L4,L5,L6,L7,L8,L9,B1,B2,B3,B4,B5,B6,B7,B8,B9 };
 enum Layer      { U,R,F,D,L,B };
-enum TurnMove   { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3 };
+enum TurnMove   { Ux1,Ux2,Ux3,Rx1,Rx2,Rx3,Fx1,Fx2,Fx3,Dx1,Dx2,Dx3,Lx1,Lx2,Lx3,Bx1,Bx2,Bx3,Nop };
 enum Symmetry   { S_URF3,S_F2,S_U4,S_LR2 };
 
 enum ColorIndex { UCol,RCol,FCol,DCol,LCol,BCol,NoCol };
@@ -405,6 +404,7 @@ enum Constant {
     EQ_FLIPSLICE= 64430,    // [(flip,slice):D4h], equivalent class of flipslice
     EQ_CORNER   = 2768,     // [(corner):D4h], equivalent class of corner
 };
+
 using std::size_t;
 using namespace cube::math;
 
@@ -1229,7 +1229,7 @@ void use_symmetry(bool v);
 
 } // namespace cube::config
 
-namespace cube::symmetry {
+namespace cube::pdb::symmetry {
 
 using cube::CubieCube;
 using namespace cube::pdb;
@@ -1377,10 +1377,10 @@ inline flipslice_t conjugate_flipslice(Sym s, const flipslice_t& fs)
 namespace cube::pdb::table {
 
 using namespace cube::data;
-using namespace cube::symmetry;
+using namespace cube::pdb::symmetry;
 
 #if CUBE_ENABLE_TRACE
-#   define VTRACE(...) fprintf(stderr,__VA_ARGS__)
+#   define VTRACE(...) do{fprintf(stderr,__VA_ARGS__);}while(0)
 #else
 #   define VTRACE(...) do{}while(0)
 #endif
@@ -1865,6 +1865,7 @@ namespace cube::pdb::ops {
 using namespace cube::data;
 using namespace cube::pdb::table;
 using cube::config::use_symmetry;
+using cube::CubieCube;
 
 /* The search phase */
 enum Phase { Ph1=0, Ph2=1 };
@@ -1915,36 +1916,36 @@ template<Phase PhX>
 auto CoordOps::distance(const Coord& c) -> uint8_t
 {
     const TablePool& pool = TablePool::instance();
+    if(use_symmetry()) goto symmetry_on; // else goto symmetry_off;
 
+symmetry_off:
     if constexpr (PhX == Ph1) {
-        if (!use_symmetry()) {
-            return std::max(
-                pool.get<PrunKind::SliceTwist>()(c.slice,c.twist),
-                pool.get<PrunKind::SliceFlip>()(c.slice,c.flip)
-            );
-        } else {
-            const auto [eq, s] = pool.get<EqKind::EmbFlipSlice>()(c.flip,c.slice);
-            return pool.get<PrunKind::TwistEqFlipSlice>()(
-                pool.get<ConjKind::TwistConj>()(~s,c.twist),
-                eq
-            );
-        }
+        return std::max(
+            pool.get<PrunKind::SliceTwist>()(c.slice,c.twist),
+            pool.get<PrunKind::SliceFlip>()(c.slice,c.flip)
+        );
     } else {
-        if (!use_symmetry()) {
-            return std::max(
-                pool.get<PrunKind::Edge4Corner>()(c.edge4,c.corner),
-                pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8)
-            );
-        } else {
-            const auto [eq, s] = pool.get<EqKind::EmbCorner>()(c.corner);
-            return std::max(
-                pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8),
-                pool.get<PrunKind::Edge8EqCorner>()(
-                    pool.get<ConjKind::Edge8Conj>()(~s,c.edge8),
-                    eq
-                )
-            );
-        }
+        return std::max(
+            pool.get<PrunKind::Edge4Corner>()(c.edge4,c.corner),
+            pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8)
+        );
+    }
+symmetry_on:
+    if constexpr (PhX == Ph1) {
+        const auto [eq, s] = pool.get<EqKind::EmbFlipSlice>()(c.flip,c.slice);
+        return pool.get<PrunKind::TwistEqFlipSlice>()(
+            pool.get<ConjKind::TwistConj>()(~s,c.twist),
+            eq
+        );
+    } else {
+        const auto [eq, s] = pool.get<EqKind::EmbCorner>()(c.corner);
+        return std::max(
+            pool.get<PrunKind::Edge4Edge8>()(c.edge4,c.edge8),
+            pool.get<PrunKind::Edge8EqCorner>()(
+                pool.get<ConjKind::Edge8Conj>()(~s,c.edge8),
+                eq
+            )
+        );
     }
 }
 
@@ -1971,9 +1972,7 @@ auto CoordOps::origin(const CubieCube& cc, const std::vector<TurnMove>& sol) -> 
 
 namespace cube::solver {
 
-using namespace cube::data;
-using namespace cube::pdb;
-using namespace cube::pdb::table;
+using cube::pdb::Coord;
 using cube::pdb::ops::Phase;
 
 class SearchContext
@@ -1986,13 +1985,11 @@ public:
     CubieCube   root() const    { return root_; }
     size_t      tgtlen() const  { return tgtlen_; }
 
-    /* reset solution buffer */
-    template<Phase PhX>
-    void reset() { path_[PhX].fill(-1); }
+    /* reset / store / fetch the  solution buffer */
 
-    /* cache / fetch the move of given step */
-    template<Phase PhX> void record(int step, int move){ path_[PhX][step] = move; }
-    template<Phase PhX> int  recall(int step) const    { return path_[PhX][step]; }
+    template<Phase PhX> void reset()                        { path_[PhX].fill(Nop); }
+    template<Phase PhX> void record(int step, TurnMove m)   { path_[PhX][step] = m; }
+    template<Phase PhX> TurnMove recall(int step) const     { return path_[PhX][step]; }
 
     /* flush solution buffer to rsolution ( 0 <= L <= DS ) */
     template<Phase PhX>
@@ -2009,9 +2006,7 @@ public:
         size_t n = rsolution_[PhX].first;
         if(n == 0) return {};
         std::vector<TurnMove> sol(n);
-        for(auto i = 0; i < n; i++) {
-            sol[i] = static_cast<TurnMove>(rsolution_[PhX].second[n-1-i]);
-        }
+        for(auto i = 0; i < n; i++) { sol[i] = rsolution_[PhX].second[n-1-i]; }
         return sol;
     }
 
@@ -2030,8 +2025,8 @@ public:
 private:
     CubieCube root_;
     size_t tgtlen_;
-    std::array<std::array<int,DS+2>,2>                  path_;      // solution buffer
-    std::array<std::pair<size_t,std::array<int,DS>>,2>  rsolution_; // reverse of solution
+    std::array<std::array<TurnMove,DS+2>,2>                 path_;      // solution buffer
+    std::array<std::pair<size_t,std::array<TurnMove,DS>>,2> rsolution_; // reverse of solution
 };
 
 /*!
@@ -2071,10 +2066,9 @@ using namespace cube::pdb::ops;
  *  - A=Ux1,B=Ux2     (A and its prev B are "homogeneous")
  *  - A=Dx1,B=Ux1     (A > B && A and B are "disjoint")
  */
-inline bool is_dull_pair(const TurnMove A, const int B)
+inline bool is_dull_pair(const TurnMove A, const TurnMove B)
 {
-    if(!(B >= Ux1 && B <= Bx3)) return false;
-    return (A/3 == B/3) || (A/3 == B/3+3);
+    return B != Nop && ((A/3 == B/3) || (A/3 == B/3+3));
 }
 
 auto KociembaSolver::solve(const CubieCube &cc, size_t good)
@@ -2086,7 +2080,7 @@ auto KociembaSolver::solve(const CubieCube &cc, size_t good)
     auto c = CoordOps::origin<Ph1>(cc);
     for(auto togo = CoordOps::distance<Ph1>(c); togo < bestL; ++togo)
     {
-        int l = start_search_ph1(ctx, c,togo,togo,bestL-1);
+        int l = start_search_ph1(ctx,c,togo,togo,bestL-1);
         if(l >= 0) bestL = std::min(bestL,size_t(l));
         if(bestL <= ctx.tgtlen()) break;
     }
@@ -2131,7 +2125,8 @@ int KociembaSolver::start_search_ph1(
 
 bool KociembaSolver::start_search_ph2(
     SearchContext& ctx, const Coord& c, size_t togo)
-{   if(togo < CoordOps::distance<Ph2>(c)) return false;
+{
+    if(togo < CoordOps::distance<Ph2>(c)) return false;
     if(togo == 0) return CoordOps::distance<Ph2>(c) == 0;
     for(auto m: SearchContext::EM<Ph2>)
     {
@@ -2153,7 +2148,7 @@ namespace fs = std::filesystem;
 namespace {
 bool& use_symmetry_ref()
 {
-    static bool val_ = CUBE_USE_SYMMETRY;
+    static bool val_ = true;
     return val_;
 }
 
@@ -2216,7 +2211,7 @@ fs::path get_table_dir()
 
 } // namespace cube::config
 
-namespace cube::internal
+namespace cube::internal::maneuver
 {
 using namespace cube::data;
 
@@ -2259,7 +2254,7 @@ namespace cube {
 
 using namespace cube::data;
 
-namespace internal {
+namespace internal::maneuver {
 
 std::string apply_maneuver(std::string_view s, const std::vector<TurnMove> &ms)
 {
@@ -2347,7 +2342,7 @@ bool is_valid_maneuver(std::string_view s)
 } // namespace cube::internal
 } // namespace cube
 
-namespace cube::symmetry {
+namespace cube::pdb::symmetry {
 
 void SymReduction::build_emb_corner(CornerDom& emb, const CornerConj& conj)
 {
@@ -2444,54 +2439,53 @@ void SymReduction::build_stab_flipslice(FlipSliceStab& stab, const EqFlipSliceDo
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 coshz
 
-#ifndef CUBE_EXPORT_H
-#define CUBE_EXPORT_H
+/*
+ * CUBE_EXPORT / CUBE_NO_EXPORT / CUBE_DEPRECATED
+ *
+ * To build the dynamic library:    -DCUBE_BUILDING_DLL
+ * To consume the static library:   -DCUBE_USE_STATIC
+ */
 
-#ifdef CUBE_STATIC_DEFINE
+#if defined(CUBE_USE_STATIC) /* We are building / using static library */
 #  define CUBE_EXPORT
-#  define CUBE_NO_EXPORT
 #else
-#  ifndef CUBE_EXPORT
-#    ifdef cube_EXPORTS
-        /* We are building this library */
-#      define CUBE_EXPORT __attribute__((visibility("default")))
-#    else
-        /* We are using this library */
-#      define CUBE_EXPORT __attribute__((visibility("default")))
+#  if defined(_WIN32)
+#    if defined(CUBE_BUILDING_DLL) /* We are building this library */
+#      define CUBE_EXPORT __declspec(dllexport)
+#    else /* We are using this library */
+#      define CUBE_EXPORT __declspec(dllimport)
 #    endif
-#  endif
-
-#  ifndef CUBE_NO_EXPORT
+#  elif defined(__GNUC__) || defined(__clang__)
+#    define CUBE_EXPORT __attribute__((visibility("default")))
 #    define CUBE_NO_EXPORT __attribute__((visibility("hidden")))
+#  else
+#    define CUBE_EXPORT
 #  endif
 #endif
 
-#ifndef CUBE_DEPRECATED
-#  define CUBE_DEPRECATED __attribute__ ((__deprecated__))
+#ifndef CUBE_NO_EXPORT
+#  define CUBE_NO_EXPORT
 #endif
 
-#ifndef CUBE_DEPRECATED_EXPORT
-#  define CUBE_DEPRECATED_EXPORT CUBE_EXPORT CUBE_DEPRECATED
+#if defined(__cplusplus) && __cplusplus >= 201402L
+#  define CUBE_DEPRECATED(msg) [[deprecated(msg)]]
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#  define CUBE_DEPRECATED(msg) [[deprecated(msg)]]
+#elif defined(_MSC_VER)
+#  define CUBE_DEPRECATED(msg) __declspec(deprecated(msg))
+#elif defined(__has_attribute) && __has_attribute(deprecated)
+#  define CUBE_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#else
+#  define CUBE_DEPRECATED(msg)
 #endif
 
-#ifndef CUBE_DEPRECATED_NO_EXPORT
-#  define CUBE_DEPRECATED_NO_EXPORT CUBE_NO_EXPORT CUBE_DEPRECATED
-#endif
+#define CUBE_DEPRECATED_EXPORT(msg) CUBE_DEPRECATED(msg) CUBE_EXPORT
 
-/* NOLINTNEXTLINE(readability-avoid-unconditional-preprocessor-if) */
-#if 0 /* DEFINE_NO_DEPRECATED */
-#  ifndef CUBE_NO_DEPRECATED
-#    define CUBE_NO_DEPRECATED
-#  endif
-#endif
-
-#endif /* CUBE_EXPORT_H */
-
-#define CUBE_VERSION        "0.5.2"
-#define CUBE_VERSION_FULL   "0.5.2-alpha+build.002"
+#define CUBE_VERSION        "0.5.3"
+#define CUBE_VERSION_FULL   "0.5.3-alpha.build002"
 #define CUBE_VERSION_MAJOR  0
 #define CUBE_VERSION_MINOR  5
-#define CUBE_VERSION_PATCH  2
+#define CUBE_VERSION_PATCH  3
 
 /* CUBE_VERSION_CODE: a 16-bit integer encoding from (major, minor, patch) */
 
@@ -2507,20 +2501,37 @@ void SymReduction::build_stab_flipslice(FlipSliceStab& stab, const EqFlipSliceDo
 #define CUBE_VER_MSK_MINOR_ ((1U << CUBE_VER_BIT_MINOR_) - 1)
 #define CUBE_VER_MSK_PATCH_ ((1U << CUBE_VER_BIT_PATCH_) - 1)
 
-#if 0 > CUBE_VERSION_MAJOR || CUBE_VERSION_MAJOR > CUBE_VER_MSK_MAJOR_
+#if CUBE_VERSION_MAJOR > CUBE_VER_MSK_MAJOR_
 #   error "CUBE_VERSION_MAJOR out of range [0..31]"
 #endif
-#if 0 > CUBE_VERSION_MINOR || CUBE_VERSION_MINOR > CUBE_VER_MSK_MINOR_
+#if CUBE_VERSION_MINOR > CUBE_VER_MSK_MINOR_
 #   error "CUBE_VERSION_MINOR out of range [0..127]"
 #endif
-#if 0 > CUBE_VERSION_PATCH || CUBE_VERSION_PATCH > CUBE_VER_MSK_PATCH_
+#if CUBE_VERSION_PATCH > CUBE_VER_MSK_PATCH_
 #   error "CUBE_VERSION_PATCH out of range [0..15]"
 #endif
 
-#define CUBE_VERSION_CODE (\
+#define CUBE_VERSION_CODE_ (\
     ((CUBE_VERSION_MAJOR & CUBE_VER_MSK_MAJOR_) << CUBE_VER_SFT_MAJOR_) | \
     ((CUBE_VERSION_MINOR & CUBE_VER_MSK_MINOR_) << CUBE_VER_SFT_MINOR_) | \
     ((CUBE_VERSION_PATCH & CUBE_VER_MSK_PATCH_) << CUBE_VER_SFT_PATCH_) )
+
+#ifdef __cplusplus
+inline constexpr unsigned int cube_version_code = CUBE_VERSION_CODE_;
+#else
+enum { cube_version_code = CUBE_VERSION_CODE_ };
+#endif
+
+#undef CUBE_VER_BIT_MAJOR_
+#undef CUBE_VER_BIT_MINOR_
+#undef CUBE_VER_BIT_PATCH_
+#undef CUBE_VER_SFT_MAJOR_
+#undef CUBE_VER_SFT_MINOR_
+#undef CUBE_VER_SFT_PATCH_
+#undef CUBE_VER_MSK_MAJOR_
+#undef CUBE_VER_MSK_MINOR_
+#undef CUBE_VER_MSK_PATCH_
+#undef CUBE_VERSION_CODE_
 
 #ifndef __cplusplus
 #error "This is a C++ header; please use a C++ compiler OR include cube/cube.h instead"
@@ -2568,9 +2579,23 @@ struct Solution {
 };
 
 /*!
- * @brief Checks if a color configuration is solvable.
+ * @brief Initialize the cube library by loading or building lookup tables.
+ * @param use_symmetry Select the table set:
+ *      - `false`: smaller (<10 MB), fast to build, slower solving;
+ *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
+ *      This is a memory/disk/build-time vs solve-speed trade-off.
+ * @param dir Directory for reading and writting table files.
+ *      Empty means the default directory (see @ref get_table_dir()).
+ *      Tables are loaded if present; otherwise they are built and written here.
+ * @note Only the first call takes effect; call it before the first @ref solve,
+ *      which invokes it with default arguments.
+ * @warning With `use_symmetry = true`, the first run may take minutes and write
+ *      ~260 MB of data to @p dir.
  */
-CUBE_EXPORT bool is_solvable(std::string_view color_cube);
+CUBE_EXPORT void init(
+    bool use_symmetry = true,
+    std::string_view dir = {}
+);
 
 /*!
  * @brief Solves the Rubik's cube from source state to target state.
@@ -2584,6 +2609,11 @@ CUBE_EXPORT bool is_solvable(std::string_view color_cube);
     std::string_view tgt = cubeId,
     int good = 22
 );
+
+/*!
+ * @brief Checks if a color configuration is solvable.
+ */
+CUBE_EXPORT bool is_solvable(std::string_view color_cube);
 
 /*!
  * @brief Applies a sequence of moves to a color cube.
@@ -2607,30 +2637,7 @@ CUBE_EXPORT bool is_solvable(std::string_view color_cube);
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 coshz
 
-#ifndef CUBE_USE_SYMMETRY
-#   define CUBE_USE_SYMMETRY 1
-#endif
-
 namespace cube {
-
-/*!
- * @brief Initialize the cube library by loading or building lookup tables.
- * @param use_symmetry Select the table set:
- *      - `false`: smaller (<10 MB), fast to build, slower solving;
- *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
- *      This is a memory/disk/build-time vs solve-speed trade-off.
- * @param dir Directory for reading and writting table files.
- *      Empty means the default directory (see @ref get_table_dir()).
- *      Tables are loaded if present; otherwise they are built and written here.
- * @note Only the first call takes effect; call it before the first @ref solve,
- *      which invokes it with default arguments.
- * @warning With `use_symmetry = true`, the first run may take minutes and write
- *      ~260 MB of data to @p dir.
- */
-CUBE_EXPORT void cube_init(
-    bool use_symmetry = CUBE_USE_SYMMETRY,
-    std::string_view dir = {}
-);
 
 /* set directory for move / prunning tables */
 CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
@@ -2656,7 +2663,7 @@ CUBE_EXPORT bool is_valid_maneuver(std::string_view maneuver);
 
 } // namespace cube
 
-namespace cube::show {
+namespace cube::internal::show {
 
 using std::size_t;
 using namespace cube::data;
@@ -2690,10 +2697,10 @@ enum class CubeFormat {
  */
 template<typename Array, typename Formatter>
 inline std::string seq2str_fmt(const Array &xs,
-                           Formatter && fmt,
-                           std::string_view sep="",
-                           std::string_view pre="",
-                           std::string_view suf="")
+                               Formatter && fmt,
+                               std::string_view sep="",
+                               std::string_view pre="",
+                               std::string_view suf="")
 {
     const size_t len = xs.size();
     if(len == 0) { return std::string(pre) + std::string(suf); }
@@ -2815,105 +2822,96 @@ namespace cube {
 using namespace cube::data;
 using namespace cube::pdb;
 using namespace cube::solver;
+using namespace cube::internal;
 
 namespace fs = std::filesystem;
 
 void set_table_dir(fs::path dir) { config::set_table_dir(dir); }
 auto get_table_dir() -> fs::path { return config::get_table_dir(); }
 
-bool is_valid_config(std::string_view cube) {
-  return ColorState::is_valid_config(cube);
-}
-bool is_valid_maneuver(std::string_view maneuver) {
-  return internal::is_valid_maneuver(maneuver);
-}
+bool is_valid_config(std::string_view cube) { return ColorState::is_valid_config(cube); }
+bool is_valid_maneuver(std::string_view maneuver) { return maneuver::is_valid_maneuver(maneuver); }
 
-void cube_init(bool use_symmetry, std::string_view dir) {
-  static std::once_flag once;
-  std::call_once(once, [=]() {
-    config::use_symmetry(use_symmetry);
-    if (!dir.empty())
-      config::set_table_dir(dir);
-    if (use_symmetry)
-      table::TableProvider::make<true>();
-    else
-      table::TableProvider::make<false>();
-  });
+void init(bool use_symmetry, std::string_view dir) {
+    static std::once_flag once;
+    std::call_once(once, [=]() {
+        config::use_symmetry(use_symmetry);
+        if (!dir.empty()) config::set_table_dir(dir);
+        if (use_symmetry) table::TableProvider::make<true>();
+        else table::TableProvider::make<false>();
+    });
 }
 
 Solution solve(std::string_view src, std::string_view tgt, int good) {
-  if (src != cubeId && !is_valid_config(src))
-    return {SolveResult::InvalidSrc, ""};
-  if (tgt != cubeId && !is_valid_config(tgt))
-    return {SolveResult::InvalidTgt, ""};
+    if (src != cubeId && !is_valid_config(src))
+        return {SolveResult::InvalidSrc, ""};
+    if (tgt != cubeId && !is_valid_config(tgt))
+        return {SolveResult::InvalidTgt, ""};
 
-  // trivial cube
-  if (src == tgt)
-    return {SolveResult::Success, ""};
+    // trivial cube
+    if (src == tgt)
+        return {SolveResult::Success, ""};
 
-  auto cc_src = ColorState::fromString(src).toCubieCube();
-  auto cc_tgt = ColorState::fromString(tgt).toCubieCube();
-  CubieCube cc = ~cc_tgt * cc_src;
+    auto cc_src = ColorState::fromString(src).toCubieCube();
+    auto cc_tgt = ColorState::fromString(tgt).toCubieCube();
+    CubieCube cc = ~cc_tgt * cc_src;
 
-  // unsolvable cube
-  if (!cc.isSolvable())
-    return {SolveResult::Unsolvable, ""};
+    // unsolvable cube
+    if (!cc.isSolvable())
+        return {SolveResult::Unsolvable, ""};
 
-  cube_init(CUBE_USE_SYMMETRY);
+    // call `cube_init` with use_symmetry=true if it's not been called
+    init(true);
 
-  const auto &[found, s1, s2] = KociembaSolver::solve(cc, good < 0 ? 0 : good);
+    const auto &[found, s1, s2] = KociembaSolver::solve(cc, good < 0 ? 0 : good);
 
-  if (!found)
-    return {SolveResult::NotFound, ""};
+    if (!found) return {SolveResult::NotFound, ""};
 
-  // concat Ph1 & Ph2 solutions
-  std::vector<TurnMove> sol;
-  const size_t n1 = s1.size(), n2 = s2.size();
+    // concat Ph1 & Ph2 solutions
+    std::vector<TurnMove> sol;
+    const size_t n1 = s1.size(), n2 = s2.size();
 
-  // if the transition moves of ph1-ph2 are homogeneous, combine them
-  if (!s1.empty() && !s2.empty() && s1[n1 - 1] / 3 == s2[0] / 3) {
-    sol.insert(sol.end(), s1.begin(), s1.end() - 1);
-    int m = (s1[n1 - 1] + s2[0] - s2[0] / 3 * 6 + 2) % 4;
-    if (m != 0)
-      sol.push_back(static_cast<TurnMove>(s2[0] / 3 * 3 + m - 1));
-    sol.insert(sol.end(), s2.begin() + 1, s2.end());
-  } else {
-    sol.insert(sol.end(), s1.begin(), s1.end());
-    sol.insert(sol.end(), s2.begin(), s2.end());
-  }
-
-  return {SolveResult::Success, show::to_string(sol)};
+    // combine the two neighbor moves of ph1/ph2 if they are homogeneous
+    if (!s1.empty() && !s2.empty() && s1[n1 - 1] / 3 == s2[0] / 3) {
+        sol.insert(sol.end(), s1.begin(), s1.end() - 1);
+        int m = (s1[n1 - 1] + s2[0] - s2[0] / 3 * 6 + 2) % 4;
+        if (m != 0) sol.push_back(static_cast<TurnMove>(s2[0] / 3 * 3 + m - 1));
+        sol.insert(sol.end(), s2.begin() + 1, s2.end());
+    } else {
+        sol.insert(sol.end(), s1.begin(), s1.end());
+        sol.insert(sol.end(), s2.begin(), s2.end());
+    }
+    return {SolveResult::Success, show::to_string(sol)};
 }
 
-bool is_solvable(std::string_view color_cube) {
-  return is_valid_config(color_cube) &&
-         ColorState::fromString(color_cube).toCubieCube().isSolvable();
+bool is_solvable(std::string_view color_cube)
+{
+  return is_valid_config(color_cube) && ColorState::fromString(color_cube).toCubieCube().isSolvable();
 }
 
-std::string apply_maneuver(std::string_view maneuver,
-                           std::string_view cube_state) {
-  if (cube_state.size() != 54 || !is_valid_maneuver(maneuver)) {
-    throw std::invalid_argument("Invalid cube format or maneuver string.");
-  }
-  const auto ms = internal::parse_maneuver(maneuver);
-  return internal::apply_maneuver(cube_state, ms);
+std::string apply_maneuver(std::string_view maneuver, std::string_view cube_state)
+{
+    if (cube_state.size() != 54 || !is_valid_maneuver(maneuver)) {
+        throw std::invalid_argument("Invalid cube format or maneuver string.");
+    }
+    const auto ms = maneuver::parse_maneuver(maneuver);
+    return maneuver::apply_maneuver(cube_state, ms);
 }
 
-std::string show_permutation(std::string_view ms_or_cube, PermFormat format) {
-  std::string cube_str;
+std::string show_permutation(std::string_view ms_or_cube, PermFormat format)
+{
+    std::string cube_str;
+    if (is_valid_config(ms_or_cube)) {
+        cube_str = ms_or_cube;
+    } else if (is_valid_maneuver(ms_or_cube)) {
+        auto ms = maneuver::parse_maneuver(ms_or_cube);
+        cube_str = maneuver::apply_maneuver(cubeId, ms);
+    } else {
+        throw std::invalid_argument("Invalid cube configuration / maneuver.");
+    }
 
-  if (is_valid_config(ms_or_cube)) {
-    cube_str = ms_or_cube;
-  } else if (is_valid_maneuver(ms_or_cube)) {
-    auto ms = internal::parse_maneuver(ms_or_cube);
-    cube_str = internal::apply_maneuver(cubeId, ms);
-  } else {
-    throw std::invalid_argument(
-        "Input is neither a valid configuration nor a valid maneuver.");
-  }
-
-  auto cc = ColorState::fromString(cube_str).toCubieCube();
-  return show::to_string(cc, show::CubeFormat(int(format)));
+    auto cc = ColorState::fromString(cube_str).toCubieCube();
+    return show::to_string(cc, show::CubeFormat(int(format)));
 }
 
 } // namespace cube
@@ -3019,12 +3017,12 @@ typedef CF_ENUM(int32_t,SolveResult) {
 static inline const char* solve_result_info(SolveResult sr)
 {
     switch(sr) {
-    case SolveResultSuccess:    return "Success.";
-    case SolveResultUnsolvable: return "The cube configuration is unsolvable.";
-    case SolveResultNotFound:   return "No solution found within the step limit.";
-    case SolveResultInvalidSrc: return "Invalid source color configuration.";
-    case SolveResultInvalidTgt: return "Invalid target color configuration.";
-    case SolveResultUnknownErr: return "Unknown error.";
+    case SolveResultSuccess:    return "Success";
+    case SolveResultUnsolvable: return "The cube configuration is unsolvable";
+    case SolveResultNotFound:   return "No solution found within the step limit";
+    case SolveResultInvalidSrc: return "Invalid source color configuration";
+    case SolveResultInvalidTgt: return "Invalid target color configuration";
+    case SolveResultUnknownErr: return "Unknown error";
     default:                    return "???";
     }
 }
@@ -3042,7 +3040,7 @@ CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
  *      - `false`: smaller (<10 MB), fast to build, slower solving;
  *      - `true`:  symmetry-based (~260 MB), slower to build, faster solving.
  *      This is a memory/disk/build-time vs solve-speed trade-off.
- * @param dir Directory for reading and writting table files.
+ * @param table_dir Directory for reading and writting table files.
  *      NULL means the default directory (see @ref get_table_dir()).
  *      Tables are loaded if present; otherwise they are built and written here.
  * @note Only the first call takes effect; call it before the first @ref solve,
@@ -3051,8 +3049,8 @@ CUBE_EXPORT const char *solve_result_to_string(int32_t sr);
  *      ~260 MB of data to @p dir.
  */
 CUBE_EXPORT void cube_init(
-    bool use_symmetry   Default(CUBE_USE_SYMMETRY),
-    const char* dir     Default(0)
+    bool use_symmetry       Default(true),
+    const char* table_dir   Default(0)
 );
 
 /*!
@@ -3125,7 +3123,7 @@ extern "C" {
 
 void cube_init(bool use_symmetry, const char* dir)
 {
-    cube::cube_init(use_symmetry, dir ? std::string_view(dir) : std::string_view{});
+    cube::init(use_symmetry, dir ? dir : "");
 }
 
 const char* solve_result_to_string(int sr)

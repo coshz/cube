@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace cube::internal
+namespace cube::internal::maneuver
 {
 using namespace cube::data;
 

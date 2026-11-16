@@ -20,18 +20,18 @@ add_library(${PROJECT_NAME}::shared ALIAS cube_shared)
 set(cube_install_targets cube_headers cube_shared)
 
 # Generate exported header
+#
+# set(cube_export_macro "cube_EXPORTS")
+# set_target_properties(cube_shared PROPERTIES
+#     DEFINE_SYMBOL "${cube_export_macro}" # read by `generate_export_header`
+# )
 
-set(cube_export_macro "cube_EXPORTS")
-set_target_properties(cube_shared PROPERTIES
-    DEFINE_SYMBOL "${cube_export_macro}" # read by `generate_export_header`
-)
-
-include(GenerateExportHeader)
-generate_export_header(cube_shared
-    BASE_NAME CUBE
-    EXPORT_MACRO_NAME CUBE_EXPORT
-    EXPORT_FILE_NAME "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
-)
+# include(GenerateExportHeader)
+# generate_export_header(cube_shared
+#     BASE_NAME CUBE
+#     EXPORT_MACRO_NAME CUBE_EXPORT
+#     EXPORT_FILE_NAME "${CUBE_BUILD_INCLUDE_DIR}/cube/cube_export.h"
+# )
 
 # ------------------------------------------------------------------------------
 # Public header
@@ -50,7 +50,6 @@ target_sources(cube_headers INTERFACE
 )
 
 target_compile_definitions(cube_headers INTERFACE
-    CUBE_USE_SYMMETRY=$<BOOL:${CUBE_USE_SYMMETRY}>
     CUBE_ENABLE_TRACE=$<BOOL:${CUBE_ENABLE_TRACE}>
 )
 
@@ -60,21 +59,9 @@ target_compile_definitions(cube_headers INTERFACE
 #   - ${PROJECT_NAME}::core
 #   - ${PROJECT_NAME}::Framework
 # ------------------------------------------------------------------------------
-target_link_libraries(cube_objs PUBLIC cube_headers)
 
-# ------------------------------------------------------------------------------
-# [Windows / MSVC Workaround]
-# OBJECT libraries do not automatically inherit DEFINE_SYMBOL from downstream
-# SHARED targets.
-#
-# Explicitly define the export macro so cube_export.h expands CUBE_EXPORT
-# to __declspec(dllexport) instead of __declspec(dllimport) when compiling .cpp files.
-#
-# WARNING: Omitting this line causes MSVC warning C4273 ("inconsistent dll linkage")
-# and generates an empty import library (cube.lib), leading to LNK2019 unresolved
-# external symbol errors in dependent targets (e.g., icube.exe).
-# ------------------------------------------------------------------------------
-target_compile_definitions(cube_objs PRIVATE ${cube_export_macro})
+target_compile_definitions(cube_objs PRIVATE CUBE_BUILDING_DLL)
+target_link_libraries(cube_objs PUBLIC cube_headers)
 
 # ------------------------------------------------------------------------------
 # Main C++ library (shared & static)
@@ -108,7 +95,7 @@ if(BUILD_STATIC_LIBS)
             EXPORT_NAME static
         )
     endif()
-    target_compile_definitions(cube_static PUBLIC CUBE_STATIC_DEFINE)
+    target_compile_definitions(cube_static PUBLIC CUBE_USE_STATIC)
     target_link_libraries(cube_static PUBLIC cube_headers)
 
     list(APPEND cube_install_targets cube_static)

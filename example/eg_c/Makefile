@@ -1,17 +1,18 @@
 PKG_CONFIG  ?= pkg-config
+GCC ?= gcc
 
-.PHONY: all clean 
-all: out 
+.PHONY: all clean
+all: out
 out: eg.c
-	gcc -O2 $(shell pkg-config --cflags cube) $^ -o $@ \
+	$(GCC) -O2 $(shell pkg-config --cflags cube) $^ -o $@ \
 		$(shell pkg-config --libs cube) \
 		-Wl,-rpath,$(shell pkg-config --variable=libdir cube)
 
 # --- Static linking ---
 # Static linking embeds libcube.a into the executable, but the C++ runtime (
-# libstdc++ / libc++) is still linked dynamically. 
-# We link with g++ to avoid passing -lstdc++ / -lc++ explicitly to gcc. 
-# 
+# libstdc++ / libc++) is still linked dynamically.
+# We link with g++ to avoid passing -lstdc++ / -lc++ explicitly to gcc.
+#
 # 	gcc $(shell $(PKG_CONFIG) --static --cflags cube) \
 # 		$(shell $(PKG_CONFIG) --variable=libdir cube)/libcube.a  \
 # 		$< -lc++ -o $@

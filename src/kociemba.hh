@@ -11,9 +11,7 @@
 
 namespace cube::solver {
 
-using namespace cube::data;
-using namespace cube::pdb;
-using namespace cube::pdb::table;
+using cube::pdb::Coord;
 using cube::pdb::ops::Phase;
 
 class SearchContext
@@ -26,13 +24,11 @@ public:
     CubieCube   root() const    { return root_; }
     size_t      tgtlen() const  { return tgtlen_; }
 
-    /* reset solution buffer */
-    template<Phase PhX>
-    void reset() { path_[PhX].fill(-1); }
+    /* reset / store / fetch the  solution buffer */
 
-    /* cache / fetch the move of given step */
-    template<Phase PhX> void record(int step, int move){ path_[PhX][step] = move; }
-    template<Phase PhX> int  recall(int step) const    { return path_[PhX][step]; }
+    template<Phase PhX> void reset()                        { path_[PhX].fill(Nop); }
+    template<Phase PhX> void record(int step, TurnMove m)   { path_[PhX][step] = m; }
+    template<Phase PhX> TurnMove recall(int step) const     { return path_[PhX][step]; }
 
     /* flush solution buffer to rsolution ( 0 <= L <= DS ) */
     template<Phase PhX>
@@ -49,9 +45,7 @@ public:
         size_t n = rsolution_[PhX].first;
         if(n == 0) return {};
         std::vector<TurnMove> sol(n);
-        for(auto i = 0; i < n; i++) {
-            sol[i] = static_cast<TurnMove>(rsolution_[PhX].second[n-1-i]);
-        }
+        for(auto i = 0; i < n; i++) { sol[i] = rsolution_[PhX].second[n-1-i]; }
         return sol;
     }
 
@@ -70,8 +64,8 @@ public:
 private:
     CubieCube root_;
     size_t tgtlen_;
-    std::array<std::array<int,DS+2>,2>                  path_;      // solution buffer
-    std::array<std::pair<size_t,std::array<int,DS>>,2>  rsolution_; // reverse of solution
+    std::array<std::array<TurnMove,DS+2>,2>                 path_;      // solution buffer
+    std::array<std::pair<size_t,std::array<TurnMove,DS>>,2> rsolution_; // reverse of solution
 };
 
 /*!

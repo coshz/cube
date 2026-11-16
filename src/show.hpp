@@ -11,7 +11,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace cube::show {
+namespace cube::internal::show {
 
 using std::size_t;
 using namespace cube::data;
@@ -45,10 +45,10 @@ enum class CubeFormat {
  */
 template<typename Array, typename Formatter>
 inline std::string seq2str_fmt(const Array &xs,
-                           Formatter && fmt,
-                           std::string_view sep="",
-                           std::string_view pre="",
-                           std::string_view suf="")
+                               Formatter && fmt,
+                               std::string_view sep="",
+                               std::string_view pre="",
+                               std::string_view suf="")
 {
     const size_t len = xs.size();
     if(len == 0) { return std::string(pre) + std::string(suf); }
