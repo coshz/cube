@@ -1,3 +1,6 @@
+v0.5.3-alpha
+- Add SPM support
+
 v0.5.2
 - Style: Format existing files (trim trailing whitespace and insert final newline).
 - Maintained codebase consistency with .editorconfig rules.

@@ -93,7 +93,7 @@ jobs:
       - name: Build XCFramework
         shell: bash
         run: |
-          bash dev/scripts/build_xcframework.sh
+          bash dev/scripts/build_xcfw.sh
           for zip in dist/*.xcframework.zip; do
             [ -e "$zip" ] || continue
             sha=$(shasum -a 256 "$zip" | cut -d' ' -f1)
@@ -105,8 +105,8 @@ jobs:
         with:
           name: dist-xcframework
           path: |
-            dist/*.xcframework.zip
-            dist/*.xcframework.zip.sha256
+            dist/cube.xcframework.zip
+            dist/cube.xcframework.zip.sha256
           if-no-files-found: error
 
   publish-release:
@@ -116,6 +116,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      checksum: ${{ steps.get_checksum.outputs.checksum }}
 
     steps:
       - name: Download all artifacts
@@ -128,9 +130,27 @@ jobs:
         run: |
           ls -R dists
 
+      - name: Read Checksum
+        id: get_checksum
+        run: |
+          CHECKSUM=$(tr -d '[:space:]' < dists/cube.xcframework.zip.sha256)
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
         with:
-          files: dists/*
+          files: dists/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger-spm-publish:
+    name: Trigger SPM Publish
+    needs: [build-xcframework, publish-release]
+    if: startsWith(github.ref, 'refs/tags/')
+    uses: ./.github/workflows/publish-spm.yml
+    with:
+      tag: ${{ github.ref_name }}
+      zip_url: https://github.com/coshz/cube/release/download/${{ github.ref_name }}/cube.xcframework.zip
+      checksum: ${{ needs.publish-release.outputs.checksum }}
+    secrets:
+      SPM_REPO_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}

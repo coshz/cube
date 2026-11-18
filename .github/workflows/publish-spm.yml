@@ -1,0 +1,61 @@
+name: Publish SPM
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      zip_url:
+        required: true
+        type: string
+      checksum:
+        required: true
+        type: string
+    secrets:
+      SPM_REPO_TOKEN:
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone SPM Repo and Update Package.swift
+        env:
+          SPM_REPO_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}
+        run: |
+          git clone https://x-access-token:${SPM_REPO_TOKEN}@github.com/coshz/cube-spm.git spm-repo
+          cd spm-repo
+
+          cat << EOF > Package.swift
+          // swift-tools-version: 5.7
+          import PackageDescription
+
+          let package = Package(
+              name: "Cube",
+              platforms: [
+                  .iOS(.v13),
+                  .macOS(.v10_15)
+              ],
+              products: [
+                  .library(
+                      name: "Cube",
+                      targets: ["Cube"]
+                  )
+              ],
+              targets: [
+                  .binaryTarget(
+                      name: "Cube",
+                      url: "${{ inputs.zip_url }}",
+                      checksum: "${{ inputs.checksum }}"
+                  )
+              ]
+          )
+          EOF
+
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add Package.swift
+          git commit -m "chore: release ${{ inputs.tag }}"
+          git tag ${{ inputs.tag }}
+          git push origin main --tags

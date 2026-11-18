@@ -123,7 +123,7 @@ xcodebuild -create-xcframework \
 # ==============================================================================
 # Package
 # ==============================================================================
-ZIP_FILE="$DIST_DIR/${NAME}.xcframework.zip"
+ZIP_FILE="$DIST_DIR/cube.xcframework.zip"
 echo "==> Packaging XCFramework..."
 rm -f "$ZIP_FILE" && mkdir -p "$DIST_DIR"
 ditto -c -k --sequesterRsrc --keepParent "$XCFRAMEWORK_DIR" "$ZIP_FILE"
