@@ -16,8 +16,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Cube",
-            url: "URL_PLACEHOLDER",
-            checksum: "CHECKSUM_PLACEHOLDER"
+            url: "https://github.com/coshz/cube/releases/download/v0.5.3-alpha.2/cube.xcframework.zip",
+            checksum: "e5b877dd1f4cb98bd7dc6a1edf7bb7d2c7dd68985fb70b99bbb8b643f6c8206b"
         )
     ]
 )
