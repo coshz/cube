@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Usage: build_xcfw.sh [dist-dir] -- generate cube.xcframework.zip in dist-dir
 set -e
 
 ROOT=$(git rev-parse --show-toplevel)
@@ -18,7 +19,7 @@ MIN_MACOS="10.15"
 MIN_IOS="13.0"
 
 BUILD_DIR="build-xcframework"
-DIST_DIR="dist"
+DIST_DIR="${1:-dist}"
 
 echo "==> Generating headers via CMake..."
 cmake -G Ninja -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release > /dev/null

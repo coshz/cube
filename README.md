@@ -24,7 +24,7 @@ An ultra-fast, cross-platform Rubik's Cube solver engine built with modern C++17
 | **Rust**       | [bindings/rust](bindings/rust/README.md)       | [cube-rust](https://crates.io/crates/cube-rust)              |
 | **Haskell**    | [bindings/haskell](bindings/haskell/README.md) | [cube-hs](https://hackage.haskell.org/package/cube-hs)       |
 | **TypeScript** | [bindings/wasm](bindings/wasm/README.md)       | [@coshz/jscube](https://www.npmjs.com/package/@coshz/jscube) |
-| **Swift**      | [bindings/swift](bindings/swift/Cube.swift)     | [coshz/cube-spm](https://github.com/coshz/cube-spm) |
+| **Swift**      | [bindings/swift](bindings/swift/Cube.swift)    | [coshz/cube-spm](https://github.com/coshz/cube-spm)          |
 
 ## 📊 Performance
 

@@ -70,13 +70,13 @@ jobs:
           path: |
             build/dist/*
             !build/dist/_CPack_Packages
-            dist/*.xcframework.zip
-            dist/*.xcframework.zip.sha256
           if-no-files-found: error
 
   build-xcframework:
     name: Build XCFramework (universal)
     runs-on: macos-latest
+    outputs:
+      checksum: ${{ steps.compute_checksum.outputs.checksum }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -92,21 +92,20 @@ jobs:
 
       - name: Build XCFramework
         shell: bash
+        run: bash dev/scripts/build_xcfw.sh dist
+
+      - name: Compute XCFramework Checksum
+        id: compute_checksum
+        shell: bash
         run: |
-          bash dev/scripts/build_xcfw.sh
-          for zip in dist/*.xcframework.zip; do
-            [ -e "$zip" ] || continue
-            sha=$(shasum -a 256 "$zip" | cut -d' ' -f1)
-            echo "$sha" > "$zip.sha256"
-          done
+          checksum=$(shasum -a 256 dist/cube.xcframework.zip | cut -d' ' -f1)
+          echo "checksum=$checksum" >> $GITHUB_OUTPUT
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v5
         with:
           name: dist-xcframework
-          path: |
-            dist/cube.xcframework.zip
-            dist/cube.xcframework.zip.sha256
+          path: dist/cube.xcframework.zip
           if-no-files-found: error
 
   publish-release:
@@ -116,25 +115,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      checksum: ${{ steps.get_checksum.outputs.checksum }}
-
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v5
         with:
           path: dists
           merge-multiple: true
-
-      - name: Display downloaded files
-        run: |
-          ls -R dists
-
-      - name: Read Checksum
-        id: get_checksum
-        run: |
-          CHECKSUM=$(tr -d '[:space:]' < dists/cube.xcframework.zip.sha256)
-          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
 
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
@@ -144,23 +130,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trigger-spm-publish:
-    name: Push to SPM branch
+    name: Push to coshz/cube-spm
     needs: [build-xcframework, publish-release]
-    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TAG: ${{ github.ref_name }}
-      CHECKSUM: ${{ needs.publish-release.outputs.checksum }}
+      CHECKSUM: ${{ needs.build-xcframework.outputs.checksum }}
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: spm-release
+          repository: coshz/cube-spm
+          ref: main
+          token: ${{ secrets.SPM_REPO_TOKEN }}
           fetch-depth: 0
 
-      - name: Update Package.swift on spm-release
+      - name: Update Package.swift
         run: |
           NEW_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/cube.xcframework.zip"
           sed -i "s|url:[[:space:]]*\"[^\"]*\"|url: \"${NEW_URL}\"|g" Package.swift
@@ -176,4 +160,6 @@ jobs:
           fi
 
           git commit -m "chore: release ${TAG}"
-          git push origin spm-release
+          git tag "${TAG}"
+          git push origin "HEAD:main"
+          git push origin "refs/tags/${TAG}"
