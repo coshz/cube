@@ -144,13 +144,36 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trigger-spm-publish:
-    name: Trigger SPM Publish
+    name: Push to SPM branch
     needs: [build-xcframework, publish-release]
     if: startsWith(github.ref, 'refs/tags/')
-    uses: ./.github/workflows/publish-spm.yml
-    with:
-      tag: ${{ github.ref_name }}
-      zip_url: https://github.com/coshz/cube/release/download/${{ github.ref_name }}/cube.xcframework.zip
-      checksum: ${{ needs.publish-release.outputs.checksum }}
-    secrets:
-      SPM_REPO_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+      CHECKSUM: ${{ needs.publish-release.outputs.checksum }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: spm-release
+          fetch-depth: 0
+
+      - name: Update Package.swift on spm-release
+        run: |
+          NEW_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/cube.xcframework.zip"
+          sed -i "s|url:[[:space:]]*\"[^\"]*\"|url: \"${NEW_URL}\"|g" Package.swift
+          sed -i "s|checksum:[[:space:]]*\"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
+
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add Package.swift
+
+          if git diff --cached --quiet; then
+            echo "Package.swift: No change; skip commit."
+            exit 0
+          fi
+
+          git commit -m "chore: release ${TAG}"
+          git push origin spm-release
