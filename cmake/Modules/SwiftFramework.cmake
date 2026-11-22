@@ -5,11 +5,13 @@
 #       <Name>            -> Versions/Current/<Name>
 #       Headers           -> Versions/Current/Headers
 #       Modules           -> Versions/Current/Modules
+#       Resources         -> Versions/Current/Resources
 #       Versions/
 #           A/
 #               <Name>                 (the compiled binary)
 #               Headers/<header>, <Name>.apinotes
 #               Modules/module.modulemap, <Name>.swiftmodule/...
+#               Resources/Info.plist
 #           Current -> A
 #
 # ...acting as a Swift overlay of a same-named Clang module, and compiles
@@ -20,6 +22,7 @@
 #   include(cmake/SwiftFramework.cmake)
 #   add_swift_framework(toy_framework
 #       NAME          Toy (optional; defaults to <TARGET_NAME>)
+#       PLIST         swift/Info.plist (optional; custom plist file)
 #       SOURCES       swift/Toy.swift
 #       HEADERS       include/toy.h
 #       MODULEMAP     swift/module.modulemap
@@ -45,13 +48,13 @@ function(add_swift_framework TARGET_NAME)
 
     cmake_parse_arguments(ARG
         ""
-        "NAME;MODULEMAP;APINOTES"
+        "NAME;PLIST;MODULEMAP;APINOTES"
         "HEADERS;SOURCES;OBJECTS;LINK_FLAGS"
         ${ARGN}
     )
 
     if(NOT ARG_MODULEMAP OR NOT ARG_SOURCES)
-        message(FATAL_ERROR "add_swift_framework(): MODULEMAP and SOURCE are required!")
+        message(FATAL_ERROR "add_swift_framework(): MODULEMAP and SOURCES are required!")
     endif()
     if(NOT ARG_NAME)
         set(ARG_NAME "${TARGET_NAME}")
@@ -59,6 +62,7 @@ function(add_swift_framework TARGET_NAME)
 
     _make_absolute(ARG_MODULEMAP)
     _make_absolute(ARG_APINOTES)
+    _make_absolute(ARG_PLIST)
     _make_absolute(ARG_HEADERS)
     _make_absolute(ARG_SOURCES)
 
@@ -69,10 +73,65 @@ function(add_swift_framework TARGET_NAME)
     set(ver_dir         "${fw_dir}/Versions/${fw_ver}")
     set(ver_headers     "${ver_dir}/Headers")
     set(ver_modules     "${ver_dir}/Modules")
+    set(ver_resources   "${ver_dir}/Resources")
     set(ver_swiftmodule "${ver_modules}/${ARG_NAME}.swiftmodule")
     set(ver_binary      "${ver_dir}/${ARG_NAME}")
 
-    set(sdk_path        ${CMAKE_OSX_SYSROOT})
+    set(arch ${CMAKE_SYSTEM_PROCESSOR})
+    if(CMAKE_OSX_ARCHITECTURES)
+        list(GET CMAKE_OSX_ARCHITECTURES 0 arch)
+    endif()
+    set(min_ver "11.0")
+    if(arch STREQUAL "x86_64")
+        set(min_ver "10.15")
+    endif()
+    set(effective_ver ${CMAKE_OSX_DEPLOYMENT_TARGET})
+    if(NOT effective_ver OR effective_ver VERSION_LESS min_ver)
+        set(effective_ver ${min_ver})
+    endif()
+
+    # Generate Info.plist if a custom PLIST was not provided
+    if(ARG_PLIST)
+        set(plist_src "${ARG_PLIST}")
+    else()
+        set(plist_src "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}_generated_Info.plist")
+        set(_FW_NAME "${ARG_NAME}")
+        string(TOLOWER "coshz.${ARG_NAME}" _FW_BUNDLE_ID)
+        set(_FW_MIN_OS "${effective_ver}")
+        set(_FW_VER "1.0")
+        if(DEFINED PROJECT_VERSION AND NOT "${PROJECT_VERSION}" STREQUAL "")
+            set(_FW_VER "${PROJECT_VERSION}")
+        endif()
+        file(WRITE "${plist_src}" [=[
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>@_FW_NAME@</string>
+    <key>CFBundleIdentifier</key>
+    <string>@_FW_BUNDLE_ID@</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>@_FW_NAME@</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>@_FW_VER@</string>
+    <key>CFBundleVersion</key>
+    <string>@_FW_VER@</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>@_FW_MIN_OS@</string>
+</dict>
+</plist>
+]=])
+        configure_file("${plist_src}" "${plist_src}" @ONLY)
+    endif()
+
+    set(sdk_path ${CMAKE_OSX_SYSROOT})
     if(NOT sdk_path)
         execute_process(
             COMMAND xcrun --show-sdk-path
@@ -82,13 +141,14 @@ function(add_swift_framework TARGET_NAME)
     endif()
 
     # ------------------------------------------------------------------
-    # 1) prepare — Versions/<v>/{Headers,Modules} + the Current/ Symlinks
+    # 1) prepare — Versions/<v>/{Headers,Modules,Resources} + Symlinks
     # ------------------------------------------------------------------
     set(prepare_stamp "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}_framework_prepare.stamp")
 
     set(prepare_steps
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${ver_headers}" "${ver_modules}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${ver_headers}" "${ver_modules}" "${ver_resources}"
         COMMAND ${CMAKE_COMMAND} -E copy "${ARG_MODULEMAP}" "${ver_modules}/module.modulemap"
+        COMMAND ${CMAKE_COMMAND} -E copy "${plist_src}" "${ver_resources}/Info.plist"
     )
 
     foreach(header IN LISTS ARG_HEADERS)
@@ -108,6 +168,7 @@ function(add_swift_framework TARGET_NAME)
         COMMAND ${CMAKE_COMMAND} -E create_symlink "${fw_ver}" "${fw_dir}/Versions/Current"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "Versions/Current/Headers" "${fw_dir}/Headers"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "Versions/Current/Modules" "${fw_dir}/Modules"
+        COMMAND ${CMAKE_COMMAND} -E create_symlink "Versions/Current/Resources" "${fw_dir}/Resources"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "Versions/Current/${ARG_NAME}" "${fw_dir}/${ARG_NAME}"
         COMMAND ${CMAKE_COMMAND} -E touch "${prepare_stamp}"
     )
@@ -115,7 +176,7 @@ function(add_swift_framework TARGET_NAME)
     add_custom_command(
         OUTPUT  "${prepare_stamp}"
         ${prepare_steps}
-        DEPENDS ${ARG_HEADERS} ${ARG_MODULEMAP} ${ARG_APINOTES}
+        DEPENDS ${ARG_HEADERS} ${ARG_MODULEMAP} ${ARG_APINOTES} "${plist_src}"
         COMMENT "Preparing ${fw_name} layout"
         VERBATIM
     )
@@ -123,18 +184,6 @@ function(add_swift_framework TARGET_NAME)
     # ------------------------------------------------------------------
     # 2) compile — for the architecture of host only
     # ------------------------------------------------------------------
-    set(arch ${CMAKE_SYSTEM_PROCESSOR})
-    if(CMAKE_OSX_ARCHITECTURES)
-        list(GET CMAKE_OSX_ARCHITECTURES 0 arch)
-    endif()
-    set(min_ver "11.0")
-    if(arch STREQUAL "x86_64")
-        set(min_ver "10.15")
-    endif()
-    set(effective_ver ${CMAKE_OSX_DEPLOYMENT_TARGET})
-    if(NOT effective_ver OR effective_ver VERSION_LESS min_ver)
-        set(effective_ver ${min_ver})
-    endif()
     set(triple "${arch}-apple-macosx${effective_ver}")
 
     add_custom_command(

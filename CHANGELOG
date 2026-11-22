@@ -1,3 +1,7 @@
+v0.5.3
+- feat: add Swift Package Manager support
+- fix: include Info.plist in framework bundles to resolve code signing error ('bundle format unrecognized, invalid, or unsuitable')
+
 v0.5.2
 - Style: Format existing files (trim trailing whitespace and insert final newline).
 - Maintained codebase consistency with .editorconfig rules.

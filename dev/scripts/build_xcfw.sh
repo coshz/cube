@@ -1,24 +1,72 @@
 #!/usr/bin/env bash
+# Usage: build_xcfw.sh [dist-dir] -- generate cube.xcframework.zip in dist-dir
 set -e
 
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT" || exit 1
 
 NAME="Cube"
+LOWER_NAME=$(printf '%s' "$NAME" | tr '[:upper:]' '[:lower:]')
+BUNDLE_ID="coshz.${LOWER_NAME}"
 VERSION=$(cut -d'-' -f1 "$ROOT/VERSION")
+[ -z "$VERSION" ] && VERSION="1.0"
 
 CUBE_CPP="amalg/cube_amalg.min.cpp"
 SWIFT_DIR="bindings/swift"
 SWIFT_SRC="$SWIFT_DIR/Cube.swift"
 MODULEMAP="$SWIFT_DIR/module.modulemap"
 APINOTES="$SWIFT_DIR/Cube.apinotes"
-HEADERS_DIR="include/cube"
 
 MIN_MACOS="10.15"
 MIN_IOS="13.0"
 
 BUILD_DIR="build-xcframework"
-DIST_DIR="dist"
+DIST_DIR="${1:-dist}"
+
+write_info_plist() {
+    local out_plist="$1"
+    local platform="$2"
+    local minver="$3"
+    local supported_platform=""
+
+    case "$platform" in
+        macosx)          supported_platform="MacOSX" ;;
+        iphoneos)        supported_platform="iPhoneOS" ;;
+        iphonesimulator) supported_platform="iPhoneSimulator" ;;
+        *)               supported_platform="MacOSX" ;;
+    esac
+
+    cat > "$out_plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>${NAME}</string>
+    <key>CFBundleIdentifier</key>
+    <string>${BUNDLE_ID}</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>${NAME}</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${VERSION}</string>
+    <key>CFBundleVersion</key>
+    <string>${VERSION}</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>${minver}</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>${supported_platform}</string>
+    </array>
+</dict>
+</plist>
+EOF
+}
 
 echo "==> Generating headers via CMake..."
 cmake -G Ninja -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release > /dev/null
@@ -39,26 +87,45 @@ build_platform() {
     local fw_dir="$build_dir/${NAME}.framework"
     local ver_dir="$fw_dir/Versions/A"
 
+    local content_dir
+    local plist_path
+    if [ "$platform" = "macosx" ]; then
+        content_dir="$ver_dir"
+        plist_path="$ver_dir/Resources/Info.plist"
+    else
+        content_dir="$fw_dir"
+        plist_path="$fw_dir/Info.plist"
+    fi
+
     echo "==> Building $NAME.framework for $platform ($archs)"
     rm -rf "$fw_dir"
-    mkdir -p "$ver_dir/Headers" "$ver_dir/Modules"
-    mkdir -p "$ver_dir/Modules/$NAME.swiftmodule"
+    mkdir -p "$content_dir/Headers" "$content_dir/Modules" "$content_dir/Modules/$NAME.swiftmodule"
+    if [ "$platform" = "macosx" ]; then
+        mkdir -p "$ver_dir/Resources"
+    fi
 
     # copy headers, modulemap and apinotes
-    cp "$FLAT_HEADERS"/*.h "$ver_dir/Headers/"
-    cp "$MODULEMAP" "$ver_dir/Modules/module.modulemap"
+    cp "$FLAT_HEADERS"/*.h "$content_dir/Headers/"
+    cp "$MODULEMAP" "$content_dir/Modules/module.modulemap"
     if [ -f "$APINOTES" ]; then
-        cp "$APINOTES" "$ver_dir/Headers/$NAME.apinotes"
+        cp "$APINOTES" "$content_dir/Headers/$NAME.apinotes"
     else
         echo "  ->Warning: No apinotes found, skipping."
     fi
 
-    # create symlinks
-    ln -sf A "$fw_dir/Versions/Current"
-    ln -sf Versions/Current/Headers "$fw_dir/Headers"
-    ln -sf Versions/Current/Modules "$fw_dir/Modules"
+    # write Info.plist
+    write_info_plist "$plist_path" "$platform" "$minver"
 
-    local sdk_path=$(xcrun --sdk $platform --show-sdk-path)
+    # create symlinks for macOS versioned framework layout
+    if [ "$platform" = "macosx" ]; then
+        ln -sf A "$fw_dir/Versions/Current"
+        ln -sf Versions/Current/Headers "$fw_dir/Headers"
+        ln -sf Versions/Current/Modules "$fw_dir/Modules"
+        ln -sf Versions/Current/Resources "$fw_dir/Resources"
+    fi
+
+    local sdk_path
+    sdk_path=$(xcrun --sdk "$platform" --show-sdk-path)
     local slice_bins=()
 
     IFS=';' read -ra ARCH_ARRAY <<< "$archs"
@@ -69,18 +136,18 @@ build_platform() {
         local slice_bin="$build_dir/${NAME}_${arch}.slice"
 
         echo "  -> Compiling C++ for $target_triple"
-        xcrun --sdk $platform clang++ \
+        xcrun --sdk "$platform" clang++ \
             -c -std=c++17 -O3 -fPIC \
-            -target $target_triple  \
+            -target "$target_triple" \
             -o "$slice_obj" \
             "$CUBE_CPP"
 
         echo "  -> Compiling Swift for $target_triple"
-        xcrun --sdk $platform swiftc \
+        xcrun --sdk "$platform" swiftc \
             -emit-library -emit-module -enable-library-evolution \
-            -target $target_triple \
-            -emit-module-path "$ver_dir/Modules/${NAME}.swiftmodule/${module_name}.swiftmodule" \
-            -emit-module-interface-path "$ver_dir/Modules/${NAME}.swiftmodule/${module_name}.swiftinterface" \
+            -target "$target_triple" \
+            -emit-module-path "$content_dir/Modules/${NAME}.swiftmodule/${module_name}.swiftmodule" \
+            -emit-module-interface-path "$content_dir/Modules/${NAME}.swiftmodule/${module_name}.swiftinterface" \
             -import-underlying-module -module-name "$NAME" \
             -sdk "$sdk_path" -F "$fw_dir/.." \
             -Xlinker -install_name -Xlinker "@rpath/${NAME}.framework/${NAME}" \
@@ -94,12 +161,16 @@ build_platform() {
     # Lipo merging
     echo "  -> Lipo merging for $platform"
     if [ ${#slice_bins[@]} -eq 1 ]; then
-        mv "${slice_bins[0]}" "$ver_dir/$NAME"
+        mv "${slice_bins[0]}" "$content_dir/$NAME"
     else
-        xcrun lipo -create "${slice_bins[@]}" -output "$ver_dir/$NAME"
+        xcrun lipo -create "${slice_bins[@]}" -output "$content_dir/$NAME"
     fi
-    ln -sf Versions/Current/$NAME "$fw_dir/$NAME"
-    rm -f $slice_bins
+
+    if [ "$platform" = "macosx" ]; then
+        ln -sf "Versions/Current/$NAME" "$fw_dir/$NAME"
+    fi
+
+    rm -f "${slice_bins[@]}"
 }
 
 # ==============================================================================
@@ -123,7 +194,7 @@ xcodebuild -create-xcframework \
 # ==============================================================================
 # Package
 # ==============================================================================
-ZIP_FILE="$DIST_DIR/${NAME}.xcframework.zip"
+ZIP_FILE="$DIST_DIR/cube.xcframework.zip"
 echo "==> Packaging XCFramework..."
 rm -f "$ZIP_FILE" && mkdir -p "$DIST_DIR"
 ditto -c -k --sequesterRsrc --keepParent "$XCFRAMEWORK_DIR" "$ZIP_FILE"
