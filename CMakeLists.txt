@@ -41,9 +41,8 @@ endif()
 # ------------------------------------------------------------------------------
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type")
-set(CUBE_PACK_DIR "${PROJECT_BINARY_DIR}/dist" CACHE STRING "Cube packaging directory")
-
 option(BUILD_STATIC_LIBS "Build static library" ON)
+option(BUILD_CLI_APP "Build CLI app" ON)
 option(BUILD_SWIFT_MODULE "Build Cube.framework" ON)
 option(CUBE_ENABLE_TRACE "Enable tracing table generation" $<IF:$<CONFIG:Debug>,ON,OFF>)
 option(ENABLE_TEST "Enable testing" OFF)
@@ -91,7 +90,6 @@ if(APPLE)
 endif()
 
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}-sdk")
-set(CPACK_PACKAGE_DIRECTORY ${CUBE_PACK_DIR})
 string(TOLOWER "${CPACK_PACKAGE_NAME}-${CUBE_VERSION}-${CMAKE_SYSTEM_NAME}-${system_proc}" CPACK_PACKAGE_FILE_NAME)
 
 if(NOT CPACK_GENERATOR)
@@ -109,7 +107,10 @@ include(CPack)
 # ------------------------------------------------------------------------------
 
 add_subdirectory(src)   # library
-add_subdirectory(app)   # executable
+
+if(BUILD_CLI_APP)
+    add_subdirectory(app)
+endif()
 
 if(BUILD_SWIFT_MODULE AND APPLE)
     add_subdirectory(bindings/swift)
@@ -183,6 +184,7 @@ message(STATUS "  C++ Standard          : ${CMAKE_CXX_STANDARD}")
 message(STATUS "")
 message(STATUS "Options:")
 message(STATUS "  Bulid Static Libraries: ${BUILD_STATIC_LIBS}")
+message(STATUS "  Build CLI App         : ${BUILD_CLI_APP}")
 message(STATUS "  Build Swift Module    : ${BUILD_SWIFT_MODULE}")
 message(STATUS "  Trace Output          : ${CUBE_ENABLE_TRACE}")
 message(STATUS "  Enable Testing        : ${ENABLE_TEST}")
@@ -191,7 +193,6 @@ message(STATUS "Build Configuration:")
 message(STATUS "  Build Type            : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Build Directory       : ${PROJECT_BINARY_DIR}")
 message(STATUS "  Install Prefix        : ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "  Package Directory     : ${CUBE_PACK_DIR}")
 message(STATUS "")
 message(STATUS "Available Commands:")
 message(STATUS "  Configure (See 'Options' and 'Build Configuration' above)")

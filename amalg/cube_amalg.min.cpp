@@ -2,28 +2,30 @@
  * File: cube_amalg.min.cpp
  * Project: cube
  * Author: coshz <fsinhx@gmail.com>
- * Version: 0.5.3-alpha.build002
- * Date: 2026-11-17
+ * Version: 0.5.3
+ * Date: 2026-11-25
  * Homepage: https://github.com/coshz/cube
  * License: MIT
  *
  * Copyright (c) 2026 coshz <fsinhx@gmail.com>. All rights reserved.
  */
+#include <filesystem>
+#include <cstdlib>
+#include <mutex>
+#include <stdexcept>
 #include <cstddef>
 #include <vector>
 #include <array>
 #include <algorithm>
 #include <utility>
 #include <numeric>
-#include <stdexcept>
 #include <initializer_list>
 #include <cassert>
 #include <type_traits>
 #include <cstdint>
 #include <string_view>
-#include <set>
 #include <memory>
-#include <filesystem>
+#include <string>
 #include <cstdio>
 #include <limits>
 #include <queue>
@@ -32,15 +34,75 @@
 #include <ios>
 #include <iostream>
 #include <tuple>
-#include <cstdlib>
-#include <mutex>
-#include <string>
-#include <cstring>
-#include <regex>
 #include <sstream>
 #include <stdbool.h>
 #include <stdint.h>
+#include <cstring>
+#include <regex>
+#include <set>
 
+namespace cube::config {
+void set_table_dir(std::filesystem::path dir);
+auto get_table_dir() -> std::filesystem::path;
+bool use_symmetry();
+void use_symmetry(bool v);
+}
+namespace cube::config
+{
+namespace fs = std::filesystem;
+namespace {
+bool& use_symmetry_ref()
+{
+    static bool val_ = true;
+    return val_;
+}
+fs::path& get_custom_dir_storage()
+{
+    static fs::path custom_dir = {};
+    return custom_dir;
+}
+auto get_cache_dir() -> std::filesystem::path
+{
+#ifdef _WIN32
+    const char* localAppData = std::getenv("LOCALAPPDATA");
+    if (localAppData) return std::filesystem::path(localAppData);
+#elif __APPLE__
+    const char* home = std::getenv("HOME");
+    if (home) return std::filesystem::path(home) / "Library" / "Caches";
+#else
+    const char* xdgCache = std::getenv("XDG_CACHE_HOME");
+    if (xdgCache) return std::filesystem::path(xdgCache);
+    const char* home = std::getenv("HOME");
+    if (home) return std::filesystem::path(home) / ".cache";
+#endif
+    throw std::runtime_error("Unable to determine cache path");
+}
+}
+bool use_symmetry() { return use_symmetry_ref(); }
+void use_symmetry(bool v)
+{
+    static std::once_flag once;
+    std::call_once(once, [v]() { use_symmetry_ref() = v; });
+}
+void set_table_dir(fs::path dir)
+{
+    static std::once_flag once;
+    std::call_once(once, [dir]() { get_custom_dir_storage() = dir; });
+}
+fs::path get_table_dir()
+{
+    const auto user_dir = get_custom_dir_storage();
+    if(!user_dir.empty()) return user_dir;
+    if(const char *env = std::getenv("CUBE_TABLE_DIR")) {
+        if(env[0] != '\0') return fs::path(env);
+    }
+    try {
+        return get_cache_dir() / "cube.coshz" / "tables";
+    } catch (...) {
+        return fs::absolute("tables");
+    }
+}
+}
 namespace cube::math {
 using std::size_t;
 template<typename VectorLike>
@@ -585,121 +647,6 @@ inline ColorState operator*(const ColorState &c, const std::vector<TurnMove> &ms
     return cs;
 }
 }
-namespace cube {
-using namespace cube::data;
-ColorState ColorState::fromString(std::string_view cube)
-{
-    assert(is_valid_config(cube) && "invalid cube config");
-    std::array<Layer,54> xs{};
-    std::transform(cube.cbegin(), cube.cend(), xs.begin(), [](char c) {
-        switch(c) {
-        case 'U': return U;
-        case 'R': return R;
-        case 'F': return F;
-        case 'D': return D;
-        case 'L': return L;
-        case 'B': return B;
-        default: throw std::invalid_argument("invalid cube config");
-        }
-    });
-    return { xs };
-}
-bool ColorState::is_valid_config(std::string_view cfg)
-{
-    if(cfg.size() != 54) return false;
-    std::set<char> vs { cfg[CC[0]],cfg[CC[1]],cfg[CC[2]],cfg[CC[3]],cfg[CC[4]],cfg[CC[5]] };
-    if(vs.size() != 6) return false;
-    for(size_t i = 0, x = 0; i < 8; i++) {
-        for(x = 0; x < 24; x++) {
-            if(cfg[CC[CCI[i][0]]] == cfg[CF[x/3][x%3]]
-               && cfg[CC[CCI[i][1]]] == cfg[CF[x/3][(x+1)%3]]
-               && cfg[CC[CCI[i][2]]] == cfg[CF[x/3][(x+2)%3]]) break;
-        }
-        if(x >= 24) return false;
-    }
-    for(size_t i = 0, y = 0; i < 12; i++) {
-        for(y = 0; y < 24; y++) {
-            if(cfg[CC[ECI[i][0]]] == cfg[EF[y/2][y%2]]
-               && cfg[CC[ECI[i][1]]] == cfg[EF[y/2][(y+1)%2]]) break;
-        }
-        if(y >= 24) return false;
-    }
-    return true;
-}
-FaceCube ColorState::toFaceCube() const
-{
-    FacePerm fp{};
-    for(int i = 0; i < 6; ++i) {
-        fp[CC[i]] = s[CC[i]];
-    }
-    for(int i = 0; i < 8; i++) {
-        for(int x = 0; x < 24; x++) {
-            if(s[CC[CCI[i][0]]] == s[CF[x/3][x%3]]
-            && s[CC[CCI[i][1]]] == s[CF[x/3][(x+1)%3]]
-            && s[CC[CCI[i][2]]] == s[CF[x/3][(x+2)%3]])
-            {
-                fp[CF[x/3][x%3]]      = CF[i][0];
-                fp[CF[x/3][(x+1)%3]]  = CF[i][1];
-                fp[CF[x/3][(x+2)%3]]  = CF[i][2];
-                break;
-            }
-        }
-    }
-    for(int i = 0; i < 12; i++) {
-        for(int y = 0; y < 24; y++) {
-            if(s[CC[ECI[i][0]]] == s[EF[y/2][y%2]]
-            && s[CC[ECI[i][1]]] == s[EF[y/2][(y+1)%2]])
-            {
-                fp[EF[y/2][y%2]]      = EF[i][0];
-                fp[EF[y/2][(y+1)%2]]  = EF[i][1];
-                break;
-            }
-        }
-    }
-    return { fp };
-}
-CubieCube ColorState::toCubieCube() const
-{
-    return toFaceCube().toCubieCube();
-}
-CubieCube FaceCube::toCubieCube() const
-{
-    CubieCube cc{};
-    const FaceCube &fc = *this;
-    for(int i = 0; i < 8; i++) {
-        for(int x = 0; x < 24; x++) {
-            if(fc.f[CF[i][0]] == CF[x/3][x%3]) {
-                cc.cp[i] = x/3, cc.co[i] = (3-x%3)%3;
-                break;
-            }
-        }
-    }
-    for(int i = 0; i < 12; i++){
-        for(int y = 0; y < 24; y++){
-            if(fc.f[EF[i][0]] == EF[y/2][y%2]) {
-                cc.ep[i] = y/2, cc.eo[i] = (2-y%2)%2;
-                break;
-            }
-        }
-    }
-    return cc;
-}
-FaceCube CubieCube::toFaceCube() const
-{
-    FaceCube fc{};
-    const CubieCube &cc = *this;
-    for(int i = 0; i < 6; i++) {
-        fc.f[CC[i]] = CC[i];
-    }
-    for(int i = 0; i < 8; i++) for(int j = 0; j < 3; j++) {
-        fc.f[CF[i][j]] = CF[cc.cp[i]][(j-cc.co[i]+3)%3];
-    }
-    for(int i = 0; i < 12; i++) for(int j = 0; j < 2; j++) {
-        fc.f[EF[i][j]] = EF[cc.ep[i]][(j-cc.eo[i]+2)%2];
-    }
-    return fc;
-}
-}
 namespace cube::pdb {
 struct Coord
 {
@@ -868,11 +815,139 @@ CubieCube Coord::Coord2CubieCube(const Coord &c)
     };
 }
 }
-namespace cube::config {
-void set_table_dir(std::filesystem::path dir);
-auto get_table_dir() -> std::filesystem::path;
-bool use_symmetry();
-void use_symmetry(bool v);
+#if defined(CUBE_USE_STATIC)
+#  define CUBE_EXPORT
+#else
+#  if defined(_WIN32)
+#    if defined(CUBE_BUILDING_DLL)
+#      define CUBE_EXPORT __declspec(dllexport)
+#    else
+#      define CUBE_EXPORT __declspec(dllimport)
+#    endif
+#  elif defined(__GNUC__) || defined(__clang__)
+#    define CUBE_EXPORT __attribute__((visibility("default")))
+#    define CUBE_NO_EXPORT __attribute__((visibility("hidden")))
+#  else
+#    define CUBE_EXPORT
+#  endif
+#endif
+#ifndef CUBE_NO_EXPORT
+#  define CUBE_NO_EXPORT
+#endif
+#if defined(__cplusplus) && __cplusplus >= 201402L
+#  define CUBE_DEPRECATED(msg) [[deprecated(msg)]]
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#  define CUBE_DEPRECATED(msg) [[deprecated(msg)]]
+#elif defined(_MSC_VER)
+#  define CUBE_DEPRECATED(msg) __declspec(deprecated(msg))
+#elif defined(__has_attribute) && __has_attribute(deprecated)
+#  define CUBE_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#else
+#  define CUBE_DEPRECATED(msg)
+#endif
+#define CUBE_DEPRECATED_EXPORT(msg) CUBE_DEPRECATED(msg) CUBE_EXPORT
+#define CUBE_VERSION        "0.5.3"
+#define CUBE_VERSION_FULL   "0.5.3"
+#define CUBE_VERSION_MAJOR  0
+#define CUBE_VERSION_MINOR  5
+#define CUBE_VERSION_PATCH  3
+#define CUBE_VER_BIT_MAJOR_ 5
+#define CUBE_VER_BIT_MINOR_ 7
+#define CUBE_VER_BIT_PATCH_ 4
+#define CUBE_VER_SFT_MAJOR_ (CUBE_VER_BIT_MINOR_ + CUBE_VER_BIT_PATCH_)
+#define CUBE_VER_SFT_MINOR_ CUBE_VER_BIT_PATCH_
+#define CUBE_VER_SFT_PATCH_ 0
+#define CUBE_VER_MSK_MAJOR_ ((1U << CUBE_VER_BIT_MAJOR_) - 1)
+#define CUBE_VER_MSK_MINOR_ ((1U << CUBE_VER_BIT_MINOR_) - 1)
+#define CUBE_VER_MSK_PATCH_ ((1U << CUBE_VER_BIT_PATCH_) - 1)
+#if CUBE_VERSION_MAJOR > CUBE_VER_MSK_MAJOR_
+#   error "CUBE_VERSION_MAJOR out of range [0..31]"
+#endif
+#if CUBE_VERSION_MINOR > CUBE_VER_MSK_MINOR_
+#   error "CUBE_VERSION_MINOR out of range [0..127]"
+#endif
+#if CUBE_VERSION_PATCH > CUBE_VER_MSK_PATCH_
+#   error "CUBE_VERSION_PATCH out of range [0..15]"
+#endif
+#define CUBE_VERSION_CODE_ (\
+    ((CUBE_VERSION_MAJOR & CUBE_VER_MSK_MAJOR_) << CUBE_VER_SFT_MAJOR_) | \
+    ((CUBE_VERSION_MINOR & CUBE_VER_MSK_MINOR_) << CUBE_VER_SFT_MINOR_) | \
+    ((CUBE_VERSION_PATCH & CUBE_VER_MSK_PATCH_) << CUBE_VER_SFT_PATCH_) )
+#ifdef __cplusplus
+inline constexpr unsigned int cube_version_code = CUBE_VERSION_CODE_;
+#else
+enum { cube_version_code = CUBE_VERSION_CODE_ };
+#endif
+#undef CUBE_VER_BIT_MAJOR_
+#undef CUBE_VER_BIT_MINOR_
+#undef CUBE_VER_BIT_PATCH_
+#undef CUBE_VER_SFT_MAJOR_
+#undef CUBE_VER_SFT_MINOR_
+#undef CUBE_VER_SFT_PATCH_
+#undef CUBE_VER_MSK_MAJOR_
+#undef CUBE_VER_MSK_MINOR_
+#undef CUBE_VER_MSK_PATCH_
+#undef CUBE_VERSION_CODE_
+#ifndef __cplusplus
+#error "This is a C++ header; please use a C++ compiler OR include cube/cube.h instead"
+#endif
+namespace cube {
+constexpr std::string_view cubeId = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+enum class SolveResult : int32_t {
+    Success       = 0,
+    Unsolvable    = 1,
+    NotFound      = 2,
+    InvalidSrc    = 3,
+    InvalidTgt    = 4,
+    UnknownErr    = 5
+};
+CUBE_EXPORT constexpr std::string_view to_string(SolveResult status) noexcept {
+    switch (status) {
+    case SolveResult::Success:      return "Success";
+    case SolveResult::Unsolvable:   return "The cube configuration is unsolvable";
+    case SolveResult::NotFound:     return "No solution found within the step limit";
+    case SolveResult::InvalidSrc:   return "Invalid source color configuration";
+    case SolveResult::InvalidTgt:   return "Invalid target color configuration";
+    case SolveResult::UnknownErr:   return "Unknown error";
+    }
+}
+enum class PermFormat : int {
+    Face  = 0,
+    Cubie = 1,
+    Cycle = 2
+};
+struct Solution {
+    SolveResult status;
+    std::string maneuver;
+    bool is_success() const noexcept
+    {
+        return status == SolveResult::Success;
+    }
+};
+CUBE_EXPORT void init(
+    bool use_symmetry = true,
+    std::string_view dir = {}
+);
+[[nodiscard]] CUBE_EXPORT Solution solve(
+    std::string_view src,
+    std::string_view tgt = cubeId,
+    int good = 22
+);
+CUBE_EXPORT bool is_solvable(std::string_view color_cube);
+[[nodiscard]] CUBE_EXPORT std::string apply_maneuver(
+    std::string_view maneuver,
+    std::string_view cube = cubeId
+);
+[[nodiscard]] CUBE_EXPORT std::string show_permutation(
+    std::string_view ms_or_cube,
+    PermFormat format = PermFormat::Cycle
+);
+}
+namespace cube {
+CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
+CUBE_EXPORT auto get_table_dir() -> std::filesystem::path;
+CUBE_EXPORT bool is_valid_config(std::string_view cube);
+CUBE_EXPORT bool is_valid_maneuver(std::string_view maneuver);
 }
 namespace cube::pdb::symmetry {
 using cube::CubieCube;
@@ -1516,131 +1591,6 @@ protected:
     static bool start_search_ph2(SearchContext& ctx, const Coord& c, size_t togo);
 };
 }
-namespace cube::solver {
-using namespace cube::pdb::ops;
-inline bool is_dull_pair(const TurnMove A, const TurnMove B)
-{
-    return B != Nop && ((A/3 == B/3) || (A/3 == B/3+3));
-}
-auto KociembaSolver::solve(const CubieCube &cc, size_t good)
-    -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
-{
-    size_t bestL = SearchContext::DS + 1;
-    auto ctx = SearchContext(cc,good);
-    ctx.reset<Ph1>();
-    auto c = CoordOps::origin<Ph1>(cc);
-    for(auto togo = CoordOps::distance<Ph1>(c); togo < bestL; ++togo)
-    {
-        int l = start_search_ph1(ctx,c,togo,togo,bestL-1);
-        if(l >= 0) bestL = std::min(bestL,size_t(l));
-        if(bestL <= ctx.tgtlen()) break;
-    }
-    if(bestL > SearchContext::DS) return {false, {}, {}};
-    else return { true, ctx.extract<Ph1>(), ctx.extract<Ph2>() };
-}
-int KociembaSolver::start_search_ph1(
-    SearchContext& ctx, const Coord& c, size_t d, size_t d_orig, size_t maxL)
-{
-    if(d < CoordOps::distance<Ph1>(c)) return -1;
-    if(d == 0) {
-        ctx.commit<Ph1>(d_orig);
-        ctx.reset<Ph2>();
-        auto c2 = CoordOps::origin<Ph2>(ctx.root(), ctx.extract<Ph1>());
-        for(auto togo = CoordOps::distance<Ph2>(c2); togo <= maxL; ++togo)
-        {
-            bool succ = start_search_ph2(ctx,c2,togo);
-            if(succ) {
-                ctx.commit<Ph2>(togo);
-                return togo;
-            }
-        }
-        return -1;
-    }
-    int bestL = maxL + 1;
-    for(auto m: SearchContext::EM<Ph1>)
-    {
-        if(is_dull_pair(m, ctx.recall<Ph1>(d))) continue;
-        ctx.record<Ph1>(d-1,m);
-        auto l = start_search_ph1(ctx, CoordOps::transform<Ph1>(c,m), d-1, d_orig, bestL-2);
-        if(l >= 0 && bestL > l+1) {
-            bestL = l+1;
-        }
-        if(bestL + d_orig - d <= ctx.tgtlen()) break;
-        if(d >= bestL) break;
-    }
-    return bestL > int(maxL) ? -1 : bestL;
-}
-bool KociembaSolver::start_search_ph2(
-    SearchContext& ctx, const Coord& c, size_t togo)
-{
-    if(togo < CoordOps::distance<Ph2>(c)) return false;
-    if(togo == 0) return CoordOps::distance<Ph2>(c) == 0;
-    for(auto m: SearchContext::EM<Ph2>)
-    {
-        if(is_dull_pair(m, ctx.recall<Ph2>(togo))) continue;
-        ctx.record<Ph2>(togo-1,m);
-        bool ret = start_search_ph2(ctx, CoordOps::transform<Ph2>(c,m), togo-1);
-        if(ret) return true;
-    }
-    return false;
-}
-}
-namespace cube::config
-{
-namespace fs = std::filesystem;
-namespace {
-bool& use_symmetry_ref()
-{
-    static bool val_ = true;
-    return val_;
-}
-fs::path& get_custom_dir_storage()
-{
-    static fs::path custom_dir = {};
-    return custom_dir;
-}
-auto get_cache_dir() -> std::filesystem::path
-{
-#ifdef _WIN32
-    const char* localAppData = std::getenv("LOCALAPPDATA");
-    if (localAppData) return std::filesystem::path(localAppData);
-#elif __APPLE__
-    const char* home = std::getenv("HOME");
-    if (home) return std::filesystem::path(home) / "Library" / "Caches";
-#else
-    const char* xdgCache = std::getenv("XDG_CACHE_HOME");
-    if (xdgCache) return std::filesystem::path(xdgCache);
-    const char* home = std::getenv("HOME");
-    if (home) return std::filesystem::path(home) / ".cache";
-#endif
-    throw std::runtime_error("Unable to determine cache path");
-}
-}
-bool use_symmetry() { return use_symmetry_ref(); }
-void use_symmetry(bool v)
-{
-    static std::once_flag once;
-    std::call_once(once, [v]() { use_symmetry_ref() = v; });
-}
-void set_table_dir(fs::path dir)
-{
-    static std::once_flag once;
-    std::call_once(once, [dir]() { get_custom_dir_storage() = dir; });
-}
-fs::path get_table_dir()
-{
-    const auto user_dir = get_custom_dir_storage();
-    if(!user_dir.empty()) return user_dir;
-    if(const char *env = std::getenv("CUBE_TABLE_DIR")) {
-        if(env[0] != '\0') return fs::path(env);
-    }
-    try {
-        return get_cache_dir() / "cube.coshz" / "tables";
-    } catch (...) {
-        return fs::absolute("tables");
-    }
-}
-}
 namespace cube::internal::maneuver
 {
 using namespace cube::data;
@@ -1651,301 +1601,6 @@ inline auto operator""_Tm(const char* ts, size_t n) -> std::vector<TurnMove>
     return parse_maneuver(std::string(ts,n));
 }
 bool is_valid_maneuver(std::string_view);
-}
-namespace cube {
-using namespace cube::data;
-namespace internal::maneuver {
-std::string apply_maneuver(std::string_view s, const std::vector<TurnMove> &ms)
-{
-    assert(s.size() == 54 && "invalid cube length");
-    char buf[2][54];
-    std::memcpy(buf[0], s.data(), 54);
-    size_t curr = 0;
-    for(const auto &m : ms)
-    {
-        const auto& p   = ElementaryPerm[m].f;
-        const char* src = buf[curr];
-        char*       dst = buf[1-curr];
-        for(int i = 0; i < 54; ++i) dst[i] = src[p[i]];
-        curr = 1-curr;
-    }
-    return std::string(buf[curr],54);
-}
-auto parse_maneuver(std::string_view s) -> std::vector<TurnMove>
-{
-    assert(is_valid_maneuver(s) && "invalid maneuver");
-    auto expand = [](std::string_view in) -> std::string {
-        static const std::regex group_re(R"(\(([^)]+)\)(?:\{(\d+)\})?)");
-        std::string res;
-        auto start = in.cbegin();
-        std::match_results<std::string_view::const_iterator> m;
-        while (std::regex_search(start, in.cend(), m, group_re)) {
-            res.append(start, m[0].first);
-            int repeat = m[2].matched ? std::stoi(m[2].str()) : 1;
-            for (int i = 0; i < repeat; ++i) res += m[1].str();
-            start = m[0].second;
-        }
-        res.append(start, in.cend());
-        return res;
-    };
-    auto char_to_move = [](char c) -> TurnMove {
-        switch(c) {
-        case 'U': return Ux1;
-        case 'R': return Rx1;
-        case 'F': return Fx1;
-        case 'D': return Dx1;
-        case 'L': return Lx1;
-        case 'B': return Bx1;
-        default: throw std::invalid_argument("char_to_move: ???");
-        }
-    };
-    std::string in = expand(s);
-    std::vector<TurnMove> ms;
-    ms.reserve(in.size());
-    for (char c : in)
-    {
-        switch (c) {
-        case ' ': break;
-        case '2':
-            ms.back() = static_cast<TurnMove>(ms.back() + 1);
-            break;
-        case '\'':
-            ms.back() = static_cast<TurnMove>(ms.back() + 2);
-            break;
-        default:
-            ms.push_back(char_to_move(c));
-            break;
-        }
-    }
-    return ms;
-}
-bool is_valid_maneuver(std::string_view s)
-{
-    static const std::regex pat(
-        R"(\s*(([UDLRFB]['23]?|\(([UDLRFB]['23]?\s*)+\)(\{\d+\})?)\s*)*)"
-    );
-    return std::regex_match(s.begin(), s.end(), pat);
-}
-}
-}
-namespace cube::pdb::symmetry {
-void SymReduction::build_emb_corner(CornerDom& emb, const CornerConj& conj)
-{
-    static_assert(EQ_CORNER <= std::numeric_limits<uint16_t>::max());
-    constexpr auto unvisited = corner_eq_t { std::numeric_limits<uint16_t>::max(),Id };
-    emb.fill(unvisited);
-    for(int c = 0, eq = -1; c < N_CORNER; ++c)
-    {
-        if(emb[c].eq != unvisited.eq) continue;
-        emb[c] = { uint16_t(++eq), Id };
-        for(Sym s: sym_entries)
-        {
-            if(s == Id) continue;
-            auto &entry = emb[conj(s,c)];
-            if(entry.eq == unvisited.eq) entry = { uint16_t(eq), s };
-        }
-    }
-}
-void SymReduction::build_rep_corner(EqCornerDom& rep, const CornerDom& emb)
-{
-    const auto unvisited = std::numeric_limits<uint16_t>::max();
-    rep.fill(unvisited);
-    for(int corner = 0; corner < N_CORNER; ++corner)
-    {
-        auto eq = emb[corner].eq;
-        if(rep[eq] == unvisited) rep[eq] = corner;
-    }
-}
-void SymReduction::build_emb_flipslice(FlipSliceDom& emb, const FlipSliceConj& conj)
-{
-    static_assert(EQ_FLIPSLICE <= std::numeric_limits<uint16_t>::max());
-    constexpr auto unvisited = flipslice_eq_t { std::numeric_limits<uint16_t>::max(),Id };
-    emb.fill(unvisited);
-    for(int flip = 0, eq = -1; flip < N_FLIP; ++flip)
-        for(int slice = 0; slice < N_SLICE; ++slice)
-    {
-        if(emb(flip,slice).eq != unvisited.eq) continue;
-        emb(flip,slice) = { uint16_t(++eq), Id };
-        for(auto s: sym_entries)
-        {
-            if(s == Id) continue;
-            auto fs = conj(s,flip,slice);
-            auto &entry = emb(fs[0],fs[1]);
-            if(entry.eq == unvisited.eq) entry = { uint16_t(eq), s };
-        }
-    }
-}
-void SymReduction::build_rep_flipslice(EqFlipSliceDom& rep, const FlipSliceDom& emb)
-{
-    const auto unvisited = flipslice_t { std::numeric_limits<uint16_t>::max(),std::numeric_limits<uint16_t>::max() };
-    rep.fill(unvisited);
-    for(int flip = 0; flip < N_FLIP; ++flip)
-        for(int slice = 0; slice < N_SLICE; ++slice)
-        {
-            auto eq = emb(flip,slice).eq;
-            if(rep[eq] == unvisited) rep[eq] = { uint16_t(flip), uint16_t(slice) };
-        }
-}
-void SymReduction::build_stab_corner(CornerStab& stab, const EqCornerDom& rep, const CornerConj& conj)
-{
-    for (int eq = 0; eq < EQ_CORNER; ++eq)
-    {
-        SymMask mask = 0;
-        const auto c = rep[eq];
-        for (Sym s : sym_entries)
-        {
-            if (conj[s][c] == c) mask |= SymMask(1u << s);
-        }
-        stab[eq] = mask;
-    }
-}
-void SymReduction::build_stab_flipslice(FlipSliceStab& stab, const EqFlipSliceDom& rep, const FlipSliceConj& conj)
-{
-    for (int eq = 0; eq < EQ_FLIPSLICE; ++eq)
-    {
-        SymMask mask = 0;
-        const auto fs = rep[eq];
-        for (Sym s : sym_entries)
-        {
-            if (conj(s,fs[0],fs[1]) == fs) mask |= SymMask(1u << s);
-        }
-        stab[eq] = mask;
-    }
-}
-}
-#if defined(CUBE_USE_STATIC)
-#  define CUBE_EXPORT
-#else
-#  if defined(_WIN32)
-#    if defined(CUBE_BUILDING_DLL)
-#      define CUBE_EXPORT __declspec(dllexport)
-#    else
-#      define CUBE_EXPORT __declspec(dllimport)
-#    endif
-#  elif defined(__GNUC__) || defined(__clang__)
-#    define CUBE_EXPORT __attribute__((visibility("default")))
-#    define CUBE_NO_EXPORT __attribute__((visibility("hidden")))
-#  else
-#    define CUBE_EXPORT
-#  endif
-#endif
-#ifndef CUBE_NO_EXPORT
-#  define CUBE_NO_EXPORT
-#endif
-#if defined(__cplusplus) && __cplusplus >= 201402L
-#  define CUBE_DEPRECATED(msg) [[deprecated(msg)]]
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
-#  define CUBE_DEPRECATED(msg) [[deprecated(msg)]]
-#elif defined(_MSC_VER)
-#  define CUBE_DEPRECATED(msg) __declspec(deprecated(msg))
-#elif defined(__has_attribute) && __has_attribute(deprecated)
-#  define CUBE_DEPRECATED(msg) __attribute__((deprecated(msg)))
-#else
-#  define CUBE_DEPRECATED(msg)
-#endif
-#define CUBE_DEPRECATED_EXPORT(msg) CUBE_DEPRECATED(msg) CUBE_EXPORT
-#define CUBE_VERSION        "0.5.3"
-#define CUBE_VERSION_FULL   "0.5.3-alpha.build002"
-#define CUBE_VERSION_MAJOR  0
-#define CUBE_VERSION_MINOR  5
-#define CUBE_VERSION_PATCH  3
-#define CUBE_VER_BIT_MAJOR_ 5
-#define CUBE_VER_BIT_MINOR_ 7
-#define CUBE_VER_BIT_PATCH_ 4
-#define CUBE_VER_SFT_MAJOR_ (CUBE_VER_BIT_MINOR_ + CUBE_VER_BIT_PATCH_)
-#define CUBE_VER_SFT_MINOR_ CUBE_VER_BIT_PATCH_
-#define CUBE_VER_SFT_PATCH_ 0
-#define CUBE_VER_MSK_MAJOR_ ((1U << CUBE_VER_BIT_MAJOR_) - 1)
-#define CUBE_VER_MSK_MINOR_ ((1U << CUBE_VER_BIT_MINOR_) - 1)
-#define CUBE_VER_MSK_PATCH_ ((1U << CUBE_VER_BIT_PATCH_) - 1)
-#if CUBE_VERSION_MAJOR > CUBE_VER_MSK_MAJOR_
-#   error "CUBE_VERSION_MAJOR out of range [0..31]"
-#endif
-#if CUBE_VERSION_MINOR > CUBE_VER_MSK_MINOR_
-#   error "CUBE_VERSION_MINOR out of range [0..127]"
-#endif
-#if CUBE_VERSION_PATCH > CUBE_VER_MSK_PATCH_
-#   error "CUBE_VERSION_PATCH out of range [0..15]"
-#endif
-#define CUBE_VERSION_CODE_ (\
-    ((CUBE_VERSION_MAJOR & CUBE_VER_MSK_MAJOR_) << CUBE_VER_SFT_MAJOR_) | \
-    ((CUBE_VERSION_MINOR & CUBE_VER_MSK_MINOR_) << CUBE_VER_SFT_MINOR_) | \
-    ((CUBE_VERSION_PATCH & CUBE_VER_MSK_PATCH_) << CUBE_VER_SFT_PATCH_) )
-#ifdef __cplusplus
-inline constexpr unsigned int cube_version_code = CUBE_VERSION_CODE_;
-#else
-enum { cube_version_code = CUBE_VERSION_CODE_ };
-#endif
-#undef CUBE_VER_BIT_MAJOR_
-#undef CUBE_VER_BIT_MINOR_
-#undef CUBE_VER_BIT_PATCH_
-#undef CUBE_VER_SFT_MAJOR_
-#undef CUBE_VER_SFT_MINOR_
-#undef CUBE_VER_SFT_PATCH_
-#undef CUBE_VER_MSK_MAJOR_
-#undef CUBE_VER_MSK_MINOR_
-#undef CUBE_VER_MSK_PATCH_
-#undef CUBE_VERSION_CODE_
-#ifndef __cplusplus
-#error "This is a C++ header; please use a C++ compiler OR include cube/cube.h instead"
-#endif
-namespace cube {
-constexpr std::string_view cubeId = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
-enum class SolveResult : int32_t {
-    Success       = 0,
-    Unsolvable    = 1,
-    NotFound      = 2,
-    InvalidSrc    = 3,
-    InvalidTgt    = 4,
-    UnknownErr    = 5
-};
-CUBE_EXPORT constexpr std::string_view to_string(SolveResult status) noexcept {
-    switch (status) {
-    case SolveResult::Success:      return "Success";
-    case SolveResult::Unsolvable:   return "The cube configuration is unsolvable";
-    case SolveResult::NotFound:     return "No solution found within the step limit";
-    case SolveResult::InvalidSrc:   return "Invalid source color configuration";
-    case SolveResult::InvalidTgt:   return "Invalid target color configuration";
-    case SolveResult::UnknownErr:   return "Unknown error";
-    }
-}
-enum class PermFormat : int {
-    Face  = 0,
-    Cubie = 1,
-    Cycle = 2
-};
-struct Solution {
-    SolveResult status;
-    std::string maneuver;
-    bool is_success() const noexcept
-    {
-        return status == SolveResult::Success;
-    }
-};
-CUBE_EXPORT void init(
-    bool use_symmetry = true,
-    std::string_view dir = {}
-);
-[[nodiscard]] CUBE_EXPORT Solution solve(
-    std::string_view src,
-    std::string_view tgt = cubeId,
-    int good = 22
-);
-CUBE_EXPORT bool is_solvable(std::string_view color_cube);
-[[nodiscard]] CUBE_EXPORT std::string apply_maneuver(
-    std::string_view maneuver,
-    std::string_view cube = cubeId
-);
-[[nodiscard]] CUBE_EXPORT std::string show_permutation(
-    std::string_view ms_or_cube,
-    PermFormat format = PermFormat::Cycle
-);
-}
-namespace cube {
-CUBE_EXPORT void set_table_dir(std::filesystem::path dir);
-CUBE_EXPORT auto get_table_dir() -> std::filesystem::path;
-CUBE_EXPORT bool is_valid_config(std::string_view cube);
-CUBE_EXPORT bool is_valid_maneuver(std::string_view maneuver);
 }
 namespace cube::internal::show {
 using std::size_t;
@@ -2270,6 +1925,351 @@ bool permutation(char* buf, const char* ms_or_cube, int format)
     } catch(...) {
         buf[0] = '\0';
         return false;
+    }
+}
+}
+namespace cube::solver {
+using namespace cube::pdb::ops;
+inline bool is_dull_pair(const TurnMove A, const TurnMove B)
+{
+    return B != Nop && ((A/3 == B/3) || (A/3 == B/3+3));
+}
+auto KociembaSolver::solve(const CubieCube &cc, size_t good)
+    -> std::tuple<bool,std::vector<TurnMove>,std::vector<TurnMove>>
+{
+    size_t bestL = SearchContext::DS + 1;
+    auto ctx = SearchContext(cc,good);
+    ctx.reset<Ph1>();
+    auto c = CoordOps::origin<Ph1>(cc);
+    for(auto togo = CoordOps::distance<Ph1>(c); togo < bestL; ++togo)
+    {
+        int l = start_search_ph1(ctx,c,togo,togo,bestL-1);
+        if(l >= 0) bestL = std::min(bestL,size_t(l));
+        if(bestL <= ctx.tgtlen()) break;
+    }
+    if(bestL > SearchContext::DS) return {false, {}, {}};
+    else return { true, ctx.extract<Ph1>(), ctx.extract<Ph2>() };
+}
+int KociembaSolver::start_search_ph1(
+    SearchContext& ctx, const Coord& c, size_t d, size_t d_orig, size_t maxL)
+{
+    if(d < CoordOps::distance<Ph1>(c)) return -1;
+    if(d == 0) {
+        ctx.commit<Ph1>(d_orig);
+        ctx.reset<Ph2>();
+        auto c2 = CoordOps::origin<Ph2>(ctx.root(), ctx.extract<Ph1>());
+        for(auto togo = CoordOps::distance<Ph2>(c2); togo <= maxL; ++togo)
+        {
+            bool succ = start_search_ph2(ctx,c2,togo);
+            if(succ) {
+                ctx.commit<Ph2>(togo);
+                return togo;
+            }
+        }
+        return -1;
+    }
+    int bestL = maxL + 1;
+    for(auto m: SearchContext::EM<Ph1>)
+    {
+        if(is_dull_pair(m, ctx.recall<Ph1>(d))) continue;
+        ctx.record<Ph1>(d-1,m);
+        auto l = start_search_ph1(ctx, CoordOps::transform<Ph1>(c,m), d-1, d_orig, bestL-2);
+        if(l >= 0 && bestL > l+1) {
+            bestL = l+1;
+        }
+        if(bestL + d_orig - d <= ctx.tgtlen()) break;
+        if(d >= bestL) break;
+    }
+    return bestL > int(maxL) ? -1 : bestL;
+}
+bool KociembaSolver::start_search_ph2(
+    SearchContext& ctx, const Coord& c, size_t togo)
+{
+    if(togo < CoordOps::distance<Ph2>(c)) return false;
+    if(togo == 0) return CoordOps::distance<Ph2>(c) == 0;
+    for(auto m: SearchContext::EM<Ph2>)
+    {
+        if(is_dull_pair(m, ctx.recall<Ph2>(togo))) continue;
+        ctx.record<Ph2>(togo-1,m);
+        bool ret = start_search_ph2(ctx, CoordOps::transform<Ph2>(c,m), togo-1);
+        if(ret) return true;
+    }
+    return false;
+}
+}
+namespace cube {
+using namespace cube::data;
+namespace internal::maneuver {
+std::string apply_maneuver(std::string_view s, const std::vector<TurnMove> &ms)
+{
+    assert(s.size() == 54 && "invalid cube length");
+    char buf[2][54];
+    std::memcpy(buf[0], s.data(), 54);
+    size_t curr = 0;
+    for(const auto &m : ms)
+    {
+        const auto& p   = ElementaryPerm[m].f;
+        const char* src = buf[curr];
+        char*       dst = buf[1-curr];
+        for(int i = 0; i < 54; ++i) dst[i] = src[p[i]];
+        curr = 1-curr;
+    }
+    return std::string(buf[curr],54);
+}
+auto parse_maneuver(std::string_view s) -> std::vector<TurnMove>
+{
+    assert(is_valid_maneuver(s) && "invalid maneuver");
+    auto expand = [](std::string_view in) -> std::string {
+        static const std::regex group_re(R"(\(([^)]+)\)(?:\{(\d+)\})?)");
+        std::string res;
+        auto start = in.cbegin();
+        std::match_results<std::string_view::const_iterator> m;
+        while (std::regex_search(start, in.cend(), m, group_re)) {
+            res.append(start, m[0].first);
+            int repeat = m[2].matched ? std::stoi(m[2].str()) : 1;
+            for (int i = 0; i < repeat; ++i) res += m[1].str();
+            start = m[0].second;
+        }
+        res.append(start, in.cend());
+        return res;
+    };
+    auto char_to_move = [](char c) -> TurnMove {
+        switch(c) {
+        case 'U': return Ux1;
+        case 'R': return Rx1;
+        case 'F': return Fx1;
+        case 'D': return Dx1;
+        case 'L': return Lx1;
+        case 'B': return Bx1;
+        default: throw std::invalid_argument("char_to_move: ???");
+        }
+    };
+    std::string in = expand(s);
+    std::vector<TurnMove> ms;
+    ms.reserve(in.size());
+    for (char c : in)
+    {
+        switch (c) {
+        case ' ': break;
+        case '2':
+            ms.back() = static_cast<TurnMove>(ms.back() + 1);
+            break;
+        case '\'':
+            ms.back() = static_cast<TurnMove>(ms.back() + 2);
+            break;
+        default:
+            ms.push_back(char_to_move(c));
+            break;
+        }
+    }
+    return ms;
+}
+bool is_valid_maneuver(std::string_view s)
+{
+    static const std::regex pat(
+        R"(\s*(([UDLRFB]['23]?|\(([UDLRFB]['23]?\s*)+\)(\{\d+\})?)\s*)*)"
+    );
+    return std::regex_match(s.begin(), s.end(), pat);
+}
+}
+}
+namespace cube {
+using namespace cube::data;
+ColorState ColorState::fromString(std::string_view cube)
+{
+    assert(is_valid_config(cube) && "invalid cube config");
+    std::array<Layer,54> xs{};
+    std::transform(cube.cbegin(), cube.cend(), xs.begin(), [](char c) {
+        switch(c) {
+        case 'U': return U;
+        case 'R': return R;
+        case 'F': return F;
+        case 'D': return D;
+        case 'L': return L;
+        case 'B': return B;
+        default: throw std::invalid_argument("invalid cube config");
+        }
+    });
+    return { xs };
+}
+bool ColorState::is_valid_config(std::string_view cfg)
+{
+    if(cfg.size() != 54) return false;
+    std::set<char> vs { cfg[CC[0]],cfg[CC[1]],cfg[CC[2]],cfg[CC[3]],cfg[CC[4]],cfg[CC[5]] };
+    if(vs.size() != 6) return false;
+    for(size_t i = 0, x = 0; i < 8; i++) {
+        for(x = 0; x < 24; x++) {
+            if(cfg[CC[CCI[i][0]]] == cfg[CF[x/3][x%3]]
+               && cfg[CC[CCI[i][1]]] == cfg[CF[x/3][(x+1)%3]]
+               && cfg[CC[CCI[i][2]]] == cfg[CF[x/3][(x+2)%3]]) break;
+        }
+        if(x >= 24) return false;
+    }
+    for(size_t i = 0, y = 0; i < 12; i++) {
+        for(y = 0; y < 24; y++) {
+            if(cfg[CC[ECI[i][0]]] == cfg[EF[y/2][y%2]]
+               && cfg[CC[ECI[i][1]]] == cfg[EF[y/2][(y+1)%2]]) break;
+        }
+        if(y >= 24) return false;
+    }
+    return true;
+}
+FaceCube ColorState::toFaceCube() const
+{
+    FacePerm fp{};
+    for(int i = 0; i < 6; ++i) {
+        fp[CC[i]] = s[CC[i]];
+    }
+    for(int i = 0; i < 8; i++) {
+        for(int x = 0; x < 24; x++) {
+            if(s[CC[CCI[i][0]]] == s[CF[x/3][x%3]]
+            && s[CC[CCI[i][1]]] == s[CF[x/3][(x+1)%3]]
+            && s[CC[CCI[i][2]]] == s[CF[x/3][(x+2)%3]])
+            {
+                fp[CF[x/3][x%3]]      = CF[i][0];
+                fp[CF[x/3][(x+1)%3]]  = CF[i][1];
+                fp[CF[x/3][(x+2)%3]]  = CF[i][2];
+                break;
+            }
+        }
+    }
+    for(int i = 0; i < 12; i++) {
+        for(int y = 0; y < 24; y++) {
+            if(s[CC[ECI[i][0]]] == s[EF[y/2][y%2]]
+            && s[CC[ECI[i][1]]] == s[EF[y/2][(y+1)%2]])
+            {
+                fp[EF[y/2][y%2]]      = EF[i][0];
+                fp[EF[y/2][(y+1)%2]]  = EF[i][1];
+                break;
+            }
+        }
+    }
+    return { fp };
+}
+CubieCube ColorState::toCubieCube() const
+{
+    return toFaceCube().toCubieCube();
+}
+CubieCube FaceCube::toCubieCube() const
+{
+    CubieCube cc{};
+    const FaceCube &fc = *this;
+    for(int i = 0; i < 8; i++) {
+        for(int x = 0; x < 24; x++) {
+            if(fc.f[CF[i][0]] == CF[x/3][x%3]) {
+                cc.cp[i] = x/3, cc.co[i] = (3-x%3)%3;
+                break;
+            }
+        }
+    }
+    for(int i = 0; i < 12; i++){
+        for(int y = 0; y < 24; y++){
+            if(fc.f[EF[i][0]] == EF[y/2][y%2]) {
+                cc.ep[i] = y/2, cc.eo[i] = (2-y%2)%2;
+                break;
+            }
+        }
+    }
+    return cc;
+}
+FaceCube CubieCube::toFaceCube() const
+{
+    FaceCube fc{};
+    const CubieCube &cc = *this;
+    for(int i = 0; i < 6; i++) {
+        fc.f[CC[i]] = CC[i];
+    }
+    for(int i = 0; i < 8; i++) for(int j = 0; j < 3; j++) {
+        fc.f[CF[i][j]] = CF[cc.cp[i]][(j-cc.co[i]+3)%3];
+    }
+    for(int i = 0; i < 12; i++) for(int j = 0; j < 2; j++) {
+        fc.f[EF[i][j]] = EF[cc.ep[i]][(j-cc.eo[i]+2)%2];
+    }
+    return fc;
+}
+}
+namespace cube::pdb::symmetry {
+void SymReduction::build_emb_corner(CornerDom& emb, const CornerConj& conj)
+{
+    static_assert(EQ_CORNER <= std::numeric_limits<uint16_t>::max());
+    constexpr auto unvisited = corner_eq_t { std::numeric_limits<uint16_t>::max(),Id };
+    emb.fill(unvisited);
+    for(int c = 0, eq = -1; c < N_CORNER; ++c)
+    {
+        if(emb[c].eq != unvisited.eq) continue;
+        emb[c] = { uint16_t(++eq), Id };
+        for(Sym s: sym_entries)
+        {
+            if(s == Id) continue;
+            auto &entry = emb[conj(s,c)];
+            if(entry.eq == unvisited.eq) entry = { uint16_t(eq), s };
+        }
+    }
+}
+void SymReduction::build_rep_corner(EqCornerDom& rep, const CornerDom& emb)
+{
+    const auto unvisited = std::numeric_limits<uint16_t>::max();
+    rep.fill(unvisited);
+    for(int corner = 0; corner < N_CORNER; ++corner)
+    {
+        auto eq = emb[corner].eq;
+        if(rep[eq] == unvisited) rep[eq] = corner;
+    }
+}
+void SymReduction::build_emb_flipslice(FlipSliceDom& emb, const FlipSliceConj& conj)
+{
+    static_assert(EQ_FLIPSLICE <= std::numeric_limits<uint16_t>::max());
+    constexpr auto unvisited = flipslice_eq_t { std::numeric_limits<uint16_t>::max(),Id };
+    emb.fill(unvisited);
+    for(int flip = 0, eq = -1; flip < N_FLIP; ++flip)
+        for(int slice = 0; slice < N_SLICE; ++slice)
+    {
+        if(emb(flip,slice).eq != unvisited.eq) continue;
+        emb(flip,slice) = { uint16_t(++eq), Id };
+        for(auto s: sym_entries)
+        {
+            if(s == Id) continue;
+            auto fs = conj(s,flip,slice);
+            auto &entry = emb(fs[0],fs[1]);
+            if(entry.eq == unvisited.eq) entry = { uint16_t(eq), s };
+        }
+    }
+}
+void SymReduction::build_rep_flipslice(EqFlipSliceDom& rep, const FlipSliceDom& emb)
+{
+    const auto unvisited = flipslice_t { std::numeric_limits<uint16_t>::max(),std::numeric_limits<uint16_t>::max() };
+    rep.fill(unvisited);
+    for(int flip = 0; flip < N_FLIP; ++flip)
+        for(int slice = 0; slice < N_SLICE; ++slice)
+        {
+            auto eq = emb(flip,slice).eq;
+            if(rep[eq] == unvisited) rep[eq] = { uint16_t(flip), uint16_t(slice) };
+        }
+}
+void SymReduction::build_stab_corner(CornerStab& stab, const EqCornerDom& rep, const CornerConj& conj)
+{
+    for (int eq = 0; eq < EQ_CORNER; ++eq)
+    {
+        SymMask mask = 0;
+        const auto c = rep[eq];
+        for (Sym s : sym_entries)
+        {
+            if (conj[s][c] == c) mask |= SymMask(1u << s);
+        }
+        stab[eq] = mask;
+    }
+}
+void SymReduction::build_stab_flipslice(FlipSliceStab& stab, const EqFlipSliceDom& rep, const FlipSliceConj& conj)
+{
+    for (int eq = 0; eq < EQ_FLIPSLICE; ++eq)
+    {
+        SymMask mask = 0;
+        const auto fs = rep[eq];
+        for (Sym s : sym_entries)
+        {
+            if (conj(s,fs[0],fs[1]) == fs) mask |= SymMask(1u << s);
+        }
+        stab[eq] = mask;
     }
 }
 }

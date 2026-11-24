@@ -1,6 +1,4 @@
-#include "cube/advanced.hh"
 #include "cube/cube.hh"
-
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <string>

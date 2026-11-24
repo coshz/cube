@@ -68,8 +68,8 @@ jobs:
         with:
           name: dist-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            build/dist/*
-            !build/dist/_CPack_Packages
+            build/cube-sdk-*.tar.gz
+            build/cube-sdk-*.zip
           if-no-files-found: error
 
   build-xcframework:
@@ -92,25 +92,56 @@ jobs:
 
       - name: Build XCFramework
         shell: bash
-        run: bash dev/scripts/build_xcfw.sh dist
+        run: bash dev/scripts/build_xcfw.sh ./
 
       - name: Compute XCFramework Checksum
         id: compute_checksum
         shell: bash
         run: |
-          checksum=$(shasum -a 256 dist/cube.xcframework.zip | cut -d' ' -f1)
+          checksum=$(shasum -a 256 cube.xcframework.zip | cut -d' ' -f1)
           echo "checksum=$checksum" >> $GITHUB_OUTPUT
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v5
         with:
           name: dist-xcframework
-          path: dist/cube.xcframework.zip
+          path: cube.xcframework.zip
+          if-no-files-found: error
+
+  build-src-minimal:
+    name: Build Minimal Source Archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Create Minimal Source Archive
+        run: |
+          zip -r cube-src-minimal.zip \
+            CMakeLists.txt \
+            include/ \
+            src/ \
+            test/ \
+            app/ \
+            bindings/swift \
+            cmake/ \
+            VERSION \
+            CHANGELOG \
+            README.md \
+            LICENSE \
+            amalg/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: dist-src-minimal
+          path: cube-src-minimal.zip
           if-no-files-found: error
 
   publish-release:
     name: Create GitHub Release
-    needs: [build-and-package, build-xcframework]
+    needs: [build-and-package, build-xcframework, build-src-minimal]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
